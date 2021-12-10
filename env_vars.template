@@ -1,0 +1,16 @@
+export GIT_USERNAME=
+export GIT_EMAIL=
+export DATA_DIR=${HOME}/Downloads
+export DOWNLOAD_DIR=${HOME}/Downloads
+export POSTGRES_DB=stx
+export POSTGRES_USER=postgres
+export POSTGRES_PASSWORD=
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export POSTGRES_JDBC_VERSION=42.2.22
+export POSTGRES_CNX=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+export DB_URL=POSTGRES_CNX
+export USB_1=
+export USB_2=
+export USB_3=
+export LD_LIBRAEY_PATH=/usr/local/lib
