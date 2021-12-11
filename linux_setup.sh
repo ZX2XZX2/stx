@@ -2,8 +2,6 @@
 
 # TODO:
 # 1. The script does not exit if the parameters are not setup
-# 2. Add the postgres database instantiation procedures
-
 
 # Remember the current directory to return at the end of script execution
 CRT_DIR=$(dirname $0)
@@ -121,7 +119,8 @@ source ${HOME}/.bashrc
 cd ${HOME}/.envs
 virtualenv stx
 
-echo -e "12. Install python packages in stx virtual environment\n\n"
-source $HOME/.envs/stx/bin/activate
-pip3 install -r ${CRT_DIR}/reqs.txt
+echo -e "12. Get the project code from girhub\n\n"
+cd ${HOME}
+git clone https://github.com/ZX2XZX2/stx.git
+
 cd ${CRT_DIR}
