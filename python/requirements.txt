@@ -1,0 +1,13 @@
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+matplotlib
+mplfinance
+numpy
+oauth2client
+pandas
+psycopg2-binary
+recordclass
+requests
+scipy
+WeasyPrint
