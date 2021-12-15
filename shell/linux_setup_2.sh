@@ -85,7 +85,17 @@ cd ${SHELL_DIR}
 export DB_BACKUP_DIR=${DB_BKP_FILE}
 ./restore_db.sh stx stx
 
-echo -e "\n\n8 Setup cron mailer"
+echo -e "\n\n8. Setup cron mailer"
 sudo apt install -y postfix mailutils
+
+echo -e "\n\n 9. Generate stx_cfg.ini file"
+echo "[datafeed]" >> ${HOME}/stx_cfg.ini
+echo "data_dir = ${DATA_DIR}" >> ${HOME}/stx_cfg.ini
+echo "download_dir = ${DOWNLOAD_DIR}" >> ${HOME}/stx_cfg.ini
+echo "[postgres_db]" >> ${HOME}/stx_cfg.ini
+echo "db_name = ${POSTGRES_DB}" >> ${HOME}/stx_cfg.ini
+echo "usb_1 = ${USB_1}" >> ${HOME}/stx_cfg.ini
+echo "usb_2 = ${USB_2}" >> ${HOME}/stx_cfg.ini
+echo "usb_3 = ${USB_3}" >> ${HOME}/stx_cfg.ini
 
 cd ${CRT_DIR}
