@@ -287,6 +287,18 @@ int main() {
         "PRIMARY KEY(stk, etf))";
     create_table_if_missing(cnx, "stk_etfs", create_stk_etfs);
 
+    /** This table stores stock to industry groups mappings
+     */
+    char* create_stk_ind_groups = "CREATE TABLE ind_groups( "   \
+        "stk VARCHAR(16) NOT NULL, "                            \
+        "dt DATE NOT NULL, "                                    \
+        "source VARCHAR(16) NOT NULL, "                         \
+        "industry VARCHAR NOT NULL, "                           \
+        "sector VARCHAR NOT NULL, "                             \
+        "profile VARCHAR NOT NULL, "                            \
+        "PRIMARY KEY(stk, dt, source))";
+    create_table_if_missing(cnx, "ind_groups", create_stk_ind_groups);
+
     PQfinish(cnx);
     return 0;
 }
