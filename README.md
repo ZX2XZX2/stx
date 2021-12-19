@@ -7,3 +7,7 @@ To install:
    ```
    ./linux_install.sh --env-vars-file ${HOME}/.env_vars --postgres-version 13
    ```
+4. Run second installation script:
+  ```
+  ./linux_setup_2.sh [--usb-drive /path/to/usb_drive] [--jdk-file /path/to/jdk-file] [--db-bkp-file /path/to/db-bkp-file]
+  
