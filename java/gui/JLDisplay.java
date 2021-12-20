@@ -24,7 +24,7 @@ public class JLDisplay extends JScrollPane {
     private JTextPane jtp;
     private boolean invisible;
     private String first_date;
-    static final Color lr= new Color( 255, 64, 64);
+    static final Color lr= new Color( 255, 127, 255);
     static final Color lg= new Color( 127, 255, 127);
     static final Color lb= new Color( 191, 191, 255);
 
