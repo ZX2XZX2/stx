@@ -526,6 +526,24 @@ int ana_daily_score(char* stk, char* start_date, char* end_date) {
     return score;
 }
 
+/**
+   TODO: review this method (ana_calculate_score).
+   Also, review ana_daily_score.
+   Should make the following changes:
+   1. Cap the score for a setup.  SC, Gap: [-200, 200]
+   2. Give points when gaps are closed, 2x points in opposite direction.
+   3. Give points for JL breakout, SR, pullback
+   4. Give points when JL breakout, SR, pullback are reversed,
+      2x points in opposite direction
+   5. Configurable parameters:
+      a. daily fade
+      b. cap value for different setups
+      c. bonus for the stock being in a trend for specific JL factor
+      d. bonus for closing a gap, reversing JL setup
+      e. RS bonus
+      f. score for candlestick setups
+*/
+
 int ana_calculate_score(cJSON *setup) {
     char* setup_name = cJSON_GetObjectItem(setup, "setup")->valuestring;
     char* dir_str = cJSON_GetObjectItem(setup, "direction")->valuestring;
