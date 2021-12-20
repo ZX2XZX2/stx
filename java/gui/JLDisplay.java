@@ -76,7 +76,7 @@ public class JLDisplay extends JScrollPane {
     public void clear() { try { d.remove( 0, d.getLength());}
         catch( Exception e){}}
     private Color fCol( int s, boolean p) {
-        return( p? (( s== StxJL.UT|| s== StxJL.NRe)? Color.green: Color.red):
+        return( p? (( s== StxJL.UT|| s== StxJL.NRe)? Color.green: Color.pink):
                 (( s== StxJL.UT)? lg: ( s== StxJL.DT)? lr: lb));
     }
     private Color dCol( int s, float c, float arg, float ptp, boolean p) {
@@ -84,17 +84,17 @@ public class JLDisplay extends JScrollPane {
         if( s== StxJL.UT)
             return(( c> ptp+ arg)? Color.green: Color.yellow);
         else if( s== StxJL.DT)
-            return(( c< ptp- arg)? Color.red: Color.yellow);
+            return(( c< ptp- arg)? Color.pink: Color.yellow);
         else {
             if( p)
-                return( s== StxJL.NRe)? Color.green: Color.red;
+                return( s== StxJL.NRe)? Color.green: Color.pink;
             else {
                 if( s== StxJL.NRe) {
                     if( c>= ptp+ arg) return Color.green;
                     else if( c>= ptp) return Color.yellow;
                     else return Color.yellow;
                 } else {
-                    if( c< ptp- arg) return Color.red;
+                    if( c< ptp- arg) return Color.pink;
                     else if( c< ptp) return Color.yellow;
                     else return Color.yellow;
                 }
