@@ -962,7 +962,7 @@ public class ACtxHD implements KeyListener, ActionListener {
                     String stp = String.format("D_%d %s\n", num_days, 
                                                display_setup);
                     String dir = rset.getString(4);
-                    setups.append(stp, dir.equals("U")? Color.green: Color.red);
+                    setups.append(stp, dir.equals("U")? Color.green: Color.pink);
                 }
             } catch( Exception ex) {
                 System.err.println("Failed to get setups: ");
@@ -1003,7 +1003,7 @@ public class ACtxHD implements KeyListener, ActionListener {
                                                stp_name, sret.getInt(7));
                     setups.append(stp, 
                                   sret.getString(5).equals("U")? Color.green:
-                                  Color.red);
+                                  Color.pink);
                 }
                 setups.append(stk_summary, Color.white);
             } catch( Exception ex) {
