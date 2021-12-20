@@ -176,7 +176,7 @@ public class Chart extends JPanel {
             hhl= yyp- price_height* ( r.l- min_price)/ price_rg;
             hhc= yyp- price_height* ( r.c- min_price)/ price_rg;
             if( hho< hhc) {
-                g2.setPaint( Color.red);
+                g2.setPaint( Color.pink);
                 g2.fill( new Rectangle2D.Double( xx, hho, bar_width, hhc- hho));
                 g2.draw( new Line2D.Double( xx, hhc, xx+ bar_width, hhc));
             } else {
