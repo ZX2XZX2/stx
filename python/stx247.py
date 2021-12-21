@@ -11,7 +11,7 @@ import re
 import smtplib
 import stxcal
 import stxdb
-import stxetfs
+# import stxetfs
 from stxjl import StxJL
 from stxts import StxTS
 from stxplot import StxPlot
@@ -119,13 +119,15 @@ img {
                        inplace=True)
         return df
 
-    def rs_report(self, i, row, s_date, jl_s_date, ana_s_date, crt_date):
+    def rs_report(self, i, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
         res = []
         stk = row['stk']
         stk_plot = StxPlot(stk, s_date, crt_date)
         stk_plot.plot_to_file()
-        res.append(f"<h4>{i + 1}. {stk}, RS={row['rs']} "
-                   f"[{', '.join(sorted(etfs.stock_labels(stk)))}]</h4>")
+        res.append(f"<h4>{i + 1}. {stk} {isd.get(stk, ['N/A', 'N/A'])}, "
+                   f"RS={row['rs']}</h4>")
+        # res.append(f"<h4>{i + 1}. {stk}, RS={row['rs']} "
+        #            f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
         res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.format(stk, stk))
         try:
             jl_res = StxJL.jl_report(stk, jl_s_date, crt_date, 1.5)
@@ -141,14 +143,15 @@ img {
             tb.print_exc()
         return res
 
-    def setup_report(self, row, s_date, jl_s_date, ana_s_date, crt_date):
+    def setup_report(self, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
         res = []
         try:
             stk = row['stk']
             stk_plot = StxPlot(stk, s_date, crt_date)
             stk_plot.plot_to_file()
-            res.append(f"<h4>{stk} "
-                       f"[{', '.join(sorted(etfs.stock_labels(stk)))}]</h4>")
+            res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
+            # res.append(f"<h4>{stk} "
+            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
             res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
                        format(stk, stk))
             ts = StxTS(stk, s_date, crt_date)
@@ -190,7 +193,7 @@ img {
             tb.print_exc()
         return res
 
-    def get_report(self, crt_date, df, do_analyze):
+    def get_report(self, crt_date, df, isd, do_analyze):
         s_date = stxcal.move_busdays(crt_date, -50)
         jl_s_date = stxcal.move_busdays(crt_date, -350)
         ana_s_date = stxcal.move_busdays(crt_date, -20)
@@ -230,11 +233,11 @@ img {
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
             res.extend(self.setup_report(row, s_date, jl_s_date, ana_s_date,
-                                         crt_date))
+                                         crt_date, isd))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
             res.extend(self.setup_report(row, s_date, jl_s_date, ana_s_date,
-                                         crt_date))
+                                         crt_date, isd))
         if do_analyze:
             rsbest = rsdf.query('rs_rank==99').copy()
             rsworst = rsdf.query('rs_rank==0').copy()
@@ -242,11 +245,11 @@ img {
             res.append('<h3>RS Leaders</h3>')
             for i, (_, row) in enumerate(rsbest.iterrows()):
                 res.extend(self.rs_report(i, row, s_date, jl_s_date,
-                                          ana_s_date, crt_date))
+                                          ana_s_date, crt_date, isd))
             res.append('<h3>RS Laggards</h3>')
             for i, (_, row) in enumerate(rsworst.iterrows()):
                 res.extend(self.rs_report(i, row, s_date, jl_s_date,
-                                          ana_s_date, crt_date))
+                                          ana_s_date, crt_date, isd))
 
         return res
 
@@ -267,6 +270,7 @@ img {
         return df
 
     def do_analysis(self, crt_date, max_spread, eod):
+        isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
         df_1 = self.get_triggered_setups(crt_date)
         df_3 = self.get_jl_setups(crt_date)
@@ -279,16 +283,16 @@ img {
         df_3 = self.filter_spreads_hiact(df_3, spreads, max_spread)
         res = ['<html>', self.report_style, '<body>']
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
-        res.extend(self.get_report(crt_date, df_1, True))
+        res.extend(self.get_report(crt_date, df_1, isd, True))
         if eod:
             df_2 = self.get_setups_for_tomorrow(crt_date)
             next_date = stxcal.next_busday(crt_date)
             self.get_high_activity(crt_date, df_2)
             df_2 = self.filter_spreads_hiact(df_2, spreads, max_spread)
             res.append('<h3>TOMMORROW - {0:s}</h3>'.format(next_date))
-            res.extend(self.get_report(crt_date, df_2, False))
+            res.extend(self.get_report(crt_date, df_2, isd, False))
         res.append('<h3>JL - {0:s}</h3>'.format(crt_date))
-        res.extend(self.get_report(crt_date, df_3, False))
+        res.extend(self.get_report(crt_date, df_3, isd, False))
         res.append('</body>')
         res.append('</html>')
         with open('/tmp/x.html', 'w') as html_file:
@@ -409,6 +413,53 @@ img {
         z.close()
         logging.info(f'Archived {num_archived_pdfs} PDF reports '\
                      f'in {zipfile_name}')
+
+    def get_industries_sectors(self, dt):
+        ind_sector_dct = {}
+        db_date = stxcal.prev_expiry(dt)
+        q = sql.Composed([
+            sql.SQL("SELECT stk, industry, sector FROM ind_groups "),
+            sql.SQL("WHERE source = "),
+            sql.Literal('yf'),
+            sql.SQL(' AND dt = '),
+            sql.Literal(db_date)
+        ])
+        res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+        if not res:
+            q = sql.Composed([
+                sql.SQL("SELECT dt FROM ind_groups WHERE dt >= "),
+                sql.Literal(dt),
+                sql.SQL(" ORDER BY dt LIMIT 1")
+            ])
+            upper_date = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+            q = sql.Composed([
+                sql.SQL("SELECT dt FROM ind_groups WHERE dt < "),
+                sql.Literal(dt),
+                sql.SQL(" ORDER BY dt LIMIT 1")
+            ])
+            lower_date = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+            if not upper_date and not lower_date:
+                return ind_sector_dct
+            if not upper_date:
+                db_date = lower_date[0]
+            else:
+                if not lower_date:
+                    db_date = upper_date[0]
+                else:
+                    lower_num = stxcal.num_busdays(lower_date[0], dt)
+                    upper_num = stxcal.num_busdays(dt, upper_date[0])
+                    db_date = lower_date[0] if lower_num <= upper_num else \
+                        upper_date[0]
+            q = sql.Composed([
+                sql.SQL("SELECT stk, industry, sector FROM ind_groups "),
+                sql.SQL("WHERE source = "),
+                sql.Literal('yf'),
+                sql.SQL(' AND dt = '),
+                sql.Literal(db_date)
+            ])
+            res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+        ind_sector_dct = {x[0]: [x[1], x[2]] for x in res}
+        return ind_sector_dct
 
 
 if __name__ == '__main__':
