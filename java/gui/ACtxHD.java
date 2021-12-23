@@ -47,7 +47,7 @@ public class ACtxHD implements KeyListener, ActionListener {
     private JButton rewind, fwd, bak, pick_stk;
     private JButton call, put, c_call, c_put;
     private JButton wl_add, wl_trg, wl_mark, wl_clear, wl_clear_all;
-    private JTextField wl_date, wl_spread, wl_days, wl_setups, wl_tag;
+    private JTextField wl_date, wl_spread, wl_days, wl_setups, wl_tag, wl_sql;
     private JComboBox<String> exp, setups_or_trades, chart_scale;
     private JComboBox<Float> strike;
     private JComboBox<Integer> capital;
@@ -245,10 +245,17 @@ public class ACtxHD implements KeyListener, ActionListener {
         wl_setups.addKeyListener(this);
         wl_tag = new JTextField("JL");
         wl_tag.setCaretColor(Color.white);
-        wl_tag.setName("WLTAG"); 
+        wl_tag.setName("WLTAG");
         wl_tag.addKeyListener(this);
+	wl_sql = new JTextField("SELECT DISTINCT stk FROM jl_setups " +
+				"WHERE dt = '<DATE>'");
+        wl_sql.setCaretColor(Color.white);
+        wl_sql.setName("WLSQL"); 
+        wl_sql.addKeyListener(this);
+        
         setups_or_trades = new JComboBox<String>();
         setups_or_trades.setEditable(false);
+        setups_or_trades.addItem("Custom SQL");
         setups_or_trades.addItem("JL_Setups");
         setups_or_trades.addItem("Scored_Setups");
         setups_or_trades.addItem("Trades");
@@ -263,20 +270,21 @@ public class ACtxHD implements KeyListener, ActionListener {
         addC(jp_trd, exp, 485, 0, 160, 20);
         addC(jp_trd, capital, 645, 0, 80, 20);
         addC(jp_trd, trade_status, 765, 5, 550, 15);
-        addC(jp_trd, opts, 5, 20, 505, 155);
-        addC(jp_trd, trades, 510, 20, 630, 155);
+        addC(jp_trd, opts, 5, 20, 505, 130);
+        addC(jp_trd, trades, 510, 20, 630, 130);
         addC(jp_trd, setups, 1140, 20, 140, 190);
-        addC(jp_trd, wl_add, 5, 185, 90, 20);
-        addC(jp_trd, wl_trg, 95, 185, 90, 20);
-        addC(jp_trd, wl_mark, 185, 185, 100, 20);
-        addC(jp_trd, wl_clear, 285, 185, 110, 20);
-        addC(jp_trd, wl_clear_all, 655, 185, 150, 20);
-        addC(jp_trd, wl_date, 395, 185, 100, 25);
-        addC(jp_trd, wl_spread, 495, 185, 40, 25);
-        addC(jp_trd, wl_days, 535, 185, 40, 25);
-        addC(jp_trd, wl_setups, 575, 185, 40, 25);
-        addC(jp_trd, wl_tag, 615, 185, 40, 25);
-        addC(jp_trd, setups_or_trades, 805, 185, 100, 20);      
+        addC(jp_trd, wl_add, 5, 160, 90, 20);
+        addC(jp_trd, wl_trg, 95, 160, 90, 20);
+        addC(jp_trd, wl_mark, 185, 160, 100, 20);
+        addC(jp_trd, wl_clear, 285, 160, 110, 20);
+        addC(jp_trd, wl_clear_all, 655, 160, 150, 20);
+        addC(jp_trd, wl_date, 395, 160, 100, 25);
+        addC(jp_trd, wl_spread, 495, 160, 40, 25);
+        addC(jp_trd, wl_days, 535, 160, 40, 25);
+        addC(jp_trd, wl_setups, 575, 160, 40, 25);
+        addC(jp_trd, wl_tag, 615, 160, 40, 25);
+        addC(jp_trd, setups_or_trades, 805, 160, 100, 20);
+	addC(jp_trd, wl_sql, 5, 185, 1200, 20);
         int hd11= 2* resX/ 3;
         addC( jpu, jlfl1, 5, 90, 80, 20);
         jld1= new JLDisplay( hd11 + 40, 220, 12, invisible.isSelected());
@@ -694,8 +702,10 @@ public class ACtxHD implements KeyListener, ActionListener {
                 stx = getScoredSetupStocks();
             else if (table_name.equals("setups"))
                 stx = getSetupStocks();
-            else
+            else if (table_name.equals("trades"))
                 stx = getTradeStocks();
+	    else // if (table_name.equals("custom sql"))
+		stx = getCustomSqlStocks();
             for(String stk: stx) {
                 ntf.setText(stk);
                 etf.setText(wl_date.getText());
@@ -881,6 +891,30 @@ public class ACtxHD implements KeyListener, ActionListener {
             }
         } catch( Exception ex) {
             System.err.println("Failed to get setups: ");
+            ex.printStackTrace(System.err);
+        }
+        return res;
+    }
+
+    private List<String> getCustomSqlStocks() {
+        String dt = wl_date.getText();
+        String exp = StxCal.getMonthlyExpiration(StxCal.nextBusDay(dt));
+        int num_stks = Integer.parseInt(wl_setups.getText());
+        List<String> res = new ArrayList<String>();
+
+	String sql0 = wl_sql.getText().replaceAll("<DATE>", dt);
+        StringBuilder q = new StringBuilder(sql0 + " ");
+        q.append("AND stk IN (SELECT stk FROM leaders WHERE expiry='").
+            append(exp).append("' AND opt_spread <= ").
+            append(wl_spread.getText()).append(")");
+        System.err.println("getCustomSqlStocks: q = " + q.toString());
+        try {
+            StxDB sdb = new StxDB(System.getenv("POSTGRES_DB"));
+            ResultSet sret = sdb.get1(q.toString());
+            while(sret.next())
+                res.add(sret.getString(1));
+        } catch( Exception ex) {
+            System.err.println("Failed to get Custom SQL setups: ");
             ex.printStackTrace(System.err);
         }
         return res;
