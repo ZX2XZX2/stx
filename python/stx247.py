@@ -255,16 +255,17 @@ img {
 
     def get_jl_setups(self, dt):
         q = sql.Composed([
-            sql.SQL('select * from jl_setups where dt='),
+            sql.SQL("SELECT * FROM jl_setups WHERE dt="),
             sql.Literal(dt),
-            sql.SQL(' and setup in ('),
+            sql.SQL(" AND ((setup="), sql.Literal("JL_SR"),
+            sql.SQL(" AND factor="), sql.Literal(100),
+            sql.SQL(" AND (info->>'num_sr')::int > "), sql.Literal(1),
+            sql.SQL(") OR (setup IN ("),
             sql.SQL(', ').join([
                 sql.Literal('JL_P'),
-                sql.Literal('JL_B'),
-                sql.Literal('JL_S')
+                sql.Literal('JL_B')
             ]),
-            sql.SQL(') and triggered='),
-            sql.Literal(True)
+            sql.SQL(')))')
         ])
         df = pd.read_sql(q, stxdb.db_get_cnx())
         return df
