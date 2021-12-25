@@ -654,8 +654,8 @@ void ana_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
  * channel break detection.
  * TODO:
  * 1. Check interpolation logic (2021-11-01 SOS, NRZ totally off). (done)
- * 2. Up setups must break through a negative slope channel;
- *    down setups must break through a positive slope channel.
+ * 2. Up setups must break through a negative slope channel; (done)
+ *    down setups must break through a positive slope channel. (done)
  * 3. Only consider setups where all the prices are above/below the
  *    channel that is broken through.
  */
@@ -696,6 +696,7 @@ void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl, jl_piv_ptr pivs,
      * up direction setup) */
     if (jl_up_all(ls_050) && (upper_channel_len >= MIN_CHANNEL_LEN) &&
         (px_up > lb) && (px_up < ub) && (jl->recs[i].lns == i) &&
+        (pivots[num - 5].price >= pivots[num - 3].price) &&
         jl_up(jl->last->prim_state)) {
         cJSON *info = cJSON_CreateObject();
         cJSON_AddNumberToObject(info, "ipx", px_up);
@@ -708,6 +709,7 @@ void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl, jl_piv_ptr pivs,
     }
     if (jl_down_all(ls_050) && (lower_channel_len >= MIN_CHANNEL_LEN) &&
         (px_down > lb) && (px_down < ub) && (jl->recs[i].lns == i) &&
+        (pivots[num - 5].price <= pivots[num - 3].price) &&
         jl_down(jl->last->prim_state)) {
         cJSON* info = cJSON_CreateObject();
         cJSON_AddNumberToObject(info, "ipx", px_down);
