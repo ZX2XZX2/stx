@@ -214,12 +214,12 @@ int net_parse_options(FILE* opt_fp, cJSON* options, char* opt_type,
     if (opts == NULL) {
         sprintf(err_msg, "No '%s' found in 'options'", opt_type);
         net_print_json_err(options, err_msg);
-        return;
+        return -1;
     }
     if (!cJSON_IsArray(opts)) {
         sprintf(err_msg, "'options'/'%s' is not an array", opt_type);
         net_print_json_err(options, err_msg);
-        return;
+        return -1;
     }
     cJSON *opt = NULL, *crs = NULL;
     cJSON_ArrayForEach(opt, opts) {
