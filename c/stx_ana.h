@@ -423,14 +423,14 @@ jl_data_ptr ana_get_jl(char* stk, char* dt, const char* label, float factor) {
  */
 int ana_interpolate(jl_data_ptr jl, jl_pivot_ptr p1, jl_pivot_ptr p2) {
 #ifdef DEBUGGGG
-    LOGDEBUG("p1dt = %s, p2dt = %s, p1px = %d, p2px = %d\n",
-             p1->date, p2->date, p1->price, p2->price);
+    LOGDEBUG("f = %.2f, p1dt = %s, p2dt = %s, p1px = %d, p2px = %d\n",
+             jl->factor, p1->date, p2->date, p1->price, p2->price);
 #endif
     char *crt_date = jl->data->data[jl->data->pos - 1].date;
 #ifdef DEBUGGGG
     LOGDEBUG("crt_date = %s\n", crt_date);
 #endif
-    float slope = (p2->price - p1->price) /
+    float slope = (float)(p2->price - p1->price) /
         cal_num_busdays(p1->date, p2->date);
 #ifdef DEBUGGGG
     LOGDEBUG("The slope is: %f\n", slope);
@@ -480,7 +480,7 @@ void ana_update_score(char *stk, char *setup_date) {
     if (rows == 1) {
         char *score_date = PQgetvalue(res, 0, 0);
         if (!strcmp(score_date, setup_date)) {
-            LOGWARN("Scores already calculated for %s on %s\n", stk, setup_date);
+            LOGWARN("Scores already calculated for %s (%s)\n", stk, setup_date);
             goto end;
         } else
             trend_score += 7 * atoi(PQgetvalue(res, 0, 3)) / 8;
@@ -652,8 +652,13 @@ void ana_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
 /** Check whether a given day intersects a channel built by connecting
  * two pivots.  This applies to both breakout detection, and trend
  * channel break detection.
+ * TODO:
+ * 1. Check interpolation logic (2021-11-01 SOS, NRZ totally off). (done)
+ * 2. Up setups must break through a negative slope channel;
+ *    down setups must break through a positive slope channel.
+ * 3. Only consider setups where all the prices are above/below the
+ *    channel that is broken through.
  */
-
 void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl, jl_piv_ptr pivs,
                           int ls_050) {
     int i = jl->data->pos, num = pivs->num;
