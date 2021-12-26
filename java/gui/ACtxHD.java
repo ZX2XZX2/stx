@@ -215,7 +215,7 @@ public class ACtxHD implements KeyListener, ActionListener {
         capital.addItem(1000);
         capital.addItem(1500);
         capital.addItem(2000);
-        capital.setSelectedIndex(2);
+        capital.setSelectedIndex(4);
         opts = new JLDisplay(600, 100, 12, invisible.isSelected());
         trades = new JLDisplay(600, 100, 12, invisible.isSelected());
         setups = new JLDisplay(600, 100, 12, invisible.isSelected());
