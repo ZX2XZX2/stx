@@ -755,6 +755,11 @@ void ana_add_jl_pullback_setup(cJSON *setups, jl_data_ptr jl, int direction,
 
 /** Check whether a given day creates a new pivot point, and determine
  * if that pivot point represents a change in trend.
+
+ * TODO: only return this setup if it is formed of a
+ * support/resistance structure: either bounces of the lower part of
+ * an upward channel, or bounces of the upper part of a downward
+ * channel.
  */
 void ana_check_for_pullbacks(cJSON *setups, jl_data_ptr jl, jl_piv_ptr pivs,
                              jl_piv_ptr pivs_150, jl_piv_ptr pivs_200) {
