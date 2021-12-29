@@ -542,6 +542,8 @@ int ana_daily_score(char* stk, char* start_date, char* end_date) {
       d. bonus for closing a gap, reversing JL setup
       e. RS bonus
       f. score for candlestick setups
+    6. RS wrt S&P 500, industry group index. RS of industry group
+       index wrt to S&P500
 */
 
 int ana_calculate_score(cJSON *setup) {
