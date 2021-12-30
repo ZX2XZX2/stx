@@ -84,6 +84,20 @@ typedef struct jl_data_t {
     jl_pivot_ptr pivots;
 } jl_data, *jl_data_ptr;
 
+typedef struct jl_channel_boundary_t {
+    int d1; /** number of days from furthest pivot to current date */
+    int d2; /** number of days from nearest pivot to current date */
+    int px1; /** price of the furthest pivot */
+    int px2; /** price of the nearest pivot */
+    int ipx; /** price at the current date */
+    float slope; /** slope of the boundary */
+} jl_channel_boundary, *jl_channel_boundary_ptr;
+
+typedef struct jl_channel_t {
+    jl_channel_boundary upper_bound;
+    jl_channel_boundary lower_bound;
+} jl_channel, *jl_channel_ptr;
+
 void jl_free(jl_data_ptr jl) {
     if (jl->last != NULL) {
         free(jl->last);
@@ -241,7 +255,6 @@ jl_piv_ptr jl_get_pivots(jl_data_ptr jl, int num_pivots) {
     return pivs;
 }
 
-
 jl_piv_ptr jl_get_pivots_date(jl_data_ptr jl, char* dt) {
     int n = 0;
     jl_pivot_ptr crs = jl->pivots;
@@ -345,7 +358,6 @@ bool jl_is_pivot(int prev_state, int crt_state) {
 }
 
 /* TODO: handle the case when there are two pivots in the same day */
-
 void jl_update_lns_and_pivots(jl_data_ptr jl, int ix) {
     jl_record_ptr jlr = &(jl->recs[ix]);
     jl_record_ptr jlns = (jlr->lns > -1)? &(jl->recs[jlr->lns]): NULL;
@@ -799,7 +811,6 @@ void jl_print_rec(char* date, int state, int price, bool pivot, int rg,
         fprintf(stderr, "%6s\n", " ");
     else
         fprintf(stderr, "%6d\n", rg);
-
 }
 
 jl_data_ptr jl_jl(stx_data_ptr data, char* end_date, float factor) {
@@ -855,11 +866,65 @@ void jl_print(jl_data_ptr jl, bool print_pivots_only, bool print_nils) {
     }
 }
 
-/** Return true if the pivots p1 and p2 have the same date and the same price.
- * This is used to identify that a pivot on a faster time scale is the same as a
- * pivot or last non-secondary record on a slower time scale.
+/** Return true if the pivots p1 and p2 have the same date and the
+ *  same price.  This is used to identify that a pivot on a faster
+ *  time scale is the same as a pivot or last non-secondary record on
+ *  a slower time scale.
  */
 bool jl_same_pivot(jl_pivot_ptr p1, jl_pivot_ptr p2) {
     return (!strcmp(p1->date, p2->date) && (p1->price == p2->price));
+}
+
+/** Return the upper or lower boundary of a channel.  This is a helper
+ *  function that is called from jl_get_channel.  It should not be
+ *  called directly, as it does not check that it has enough pivots
+ */
+void jl_init_channel_boundary(jl_data_ptr jld, jl_pivot_ptr pivs, int offset,
+                              jl_channel_boundary_ptr jlcb) {
+    int ix = jl->data->pos, num = pivs->num;
+    daily_record_ptr r = &(jl->data->data[ix]);
+    jlcb->d1 = cal_num_busdays(pivots[num - 4 - offset].date, r->date);
+    jlcb->d2 = cal_num_busdays(pivots[num - 2 - offset].date, r->date);
+    jlcb->px1 = pivots[num - 4 - offset].price;
+    jlcb->px2 = pivots[num - 2 - offset].price;
+    jlcb->slope = (float) (jlcb->px2 - jlcb->px1) / (jlcb->d1 - jlcb->d2);
+    jlcb->ipx = (int) (jlcb->px1 + slope * jlcb->d1);
+}
+
+void jl_update_channel_width(jl_data_ptr jld, jl_channel_ptr jlc) {
+
+}
+
+/** Return a channel that is formed by the last four pivots of a JL
+ *  record set.  Return 0 if success -1 if not enough pivots
+ */
+int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
+    int res = 0;
+    /** cleanup channel placeholder */
+    memset(jlc, 0, sizeof(jl_channel));
+    /** get 4 last pivots, exit if not enough pivots */
+    jl_pivot_ptr pivs = jl_get_pivots(jld, 4);
+    int i = jl->data->pos, num = pivs->num;
+    if (num < 5) {
+        res = -1;
+        goto end;
+    }
+    /** calculate length, prices, slope of channel boundaries */
+    if (jl_up(pivots[num - 1].state)) { /* stock in uptrend/rally */
+        jl_get_channel_boundary(jld, pivs, 1, jlc->upper_bound);
+        jl_get_channel_boundary(jld, pivs, 0, jlc->lower_bound);
+    } else { /* stock in downtrend/reaction */
+        jl_get_channel_boundary(jld, pivs, 0, jlc->upper_bound);
+        jl_get_channel_boundary(jld, pivs, 1, jlc->lower_bound);
+    }        
+#ifdef JL_CHANNEL_DEBUG
+    int pos = jld->data->pos;    
+    LOGDEBUG("stk = %s, date = %s f = %.2f, p1dt = %s, p2dt = %s, p1px = %d, p2px = %d\n",
+             jl->factor, p1->date, p2->date, p1->price, p2->price);
+#endif
+ end:
+    if (pivs != NULL)
+        free(pivs);
+    return res;
 }
 #endif
