@@ -247,7 +247,7 @@ public class ACtxHD implements KeyListener, ActionListener {
         wl_tag.setCaretColor(Color.white);
         wl_tag.setName("WLTAG");
         wl_tag.addKeyListener(this);
-	wl_sql = new JTextField("SELECT DISTINCT stk FROM jl_setups " +
+        wl_sql = new JTextField("SELECT DISTINCT stk FROM jl_setups " +
 				"WHERE dt = '<DATE>'");
         wl_sql.setCaretColor(Color.white);
         wl_sql.setName("WLSQL"); 
@@ -559,6 +559,7 @@ public class ACtxHD implements KeyListener, ActionListener {
                           Color.lightGray);
         jlfl1.setText("Factor: "+ jlf1.getText());
         jlfl2.setText("Factor: "+ jlf2.getText());
+        jlfl3.setText("Factor: "+ jlf3.getText());
         updateSetupPanel();
         if( StxCal.isBusDay( e)== false)
             e= StxCal.nextBusDay( e);
