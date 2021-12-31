@@ -94,8 +94,8 @@ typedef struct jl_channel_boundary_t {
 } jl_channel_boundary, *jl_channel_boundary_ptr;
 
 typedef struct jl_channel_t {
-    jl_channel_boundary upper_bound;
-    jl_channel_boundary lower_bound;
+    jl_channel_boundary ub; /** upper_bound */
+    jl_channel_boundary lb; /** lower_bound */
 } jl_channel, *jl_channel_ptr;
 
 void jl_free(jl_data_ptr jl) {
@@ -879,16 +879,16 @@ bool jl_same_pivot(jl_pivot_ptr p1, jl_pivot_ptr p2) {
  *  function that is called from jl_get_channel.  It should not be
  *  called directly, as it does not check that it has enough pivots
  */
-void jl_init_channel_boundary(jl_data_ptr jld, jl_pivot_ptr pivs, int offset,
+void jl_init_channel_boundary(jl_data_ptr jld, jl_piv_ptr pivs, int offset,
                               jl_channel_boundary_ptr jlcb) {
-    int ix = jl->data->pos, num = pivs->num;
-    daily_record_ptr r = &(jl->data->data[ix]);
-    jlcb->d1 = cal_num_busdays(pivots[num - 4 - offset].date, r->date);
-    jlcb->d2 = cal_num_busdays(pivots[num - 2 - offset].date, r->date);
-    jlcb->px1 = pivots[num - 4 - offset].price;
-    jlcb->px2 = pivots[num - 2 - offset].price;
+    int ix = jld->data->pos, num = pivs->num;
+    daily_record_ptr r = &(jld->data->data[ix]);
+    jlcb->d1 = cal_num_busdays(pivs->pivots[num - 4 - offset].date, r->date);
+    jlcb->d2 = cal_num_busdays(pivs->pivots[num - 2 - offset].date, r->date);
+    jlcb->px1 = pivs->pivots[num - 4 - offset].price;
+    jlcb->px2 = pivs->pivots[num - 2 - offset].price;
     jlcb->slope = (float) (jlcb->px2 - jlcb->px1) / (jlcb->d1 - jlcb->d2);
-    jlcb->ipx = (int) (jlcb->px1 + slope * jlcb->d1);
+    jlcb->ipx = (int) (jlcb->px1 + jlcb->slope * jlcb->d1);
 }
 
 void jl_update_channel_width(jl_data_ptr jld, jl_channel_ptr jlc) {
@@ -903,24 +903,33 @@ int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
     /** cleanup channel placeholder */
     memset(jlc, 0, sizeof(jl_channel));
     /** get 4 last pivots, exit if not enough pivots */
-    jl_pivot_ptr pivs = jl_get_pivots(jld, 4);
-    int i = jl->data->pos, num = pivs->num;
-    if (num < 5) {
+    jl_piv_ptr pivs = jl_get_pivots(jld, 4);
+    if (pivs->num < 5) {
         res = -1;
         goto end;
     }
     /** calculate length, prices, slope of channel boundaries */
-    if (jl_up(pivots[num - 1].state)) { /* stock in uptrend/rally */
-        jl_get_channel_boundary(jld, pivs, 1, jlc->upper_bound);
-        jl_get_channel_boundary(jld, pivs, 0, jlc->lower_bound);
+    if (jl_up(pivs->pivots[pivs->num - 1].state)) { /* stock in uptrend/rally */
+        jl_init_channel_boundary(jld, pivs, 1, &jlc->ub);
+        jl_init_channel_boundary(jld, pivs, 0, &jlc->lb);
     } else { /* stock in downtrend/reaction */
-        jl_get_channel_boundary(jld, pivs, 0, jlc->upper_bound);
-        jl_get_channel_boundary(jld, pivs, 1, jlc->lower_bound);
-    }        
+        jl_init_channel_boundary(jld, pivs, 0, &jlc->ub);
+        jl_init_channel_boundary(jld, pivs, 1, &jlc->lb);
+    }
+    jl_update_channel_width(jld, jlc);
 #ifdef JL_CHANNEL_DEBUG
     int pos = jld->data->pos;    
-    LOGDEBUG("stk = %s, date = %s f = %.2f, p1dt = %s, p2dt = %s, p1px = %d, p2px = %d\n",
-             jl->factor, p1->date, p2->date, p1->price, p2->price);
+    daily_record_ptr r = &(jld->data->data[pos]);
+    LOGDEBUG("stk = %s, date = %s, factor = %.2f\n", jld->data->stk, r->date,
+             jld->factor);
+    LOGDEBUG(" Upper: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
+             jld->data->data[pos - jlc->ub.d1].date, jlc->ub.d1,
+             jld->data->data[pos - jlc->ub.d2].date, jlc->ub.d2,
+             jlc->ub.px1, jlc->ub.px2, jlc->ub.ipx, jlc->ub.slope);
+    LOGDEBUG(" Lower: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
+             jld->data->data[pos - jlc->lb.d1].date, jlc->lb.d1,
+             jld->data->data[pos - jlc->lb.d2].date, jlc->lb.d2,
+             jlc->lb.px1, jlc->lb.px2, jlc->lb.ipx, jlc->lb.slope);
 #endif
  end:
     if (pivs != NULL)
