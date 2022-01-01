@@ -91,6 +91,8 @@ typedef struct jl_channel_boundary_t {
     int px2; /** price of the nearest pivot */
     int ipx; /** price at the current date */
     float slope; /** slope of the boundary */
+    int obv1; /** on-the-balance volume from furthest pivot */
+    int obv2; /** on-the-balance volume from nearest pivot */
 } jl_channel_boundary, *jl_channel_boundary_ptr;
 
 typedef struct jl_channel_t {
@@ -889,6 +891,8 @@ void jl_init_channel_boundary(jl_data_ptr jld, jl_piv_ptr pivs, int offset,
     jlcb->px2 = pivs->pivots[num - 2 - offset].price;
     jlcb->slope = (float) (jlcb->px2 - jlcb->px1) / (jlcb->d1 - jlcb->d2);
     jlcb->ipx = (int) (jlcb->px1 + jlcb->slope * jlcb->d1);
+    jlcb->obv1 = pivs->pivots[num - 4 - offset].obv;
+    jlcb->obv2 = pivs->pivots[num - 2 - offset].obv;
 }
 
 void jl_update_channel_width(jl_data_ptr jld, jl_channel_ptr jlc) {
