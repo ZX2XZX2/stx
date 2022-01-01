@@ -661,65 +661,48 @@ void ana_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
  * 3. Only consider setups where all the prices are above/below the
  *    channel that is broken through.
  */
-void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl, jl_piv_ptr pivs,
-                          int ls_050) {
-    int i = jl->data->pos, num = pivs->num;
-    if (num < 5)
+void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl,
+                          jl_channel_ptr channel) {
+    /** return if the channel could not be built */
+    if (channel->ub.px1 == 0 || channel->lb.px1 == 0)
         return;
-    jl_pivot_ptr pivots = pivs->pivots;
-    daily_record_ptr r = &(jl->data->data[i]), r_1 = &(jl->data->data[i - 1]);
-    int len_1 = cal_num_busdays(pivots[num - 4].date, r->date);
-    int len_2 = cal_num_busdays(pivots[num - 5].date, r->date);
-    if ((len_1 < MIN_CHANNEL_LEN) && (len_2 < MIN_CHANNEL_LEN))
+    /* filter out cases when upper channel is below lower channel */
+    if (channel->ub.ipx < channel->lb.ipx)
         return;
-    int px_up = -1, px_down = -1, upper_channel_len, lower_channel_len;
-    if (jl_up(pivots[num - 1].state)) { /* stock in uptrend/rally */
-        px_up = ana_interpolate(jl, &(pivots[num - 5]), &(pivots[num - 3]));
-        upper_channel_len = len_2;
-        px_down = ana_interpolate(jl, &(pivots[num - 4]), &(pivots[num - 2]));
-        lower_channel_len = len_1;
-    } else { /* stock in downtrend/reaction */
-        px_up = ana_interpolate(jl, &(pivots[num - 4]), &(pivots[num - 2]));
-        upper_channel_len = len_1;
-        px_down = ana_interpolate(jl, &(pivots[num - 5]), &(pivots[num - 3]));
-        lower_channel_len = len_2;
-    }
-    /* filter cases when upper channel is below lower channel */
-    if (px_up <= px_down)
-        return;
-    /* find the extremes for today's price either the high/low for the
-       day, or yesterday's close */
+    int ix = jl->data->pos;
+    /** find the extremes for today's price either the high/low for
+     *  the day, or yesterday's close */
+    daily_record_ptr r = &(jl->data->data[ix]), r_1 = &(jl->data->data[ix - 1]);
     int ub = (r->high > r_1->close)? r->high: r_1->close;
     int lb = (r->low < r_1->close)? r->low: r_1->close;
+    /** get the average volume for the last 20 (JL window) days */
     int v_pos_2 = (jl->recs[jl->pos - 2].volume == 0)? 1:
         jl->recs[jl->pos - 2].volume;
     /** only add JL_B setup if the current record is a primary record for the
      * factor and in the direction of the trend (e.g. RALLY or UPTREND for an
      * up direction setup) */
-    if (jl_up_all(ls_050) && (upper_channel_len >= MIN_CHANNEL_LEN) &&
-        (px_up > lb) && (px_up < ub) && (jl->recs[i].lns == i) &&
-        (pivots[num - 5].price >= pivots[num - 3].price) &&
-        jl_up(jl->last->prim_state)) {
+    if ((channel->ub.d1 >= MIN_CHANNEL_LEN) && (channel->ub.slope <= 0) &&
+        (channel->ub.ipx > lb) && (channel->ub.ipx < ub) &&
+        (jl->recs[ix].lns == ix) && jl_up(jl->last->prim_state)) {
         cJSON *info = cJSON_CreateObject();
-        cJSON_AddNumberToObject(info, "ipx", px_up);
-        cJSON_AddNumberToObject(info, "len", upper_channel_len);
+        cJSON_AddNumberToObject(info, "ipx", channel->ub.ipx);
+        cJSON_AddNumberToObject(info, "len", channel->ub.d1);
         cJSON_AddNumberToObject(info, "vr", 100 * r->volume / v_pos_2);
-        cJSON_AddNumberToObject(info, "last_ns", jl->last->prim_state);
-        cJSON_AddNumberToObject(info, "prev_ns", jl_prev_ns(jl));
-        cJSON_AddNumberToObject(info, "obv", pivots[num - 2].obv);
+        cJSON_AddNumberToObject(info, "slope", channel->ub.slope);
+        cJSON_AddNumberToObject(info, "obv1", channel->ub.obv1);
+        cJSON_AddNumberToObject(info, "obv2", channel->ub.obv2);
         ana_add_to_setups(setups, jl, "JL_B", 1, info, true);
     }
-    if (jl_down_all(ls_050) && (lower_channel_len >= MIN_CHANNEL_LEN) &&
-        (px_down > lb) && (px_down < ub) && (jl->recs[i].lns == i) &&
-        (pivots[num - 5].price <= pivots[num - 3].price) &&
-        jl_down(jl->last->prim_state)) {
-        cJSON* info = cJSON_CreateObject();
-        cJSON_AddNumberToObject(info, "ipx", px_down);
-        cJSON_AddNumberToObject(info, "len", lower_channel_len);
+    if ((channel->lb.d1 >= MIN_CHANNEL_LEN) && (channel->lb.slope >= 0) &&
+        (channel->lb.ipx > lb) && (channel->lb.ipx < ub) &&
+        (jl->recs[ix].lns == ix) && jl_down(jl->last->prim_state)) {
+        cJSON *info = cJSON_CreateObject();
+        cJSON_AddNumberToObject(info, "ipx", channel->lb.ipx);
+        cJSON_AddNumberToObject(info, "len", channel->lb.d1);
         cJSON_AddNumberToObject(info, "vr", 100 * r->volume / v_pos_2);
-        cJSON_AddNumberToObject(info, "last_ns", jl->last->prim_state);
-        cJSON_AddNumberToObject(info, "prev_ns", jl_prev_ns(jl));
-        cJSON_AddNumberToObject(info, "obv", pivots[num - 2].obv);
+        cJSON_AddNumberToObject(info, "slope", channel->lb.slope);
+        cJSON_AddNumberToObject(info, "obv1", channel->lb.obv1);
+        cJSON_AddNumberToObject(info, "obv2", channel->lb.obv2);
         ana_add_to_setups(setups, jl, "JL_B", -1, info, true);
     }
 }
@@ -1196,7 +1179,7 @@ void ana_candlesticks(jl_data_ptr jl) {
  **/
 int ana_jl_setups(char* stk, char* dt) {
     int res = 0;
-    /** Get, or calculate if not already there, JL trends for 4 factors. */
+    /** Get, or calculate if not already there, JL records for 4 factors. */
     jl_data_ptr jl_050 = ana_get_jl(stk, dt, JL_050, JLF_050);
     jl_data_ptr jl_100 = ana_get_jl(stk, dt, JL_100, JLF_100);
     jl_data_ptr jl_150 = ana_get_jl(stk, dt, JL_150, JLF_150);
@@ -1204,6 +1187,12 @@ int ana_jl_setups(char* stk, char* dt) {
     if ((jl_050 == NULL) || (jl_100 == NULL) || (jl_150 == NULL) ||
         (jl_200 == NULL))
         return -1;
+    /** Get the channels for every one of the 4 JL factors */
+    jl_channel chan_050, chan_100, chan_150, chan_200;
+    jl_get_channel(jl_050, &chan_050);
+    jl_get_channel(jl_100, &chan_100);
+    jl_get_channel(jl_150, &chan_150);
+    jl_get_channel(jl_200, &chan_200);
     cJSON *setups = cJSON_CreateArray();
     jl_piv_ptr pivots_050 = NULL, pivots_100 = NULL, pivots_150 = NULL,
         pivots_200 = NULL;
@@ -1238,11 +1227,10 @@ int ana_jl_setups(char* stk, char* dt) {
         pivots_050 = jl_get_pivots(jl_050, 4);
     }
     /** Check for breaks, for all the factors (0.5, 1.0, 1.5, 2.0) */
-    int ls_050 = jl_050->last->state;
-    ana_check_for_breaks(setups, jl_050, pivots_050, ls_050);
-    ana_check_for_breaks(setups, jl_100, pivots_100, ls_050);
-    ana_check_for_breaks(setups, jl_150, pivots_150, ls_050);
-    ana_check_for_breaks(setups, jl_200, pivots_200, ls_050);
+    ana_check_for_breaks(setups, jl_050, &chan_050);
+    ana_check_for_breaks(setups, jl_100, &chan_100);
+    ana_check_for_breaks(setups, jl_150, &chan_150);
+    ana_check_for_breaks(setups, jl_200, &chan_200);
     /** Check for candlestick and daily setups (strong close, reversal day,
      *  gap)
      */
