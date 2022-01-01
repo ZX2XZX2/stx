@@ -922,14 +922,14 @@ int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
     daily_record_ptr r = &(jld->data->data[pos]);
     LOGDEBUG("stk = %s, date = %s, factor = %.2f\n", jld->data->stk, r->date,
              jld->factor);
-    LOGDEBUG(" Upper: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
+    LOGDEBUG("U: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
              jld->data->data[pos - jlc->ub.d1].date, jlc->ub.d1,
              jld->data->data[pos - jlc->ub.d2].date, jlc->ub.d2,
-             jlc->ub.px1, jlc->ub.px2, jlc->ub.ipx, jlc->ub.slope);
-    LOGDEBUG(" Lower: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
+             jlc->ub.px1, jlc->ub.px2, jlc->ub.ipx, jlc->ub.slope / jld->recs[jld->pos].rg);
+    LOGDEBUG("L: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
              jld->data->data[pos - jlc->lb.d1].date, jlc->lb.d1,
              jld->data->data[pos - jlc->lb.d2].date, jlc->lb.d2,
-             jlc->lb.px1, jlc->lb.px2, jlc->lb.ipx, jlc->lb.slope);
+             jlc->lb.px1, jlc->lb.px2, jlc->lb.ipx, jlc->lb.slope / jld->recs[jld->pos].rg);
 #endif
  end:
     if (pivs != NULL)
