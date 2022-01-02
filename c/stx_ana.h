@@ -150,20 +150,18 @@ void ana_option_analysis(ldr_ptr leader, PGresult* sql_res, int spot) {
     leader->atm_price = atm_price / 2;
 }
 
-/** 
-    This function returns the average option spread for stocks that are
-    leaders, or -1, if the stock is not a leader. 
-**/
+/** This function returns the average option spread for stocks that
+ *  are leaders, or -1, if the stock is not a leader.
+ */
 ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp, 
                    bool realtime_analysis, bool download_options) {
-    /** 
-        A stock is a leader at a given date if:
-        1. Its average activity is above a threshold.
-        2. Its average range is above a threshold.
-        3. It has call and put options for that date, expiring in one month,
-        4. For both calls and puts, it has at least 2 strikes >= spot, and
-           2 strikes <= spot
-     **/
+    /** A stock is a leader at a given date if:
+     *  1. Its average activity is above a threshold.
+     *  2. Its average range is above a threshold.
+     *  3. It has call and put options for that date, expiring in one month,
+     *  4. For both calls and puts, it has at least 2 strikes >= spot, and
+     *     2 strikes <= spot
+     */
     ldr_ptr leader = (ldr_ptr) calloc((size_t)1, sizeof(ldr));
     leader->is_ldr = false;
     ts_set_day(data, as_of_date, 0);
@@ -417,32 +415,6 @@ jl_data_ptr ana_get_jl(char* stk, char* dt, const char* label, float factor) {
     return jl_recs;
 }
 
-/** Calculates the point where trend channel defined by the points
- *  (p1->date, p1->price), and (p2->date, p2->price) would intersect
- *  the y-axis at the current day.
- */
-int ana_interpolate(jl_data_ptr jl, jl_pivot_ptr p1, jl_pivot_ptr p2) {
-#ifdef DEBUGGGG
-    LOGDEBUG("f = %.2f, p1dt = %s, p2dt = %s, p1px = %d, p2px = %d\n",
-             jl->factor, p1->date, p2->date, p1->price, p2->price);
-#endif
-    char *crt_date = jl->data->data[jl->data->pos - 1].date;
-#ifdef DEBUGGGG
-    LOGDEBUG("crt_date = %s\n", crt_date);
-#endif
-    float slope = (float)(p2->price - p1->price) /
-        cal_num_busdays(p1->date, p2->date);
-#ifdef DEBUGGGG
-    LOGDEBUG("The slope is: %f\n", slope);
-#endif
-    int intersect_price = (int)
-        (p1->price + slope * cal_num_busdays(p1->date, crt_date));
-#ifdef DEBUGGGG
-    LOGDEBUG("The intersect_price is: %d\n", intersect_price);
-#endif
-    return intersect_price;
-}
-
 int ana_clip(int value, int lb, int ub) {
     int res = value;
     if (res < lb)
@@ -646,8 +618,8 @@ void ana_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
     cJSON_AddStringToObject(res, "direction", direction);
     cJSON_AddStringToObject(res, "triggered", triggered? "TRUE": "FALSE");
     cJSON_AddItemToObject(res, "info", info);
-    int score = ana_calculate_score(res);
-    cJSON_AddNumberToObject(res, "score", score);
+    /* int score = ana_calculate_score(res); */
+    /* cJSON_AddNumberToObject(res, "score", score); */
     cJSON_AddItemToArray(setups, res);
 }
 
@@ -681,29 +653,38 @@ void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl,
     /** only add JL_B setup if the current record is a primary record for the
      * factor and in the direction of the trend (e.g. RALLY or UPTREND for an
      * up direction setup) */
+#ifdef JL_CHANNEL_DEBUG
+    LOGDEBUG("ix = %d, jl->recs[ix].lns = %d, jl->last->prim_state = %s\n",
+             ix, jl->recs[ix].lns, jl_state_to_string(jl->last->prim_state));
+#endif
+    jl_channel_boundary_ptr cb = NUll;
+    int dir = 0;
     if ((channel->ub.d1 >= MIN_CHANNEL_LEN) && (channel->ub.slope <= 0) &&
         (channel->ub.ipx > lb) && (channel->ub.ipx < ub) &&
         (jl->recs[ix].lns == ix) && jl_up(jl->last->prim_state)) {
-        cJSON *info = cJSON_CreateObject();
-        cJSON_AddNumberToObject(info, "ipx", channel->ub.ipx);
-        cJSON_AddNumberToObject(info, "len", channel->ub.d1);
-        cJSON_AddNumberToObject(info, "vr", 100 * r->volume / v_pos_2);
-        cJSON_AddNumberToObject(info, "slope", channel->ub.slope);
-        cJSON_AddNumberToObject(info, "obv1", channel->ub.obv1);
-        cJSON_AddNumberToObject(info, "obv2", channel->ub.obv2);
-        ana_add_to_setups(setups, jl, "JL_B", 1, info, true);
+        cb = &(channel->ub);
+        dir = 1;
     }
     if ((channel->lb.d1 >= MIN_CHANNEL_LEN) && (channel->lb.slope >= 0) &&
         (channel->lb.ipx > lb) && (channel->lb.ipx < ub) &&
         (jl->recs[ix].lns == ix) && jl_down(jl->last->prim_state)) {
+        if (dir == 1) { /** discard setups triggered in both directions */
+            dir = 0;
+            cb = NULL;
+        } else {
+            cb = &(channel->lb);
+            dir = -1;
+        }
+    }
+    if (cb != NULL) {
         cJSON *info = cJSON_CreateObject();
-        cJSON_AddNumberToObject(info, "ipx", channel->lb.ipx);
-        cJSON_AddNumberToObject(info, "len", channel->lb.d1);
+        cJSON_AddNumberToObject(info, "ipx", cb->ipx);
+        cJSON_AddNumberToObject(info, "len", cb->d1);
         cJSON_AddNumberToObject(info, "vr", 100 * r->volume / v_pos_2);
-        cJSON_AddNumberToObject(info, "slope", channel->lb.slope);
-        cJSON_AddNumberToObject(info, "obv1", channel->lb.obv1);
-        cJSON_AddNumberToObject(info, "obv2", channel->lb.obv2);
-        ana_add_to_setups(setups, jl, "JL_B", -1, info, true);
+        cJSON_AddNumberToObject(info, "slope", cb->slope);
+        cJSON_AddNumberToObject(info, "obv1", cb->obv1);
+        cJSON_AddNumberToObject(info, "obv2", cb->obv2);
+        ana_add_to_setups(setups, jl, "JL_B", dir, info, true);
     }
 }
 
