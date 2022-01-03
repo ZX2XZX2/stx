@@ -214,6 +214,7 @@ int main() {
         "PRIMARY KEY(tag, in_dt, out_dt, stk, setup, cp, exp_dt, strike))";
     create_table_if_missing(cnx, "trades", create_trades);
 
+    /* ALTER TABLE jl_setups ADD COLUMN tm TIME NOT NULL DEFAULT '20:00'; */
     char* create_jl_setups = "CREATE TABLE jl_setups( "  \
         "dt DATE NOT NULL, "                             \
         "stk VARCHAR(16) NOT NULL, "                     \
@@ -269,6 +270,24 @@ int main() {
         "indicators JSONB NOT NULL, "                       \
         "PRIMARY KEY(stk, dt))";
     create_table_if_missing(cnx, "indicators", create_indicators);
+
+    /** Store additional analytics about the stocks and/or industry
+     *  groups or sectors.  Ticker for the stock or industry/sector.
+     *  For industry/sectors, ticker is taken from the industry_groups
+     *  table.  Name identifies each analysis.  Value is the indicator
+     *  value.  Rank is the absolute rank among all the stocks
+     *  evaluated.  BucketRank is the rank fit into 100 buckets (from
+     *  0 to 99).
+     */
+    char* create_indicators_1 = "CREATE TABLE indicators_1( "   \
+        "ticker VARCHAR(16) NOT NULL, "                         \
+        "dt DATE NOT NULL, "                                    \
+        "name VARCHAR(16) NOT NULL, "                           \
+        "value INTEGER NOT NULL, "                              \
+        "rank INTEGER NOT NULL, "                               \
+        "bucket_rank INTEGER NOT NULL, "                        \
+        "PRIMARY KEY(ticker, dt, name))";
+    create_table_if_missing(cnx, "indicators_1", create_indicators_1);
 
     /** This table stores ETFs: ticker, name, and category
      */
