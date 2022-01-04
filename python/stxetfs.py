@@ -450,6 +450,7 @@ def populate_industries(dt):
     current_industries = []
     industry_sectors = {}
     industry_indices = {}
+    sector_indices = {}
     q1 = sql.Composed([
         sql.SQL("SELECT DISTINCT sector, industry FROM ind_groups WHERE dt="),
         sql.Literal(dt),
@@ -493,14 +494,26 @@ def populate_industries(dt):
                       f' sectors_industries table')
         tb.print_exc()
         return
-    max_industry_id = 'I00000'
     q3 = sql.Composed([
+        sql.SQL("SELECT DISTINCT group_name, group_id FROM sectors_industries "
+                "WHERE group_type="),
+        sql.Literal("Sector")
+    ])
+    try:
+        res = stxdb.db_read_cmd(q3.as_string(stxdb.db_get_cnx()))
+        sector_indices = {x[0]: x[1] for x in res}
+    except:
+        logging.error(f'Failed to retrieve sector indices')
+        tb.print_exc()
+        return        
+    max_industry_id = 'I00000'
+    q4 = sql.Composed([
         sql.SQL("SELECT MAX(group_id) FROM sectors_industries "
                 "WHERE group_type="),
         sql.Literal("Industry")
     ])
     try:
-        res = stxdb.db_read_cmd(q3.as_string(stxdb.db_get_cnx()))
+        res = stxdb.db_read_cmd(q4.as_string(stxdb.db_get_cnx()))
         if res[0][0] is not None:
             max_industry_id = res[0][0]
     except:
@@ -520,12 +533,11 @@ def populate_industries(dt):
                 sql.Literal('Industry'),
                 sql.Literal(industry),
                 sql.Literal(industry_id),
-                sql.Literal('')
+                sql.Literal(sector_indices.get(industry_sectors.get(industry)))
             ]),
             sql.SQL(") ON CONFLICT(dt, group_type, group_name) DO NOTHING")
         ])
         try:
-            logging.info(q.as_string(stxdb.db_get_cnx()))
             stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
         except:
             logging.error(f'Failed to insert info for industry {industry}')
