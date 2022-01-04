@@ -53,30 +53,6 @@ typedef struct ldr_t {
     bool is_ldr;
 } ldr, *ldr_ptr;
 
-static hashtable_ptr stx = NULL;
-static hashtable_ptr jl = NULL;
-
-/** Return the hash table with EOD stock data. */
-hashtable_ptr ana_data() {
-    if (stx == NULL) 
-        stx = ht_new(NULL, 20000);
-    return stx;
-}
-
-/** Return the hash table with JL stock data for a given factor */
-hashtable_ptr ana_jl(const char* factor) {
-    if (jl == NULL) 
-        jl = ht_new(NULL, 5);
-    ht_item_ptr jlht = ht_get(jl, factor);
-    hashtable_ptr jl_factor_ht = NULL;
-    if (jlht == NULL) {
-        jl_factor_ht = ht_new(NULL, 20000);
-        jlht = ht_new_data(factor, (void *) jl_factor_ht);
-        ht_insert(jl, jlht);
-    } else
-        jl_factor_ht = (hashtable_ptr) jlht->val.data;
-    return jl_factor_ht;
-} 
 
 /** 
  * Analyze option data to determine whether a stock is a leader or
@@ -264,16 +240,16 @@ int ana_expiry_analysis(char* dt, bool realtime_analysis, bool download_spots,
     for (int ix = 0; ix < rows; ix++) {
         char stk[16];
         strcpy(stk, PQgetvalue(res, ix, 0));
-        ht_item_ptr ht_data = ht_get(ana_data(), stk);
+        ht_item_ptr data_ht = ht_get(ht_data(), stk);
         stx_data_ptr data = NULL;
-        if (ht_data == NULL) {
+        if (data_ht == NULL) {
             data = ts_load_stk(stk);
             if (data == NULL)
                 continue;
-            ht_data = ht_new_data(stk, (void*)data);
-            ht_insert(ana_data(), ht_data);
+            data_ht = ht_new_data(stk, (void*)data);
+            ht_insert(ht_data(), data_ht);
         } else
-            data = (stx_data_ptr) ht_data->val.data;
+            data = (stx_data_ptr) data_ht->val.data;
         ldr_ptr leader = ana_leader(data, dt, exp, realtime_analysis,
                                     download_options);
         if (leader->is_ldr)
@@ -335,6 +311,14 @@ cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
     return leader_list;    
 }
 
+cJSON* ana_get_leaders_asof(char* dt, int max_atm_price, int max_opt_spread,
+                            int max_num_ldrs) {
+    char *exp_date;
+    int ana_ix = cal_ix(dt), exp_ix = cal_expiry(ana_ix, &exp_date);
+    return ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
+                           max_num_ldrs);
+}
+
 void ana_pullbacks(FILE* fp, char* stk, char* dt, jl_data_ptr jl_recs) {
     daily_record_ptr dr = jl_recs->data->data;
     int ix = jl_recs->data->pos, trigrd = 1;
@@ -376,19 +360,19 @@ void ana_setups_tomorrow(FILE* fp, char* stk, char* dt, char* next_dt,
 }
 
 void ana_setups(FILE* fp, char* stk, char* dt, char* next_dt, bool eod) {
-    ht_item_ptr ht_jl = ht_get(ana_jl(JL_200), stk);
+    ht_item_ptr jl_ht = ht_get(ht_jl(JL_200), stk);
     jl_data_ptr jl_recs = NULL;
-    if (ht_jl == NULL) {
+    if (jl_ht == NULL) {
         stx_data_ptr data = ts_load_stk(stk);
         if (data == NULL) {
             LOGERROR("Could not load %s, skipping...\n", stk);
             return;
         }
         jl_recs = jl_jl(data, dt, JL_FACTOR);
-        ht_jl = ht_new_data(stk, (void*)jl_recs);
-        ht_insert(ana_jl(JL_200), ht_jl);
+        jl_ht = ht_new_data(stk, (void*)jl_recs);
+        ht_insert(ht_jl(JL_200), jl_ht);
     } else {
-        jl_recs = (jl_data_ptr) ht_jl->val.data;
+        jl_recs = (jl_data_ptr) jl_ht->val.data;
         jl_advance(jl_recs, dt);
     }
     ana_pullbacks(fp, stk, dt, jl_recs);
@@ -397,19 +381,19 @@ void ana_setups(FILE* fp, char* stk, char* dt, char* next_dt, bool eod) {
 }
 
 jl_data_ptr ana_get_jl(char* stk, char* dt, const char* label, float factor) {
-    ht_item_ptr ht_jl = ht_get(ana_jl(label), stk);
+    ht_item_ptr jl_ht = ht_get(ht_jl(label), stk);
     jl_data_ptr jl_recs = NULL;
-    if (ht_jl == NULL) {
+    if (jl_ht == NULL) {
         stx_data_ptr data = ts_load_stk(stk);
         if (data == NULL) {
             LOGERROR("Could not load JL_%s for %s, skipping...\n", label, stk);
             return NULL;
         }
         jl_recs = jl_jl(data, dt, factor);
-        ht_jl = ht_new_data(stk, (void*)jl_recs);
-        ht_insert(ana_jl(label), ht_jl);
+        jl_ht = ht_new_data(stk, (void*)jl_recs);
+        ht_insert(ht_jl(label), jl_ht);
     } else {
-        jl_recs = (jl_data_ptr) ht_jl->val.data;
+        jl_recs = (jl_data_ptr) jl_ht->val.data;
         jl_advance(jl_recs, dt);
     }
     return jl_recs;
@@ -657,7 +641,7 @@ void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl,
     LOGDEBUG("ix = %d, jl->recs[ix].lns = %d, jl->last->prim_state = %s\n",
              ix, jl->recs[ix].lns, jl_state_to_string(jl->last->prim_state));
 #endif
-    jl_channel_boundary_ptr cb = NUll;
+    jl_channel_boundary_ptr cb = NULL;
     int dir = 0;
     if ((channel->ub.d1 >= MIN_CHANNEL_LEN) && (channel->ub.slope <= 0) &&
         (channel->ub.ipx > lb) && (channel->ub.ipx < ub) &&
@@ -1365,42 +1349,42 @@ void ana_scored_setups(char* stk, char* ana_date) {
     db_transaction(sql_cmd);
 }
 
-void ana_calc_rs(char* stk, char* dt, eq_value_ptr rs) {
-    strcpy(rs->name, stk);
-    jl_data_ptr jl = ana_get_jl(stk, dt, JL_050, JLF_050);
-    if (jl == NULL) {
-        LOGERROR("No data for %s. Wont calc RS\n", stk);
-        rs->value = 0;
-    } else
-        rs->value = ts_relative_strength(jl->data, jl->data->pos, 252);
-}
+/* void ana_calc_rs(char* stk, char* dt, eq_value_ptr rs) { */
+/*     strcpy(rs->name, stk); */
+/*     jl_data_ptr jl = ana_get_jl(stk, dt, JL_050, JLF_050); */
+/*     if (jl == NULL) { */
+/*         LOGERROR("No data for %s. Wont calc RS\n", stk); */
+/*         rs->value = 0; */
+/*     } else */
+/*         rs->value = ts_relative_strength(jl->data, jl->data->pos, 252); */
+/* } */
 
-void ana_relative_strength(eq_value_ptr rs, char* dt, int num_stocks) {
-    stock_shell_sort(rs, num_stocks);
-    int bucket_size = num_stocks / 100, unbucketed = num_stocks % 100;
-    int current_bucket_size = bucket_size, num_buckets = 100, total = 0,
-        processed = 0;
+/* void ana_relative_strength(eq_value_ptr rs, char* dt, int num_stocks) { */
+/*     stock_shell_sort(rs, num_stocks); */
+/*     int bucket_size = num_stocks / 100, unbucketed = num_stocks % 100; */
+/*     int current_bucket_size = bucket_size, num_buckets = 100, total = 0, */
+/*         processed = 0; */
 
-    for(int ix = 0; ix < num_buckets; ix++) {
-        printf("%d: (", ix);
-        current_bucket_size = (ix < unbucketed)? bucket_size + 1: bucket_size;
-        for(int ixx = 0; ixx < current_bucket_size; ixx++) {
-            printf("%s ", rs[ixx + processed].name);
-            cJSON* rs_info = cJSON_CreateObject();
-            cJSON_AddNumberToObject(rs_info, "rs", rs[ixx + processed].value);
-            cJSON_AddNumberToObject(rs_info, "rs_rank", num_buckets - 1 - ix);
-            char* rs_info_string = cJSON_Print(rs_info);
-            char sql_cmd[1024];
-            sprintf(sql_cmd, "insert into indicators values ('%s', '%s', '%s')"
-                    " on conflict on constraint indicators_pkey do "
-                    "update set indicators='%s'", rs[ixx + processed].name, dt,
-                    rs_info_string, rs_info_string);
-            db_transaction(sql_cmd);
-        }
-        processed += current_bucket_size;
-        printf(")\n");
-    }
-}
+/*     for(int ix = 0; ix < num_buckets; ix++) { */
+/*         printf("%d: (", ix); */
+/*         current_bucket_size = (ix < unbucketed)? bucket_size + 1: bucket_size; */
+/*         for(int ixx = 0; ixx < current_bucket_size; ixx++) { */
+/*             printf("%s ", rs[ixx + processed].name); */
+/*             cJSON* rs_info = cJSON_CreateObject(); */
+/*             cJSON_AddNumberToObject(rs_info, "rs", rs[ixx + processed].value); */
+/*             cJSON_AddNumberToObject(rs_info, "rs_rank", num_buckets - 1 - ix); */
+/*             char* rs_info_string = cJSON_Print(rs_info); */
+/*             char sql_cmd[1024]; */
+/*             sprintf(sql_cmd, "insert into indicators values ('%s', '%s', '%s')" */
+/*                     " on conflict on constraint indicators_pkey do " */
+/*                     "update set indicators='%s'", rs[ixx + processed].name, dt, */
+/*                     rs_info_string, rs_info_string); */
+/*             db_transaction(sql_cmd); */
+/*         } */
+/*         processed += current_bucket_size; */
+/*         printf(")\n"); */
+/*     } */
+/* } */
 
 /**
  * Separate implementation of daily analysis for the case when it is
@@ -1444,91 +1428,46 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, bool download_spots,
     LOGINFO("Upcoming expiries: %s and %s\n", exp_date, exp_date2);
     char sql_cmd[256];
     /**
-     *  For real-time runs, update setup_dates and setup_scores tables.  Set
-     *  the setup date for a stock as the previous business day.  Also, delete
-     *  all the setups that were previously calculated for the current date.
+     *  For real-time runs, update setup table.  Gaps and strong
+     *  closes are only calculated at the end of the day.
      */
     if (download_spots) {
-        LOGINFO("For real-time runs, update setup_dates and setup_scores "
-                "tables.  Set setup date for stocks to previous business day."
-                "  Also, delete all setups previously calculated for "
-                "current date.\n");
-        sprintf(sql_cmd, "DELETE FROM jl_setups WHERE dt='%s'", ana_date);
-        db_transaction(sql_cmd);
-        sprintf(sql_cmd, "UPDATE setup_dates SET dt='%s' WHERE dt='%s'",
-                prev_date, ana_date);
-        db_transaction(sql_cmd);
-        sprintf(sql_cmd, "DELETE FROM setup_scores WHERE dt='%s'",
-                ana_date);
-        db_transaction(sql_cmd);
-        sprintf(sql_cmd, "DELETE FROM setups WHERE dt='%s' AND setup IN "
-                "('GAP', 'GAP_HV', 'STRONG_CLOSE')", ana_date);
-        db_transaction(sql_cmd);
+        LOGINFO("For real-time runs, update setup table.\n");
         LOGINFO("Downloading spots%s quotes\n",
                 download_options? " and options": ""); 
         get_quotes(leaders, ana_date, exp_date, exp_date2, download_options);
     }
-    LOGINFO("Running the %s analysis for %s\n", eod? "eod": "intraday",
-            ana_date);
-    LOGINFO("Calculating scored setups, setups and relative strength for "
-            "%d stocks\n", total);
-    FILE *fp = NULL;
-    char *filename = "/tmp/setups.csv";
-    if ((fp = fopen(filename, "w")) == NULL) {
-        LOGERROR("Failed to open file %s for writing\n", filename);
-        fp = stderr;
-    }
+    LOGINFO("Running %s analysis for %s\n", eod? "eod": "intraday", ana_date);
+    LOGINFO("Calculating setups and relative strength for %d stocks\n", total);
     char* next_dt = NULL;
-    if (eod == true)
+    eq_value_ptr rs = NULL;
+    if (eod == true) {
         cal_next_bday(cal_ix(ana_date), &next_dt);
-    eq_value_ptr rs = (eq_value_ptr) malloc(total * sizeof(eq_value));
-    memset(rs, 0, total * sizeof(eq_value));
+        rs = (eq_value_ptr) malloc(total * sizeof(eq_value));
+        memset(rs, 0, total * sizeof(eq_value));
+    }
     cJSON_ArrayForEach(ldr, leaders) {
         if (cJSON_IsString(ldr) && (ldr->valuestring != NULL)) {
-            ana_scored_setups(ldr->valuestring, ana_date);
-            ana_setups(fp, ldr->valuestring, ana_date, next_dt, eod);
+            /** TODO: fix this mess */
+            /* ana_setups(ldr->valuestring, ana_date, next_dt, eod); */
+            /* if (eod) */
+            /*     ana_calc_rs(ldr->valuestring, ana_date, rs + num); */
         }
-        ana_calc_rs(ldr->valuestring, ana_date, rs + num);
         num++;
         if (num % 100 == 0)
-            LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num,
-                    total);
+            LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
     }
     LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
-    fclose(fp);
-    LOGINFO("Closed %s\n", filename);
-    if((fp = fopen(filename, "r")) == NULL) {
-        LOGERROR("Failed to open file %s\n", filename);
-    } else {
-        char line[80], stp_dir, stp_dt[16], stp[16], stp_stk[16];
-        int triggered, num_triggered = 0, num_untriggered = 0;
-        while(fgets(line, 80, fp)) {
-            sscanf(line, "%s\t%s\t%s\t%c\t%d\n", &stp_dt[0], &stp_stk[0],
-                   &stp[0], &stp_dir, &triggered);
-            char *trigger_str = triggered? "true": "false";
-            sprintf(sql_cmd, "insert into setups values "
-                    "('%s','%s','%s','%c',%s) on conflict on constraint "
-                    "setups_pkey do update set triggered=%s",
-                    stp_dt, stp_stk, stp, stp_dir, trigger_str,
-                    trigger_str);
-            db_transaction(sql_cmd);
-            if (triggered == 1)
-                num_triggered++;
-            else
-                num_untriggered++;
-        }
-        LOGINFO("%s: inserted %d triggered setups\n", ana_date, num_triggered);
-        LOGINFO("%s: inserted %d not-triggered setups\n", next_dt,
-                num_untriggered);
-        fclose(fp);
+    if (eod) {
+        LOGINFO("Calculating relative strength for %d stocks, as of %s\n",
+                total, ana_date);
+        /* ana_relative_strength(rs, ana_date, total); */
     }
-    LOGINFO("Calculating relative strength for %d stocks, as of %s\n", total,
-            ana_date);
-    ana_relative_strength(rs, ana_date, total);
     LOGINFO("Freeing the memory\n");
-    free(rs);
-    rs = NULL;
-
+    if (rs != NULL) {
+        free(rs);
+        rs = NULL;
+    }
     if (stx == NULL)
        cJSON_Delete(leaders);
     LOGINFO("ana_stx_analysis(): done\n");
