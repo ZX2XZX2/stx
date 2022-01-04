@@ -646,6 +646,14 @@ bool cal_is_today_busday() {
     return cal_get()->list[ix].val.cal->is_busday;
 }
 
+/** This function returns true if dt is a business day.  It is a
+ * convenience wrapper around the calendar internals
+ */
+bool cal_is_busday(char* dt) {
+    int ix = cal_ix(dt);
+    return cal_get()->list[ix].val.cal->is_busday;
+}
+
 long cal_long_expiry(char* exp_dt) {
     char *month = NULL, *day = NULL, year[16];
     struct tm result;
