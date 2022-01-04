@@ -179,6 +179,8 @@ void ts_adjust_data(stx_data_ptr data, int split_ix) {
 }
 
 void ts_set_day(stx_data_ptr data, char* date, int rel_pos) {
+    if (!strcmp(data->data[data->pos].date, date))
+        return;
     data->pos = ts_find_date_record(data, date, rel_pos);
     if (data->pos == -1) {
         LOGERROR("Could not set date to %s for %s\n", date, data->stk);
@@ -231,62 +233,23 @@ void ts_print_record(daily_record_ptr record) {
             record->high, record->low, record->close, record->volume);
 }
 
-float ts_relative_strength(stx_data_ptr data, int ix, int rs_days) { 
-    int rsd1 = rs_days / 4, rsd2 = rs_days / 2;
-    float rs_1, rs_2, rs_3, res;
-    float cc = (float)data->data[ix].close;
-    float cc_0 = (float)data->data[0].close;
-    float cc_1 = (float)data->data[ix + 1 - rsd1].close;
-    float cc_2 = (float) data->data[ix + 1 - rsd2].close;
-    float cc_3 = (float)data->data[ix + 1 - rs_days].close;
-    if (ix >= rs_days - 1) {
-        rs_1 = (cc_1 == 0)? 0: cc / cc_1 - 1;
-        rs_2 = (cc_2 == 0)? 0: cc / cc_2 - 1;
-        rs_3 = (cc_3 == 0)? 0: cc / cc_3 - 1;
-    } else if (ix >= rsd2 - 1) {
-        rs_1 = (cc_1 == 0)? 0: cc / cc_1 - 1;
-        rs_2 = (cc_2 == 0)? 0: cc / cc_2 - 1;
-        rs_3 = (cc_0 == 0)? 0: cc / cc_0 - 1;
-    } else if (ix >= rsd1 - 1) {
-        rs_1 = (cc_1 == 0)? 0: cc / cc_1 - 1;
-        rs_2 = (cc_0 == 0)? 0: cc / cc_0 - 1;
-        rs_3 = rs_2;
+/** Return daily records for a stock.  Use static stx hashtable,
+ *  accessed through the ht_data() method.
+ */
+stx_data_ptr ts_get_ts(char *stk, char* dt, int rel_pos) {
+    ht_item_ptr data_ht = ht_get(ht_data(), stk);
+    stx_data_ptr data = NULL;
+    if (data_ht == NULL) {
+        data = ts_load_stk(stk);
+        if (data == NULL)
+            return data;
+        ts_set_day(data, dt, rel_pos);
+        data_ht = ht_new_data(stk, (void*)data);
+        ht_insert(ht_data(), data_ht);
     } else {
-        rs_1 = (cc_0 == 0)? 0: cc / cc_0 - 1;
-        rs_2 = rs_1;
-        rs_3 = rs_1;
+        data = (stx_data_ptr) data_ht->val.data;
+        ts_set_day(data, dt, rel_pos);
     }
-    res = 40 * rs_1 + 30 * rs_2 + 30 * rs_3;
-    return (int) res;
+    return data;
 }
-
-float ts_relative_strength_fast(stx_data_ptr data, int ix, int rs_days) { 
-    int rsd1 = 1, rsd2 = rs_days / 2;
-    float rs_1, rs_2, rs_3, res;
-    float cc = (float)data->data[ix].close;
-    float cc_0 = (float)data->data[0].close;
-    float cc_1 = (float)data->data[ix - 1].close;
-    float cc_2 = (float) data->data[ix + 1 - rsd2].close;
-    float cc_3 = (float)data->data[ix + 1 - rs_days].close;
-    if (ix >= rs_days - 1) {
-        rs_1 = (cc_1 == 0)? 0: cc / cc_1 - 1;
-        rs_2 = (cc_2 == 0)? 0: cc / cc_2 - 1;
-        rs_3 = (cc_3 == 0)? 0: cc / cc_3 - 1;
-    } else if (ix >= rsd2 - 1) {
-        rs_1 = (cc_1 == 0)? 0: cc / cc_1 - 1;
-        rs_2 = (cc_2 == 0)? 0: cc / cc_2 - 1;
-        rs_3 = (cc_0 == 0)? 0: cc / cc_0 - 1;
-    } else if (ix >= rsd1 - 1) {
-        rs_1 = (cc_1 == 0)? 0: cc / cc_1 - 1;
-        rs_2 = (cc_0 == 0)? 0: cc / cc_0 - 1;
-        rs_3 = rs_2;
-    } else {
-        rs_1 = (cc_0 == 0)? 0: cc / cc_0 - 1;
-        rs_2 = rs_1;
-        rs_3 = rs_1;
-    }
-    res = 30 * rs_1 + 35 * rs_2 + 35 * rs_3;
-    return (int) res;
-}
-
 #endif
