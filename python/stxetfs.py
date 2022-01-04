@@ -351,6 +351,95 @@ def stock_groups(stx=[]):
             stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
         except:
             logging.error(f'Failed to insert in DB profile for {stk}')
-            tb.print_err()
+            tb.print_exc()
             
     logging.info(f'Got profiles for {num}/{len(stx)} stocks')
+
+# 1. get all the sectors in the ind_groups as of a specific date
+# 2. check if all of these sectors already exist in the database in
+# the sectors_industries tables, and they already have an id assigned
+# to them.
+
+def populate_sectors_industries_table(dt):
+    current_sectors = []
+    sector_indices = {}
+    q1 = sql.Composed([
+        sql.SQL("SELECT DISTINCT sector FROM ind_groups WHERE dt="),
+        sql.Literal(dt),
+        sql.SQL(" AND source="),
+        sql.Literal("yf"),
+        sql.SQL(" ORDER BY sector")
+    ])
+    try:
+        logging.info(q1.as_string(stxdb.db_get_cnx()))
+        res = stxdb.db_read_cmd(q1.as_string(stxdb.db_get_cnx()))
+        current_sectors = [x[0] for x in res if x[0] not in ['', 'N/A']]
+        logging.info(current_sectors)
+    except:
+        logging.error(f'Failed to retrieve the sectors for {dt}')
+        tb.print_exc()
+        return
+    q2 = sql.Composed([
+        sql.SQL("SELECT DISTINCT group_name, group_id FROM sectors_industries "
+                "WHERE group_type="),
+        sql.Literal("Sector"),
+        sql.SQL(" AND group_name IN ("),
+        sql.SQL(',').join([sql.Literal(x) for x in current_sectors]),
+        sql.SQL(") ORDER BY group_name")
+    ])
+    try:
+        res = stxdb.db_read_cmd(q2.as_string(stxdb.db_get_cnx()))
+        duplicate_sectors = []
+        for x in res:
+            gid = sector_indices.get(x[0])
+            if gid is None:
+                sector_indices[x[0]] = x[1]
+            else:
+                logging.error(f'Multiple ids ({gid}, {x[1]}) found for sector '
+                              f'{x[0]}')
+                duplicate_sectors.append(x[0])
+        if duplicate_sectors:
+            logging.error(f"Sectors {','.join(duplicate_sectors)} have "
+                          f"multiple IDs. This should not happen")
+            return
+    except:
+        logging.error(f'Failed to retrieve the sectors and IDs from the '
+                      f' sectors_industries table')
+        tb.print_exc()
+        return
+    max_sector_id = 'S00000'
+    q3 = sql.Composed([
+        sql.SQL("SELECT MAX(group_id) FROM sectors_industries "
+                "WHERE group_type="),
+        sql.Literal("Sector")
+    ])
+    try:
+        res = stxdb.db_read_cmd(q3.as_string(stxdb.db_get_cnx()))
+        if res[0][0] is not None:
+            max_sector_id = res[0][0]
+    except:
+        logging.error(f'Failed to retrieve max sector id')
+        tb.print_exc()
+        return
+    last_sector_id = int(max_sector_id[1:])
+    for sector in current_sectors:
+        sector_id = sector_indices.get(sector)
+        if sector_id is None:
+            last_sector_id += 1
+            sector_id = f'S{last_sector_id:05d}'
+        q = sql.Composed([
+            sql.SQL("INSERT INTO sectors_industries VALUES ("),
+            sql.SQL(',').join([
+                sql.Literal(dt),
+                sql.Literal('Sector'),
+                sql.Literal(sector),
+                sql.Literal(sector_id),
+                sql.Literal('')
+            ]),
+            sql.SQL(") ON CONFLICT(dt, group_type, group_name) DO NOTHING")
+        ])
+        try:
+            stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        except:
+            logging.error(f'Failed to insert info for sector {sector}')
+            tb.print_exc()
