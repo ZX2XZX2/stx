@@ -665,32 +665,32 @@ long cal_long_expiry(char* exp_dt) {
     return (long)tt;
 }
 
-/** Code to sort the stocks.  Initially used to calculate relative
- *  strength, IBD style.
+/** These two hashtables keep in memory data or JL records calculated
+ *  for various equities
  */
+static hashtable_ptr stx = NULL;
+static hashtable_ptr jl = NULL;
 
-/* typedef struct eq_value_t { */
-/*     char name[16]; */
-/*     int value; */
-/* } eq_value, *eq_value_ptr; */
+/** Return the hash table with EOD stock data. */
+hashtable_ptr ht_data() {
+    if (stx == NULL) 
+        stx = ht_new(NULL, 20000);
+    return stx;
+}
 
-/* void stock_shell_sort(eq_value_ptr selected, int nb_stocks) { */
-/*     int ix, ixx, ixxx, ixxxx; */
-/*     eq_value temp; */
-/*     for(ixxx = nb_stocks / 2; ixxx > 0; ixxx /= 2) { */
-/*         for(ixx = ixxx; ixx < nb_stocks; ixx++) { */
-/*             for(ix = ixx - ixxx; ix >= 0; ix -= ixxx) { */
-/*                 if (selected[ix].value < selected[ix + ixxx].value) { */
-/*                     memset(&temp, 0, sizeof(eq_value)); */
-/*                     strcpy(temp.name, selected[ix].name); */
-/*                     temp.value= selected[ix].value; */
-/*                     strcpy(selected[ix].name, selected[ix + ixxx].name); */
-/*                     selected[ix].value = selected[ix + ixxx].value; */
-/*                     strcpy(selected[ix + ixxx].name, temp.name); */
-/*                     selected[ix + ixxx].value = temp.value; */
-/*                 } */
-/*             } */
-/*         } */
-/*     } */
-/* } */
+/** Return the hash table with JL stock data for a given factor */
+hashtable_ptr ht_jl(const char* factor) {
+    if (jl == NULL) 
+        jl = ht_new(NULL, 5);
+    ht_item_ptr jlht = ht_get(jl, factor);
+    hashtable_ptr jl_factor_ht = NULL;
+    if (jlht == NULL) {
+        jl_factor_ht = ht_new(NULL, 20000);
+        jlht = ht_new_data(factor, (void *) jl_factor_ht);
+        ht_insert(jl, jlht);
+    } else
+        jl_factor_ht = (hashtable_ptr) jlht->val.data;
+    return jl_factor_ht;
+}
+
 #endif
