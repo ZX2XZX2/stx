@@ -318,6 +318,18 @@ int main() {
         "PRIMARY KEY(stk, dt, source))";
     create_table_if_missing(cnx, "ind_groups", create_stk_ind_groups);
 
+    /** This table stores the ids and mappings of sectors and industry
+     *  groups
+     */
+    char* create_sectors_industries = "CREATE TABLE sectors_industries( "   \
+        "dt DATE NOT NULL, "                                                \
+        "group_type VARCHAR NOT NULL, "                                     \
+        "group_name VARCHAR NOT NULL, "                                     \
+        "group_id VARCHAR(16) NOT NULL,"                                    \
+        "sector_id VARCHAR(16) NOT NULL, "                                  \
+        "PRIMARY KEY(dt, group_type, group_name))";
+    create_table_if_missing(cnx, "sectors_industries",
+                            create_sectors_industries);
     PQfinish(cnx);
     return 0;
 }
