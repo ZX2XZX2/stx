@@ -281,16 +281,27 @@ cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
         LOGERROR("Failed to create leader_list cJSON Array.\n");
         return NULL;
     }
-    char sql_cmd[256];
-    sprintf(sql_cmd, "select stk from leaders where expiry='%s'", exp);
+    char sql_0[64], sql_atm_px[64], sql_spread[64], sql_exclude[64],
+        sql_limit[64], sql_cmd[512];
+    memset(sql_0, 0, 64);
+    memset(sql_atm_px, 0, 64);
+    memset(sql_spread, 0, 64);
+    memset(sql_exclude, 0, 64);
+    memset(sql_limit, 0, 64);
+    memset(sql_cmd, 0, 512);
+    sprintf(sql_0, "select stk from leaders where expiry='%s'", exp);
     if (max_atm_price > 0)
-        sprintf(sql_cmd, "%s and atm_price <= %d", sql_cmd, max_atm_price);
+        sprintf(sql_atm_px, "and atm_price <= %u",
+                (unsigned short) max_atm_price);
     if (max_opt_spread > 0)
-        sprintf(sql_cmd, "%s and opt_spread <= %d", sql_cmd, max_opt_spread);
-    sprintf(sql_cmd, "%s and stk not in (select * from excludes)", sql_cmd);
+        sprintf(sql_spread, "and opt_spread <= %u",
+                (unsigned short) max_opt_spread);
+    sprintf(sql_exclude, "and stk not in (select * from excludes)");
     if (max_num_ldrs > 0)
-        sprintf(sql_cmd, "%s order by opt_spread limit %d", sql_cmd, 
-                max_num_ldrs);
+        sprintf(sql_limit, "order by opt_spread limit %u",
+                (unsigned short) max_num_ldrs);
+    sprintf(sql_cmd, "%s%s%s%s%s", sql_0, sql_atm_px, sql_spread, sql_exclude,
+            sql_limit);
     LOGINFO("ana_get_leaders():\n  sql_cmd %s\n", sql_cmd);
     PGresult *res = db_query(sql_cmd);
     int rows = PQntuples(res);

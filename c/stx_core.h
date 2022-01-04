@@ -24,9 +24,9 @@ char* crt_timestamp() {
         seconds++;
         milliseconds = 0;
     }
-    static char _retval[24];
-    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&seconds));
-    snprintf(_retval, 24, "%s.%03ld", buff, milliseconds);
+    static char _retval[32];
+    strftime(buff, 24, "%Y-%m-%d %H:%M:%S", localtime(&seconds));
+    snprintf(_retval, 32, "%s.%03u", buff, (unsigned short) milliseconds);
     return _retval;
 }
 
@@ -570,7 +570,8 @@ int cal_expiry(int ix, char** exp_date) {
             month = 1;
             year++;
         }
-        sprintf(tmp, "%d-%02d-01", year, month);
+        sprintf(tmp, "%u-%02u-01", (unsigned short)year,
+                (unsigned short) month);
         start_of_month_ix = cal_ix(tmp);
         start_of_month_day_of_week = start_of_month_ix % 7;
         third_friday = 15 + ((11 - start_of_month_day_of_week) % 7);
