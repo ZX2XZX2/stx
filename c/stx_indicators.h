@@ -138,20 +138,20 @@ void indicators_stock_relative_strength(cJSON *tickers, char* asof_date,
             eq_value_ptr crt_rs = rs + num;
             strcpy(crt_rs->ticker, ticker->valuestring);
             stx_data_ptr data = ts_get_ts(crt_rs->ticker, asof_date, 0);
-            if (data == NULL) {
+            if (data == NULL || data->pos == -1) {
                 LOGERROR("No data for %s. Wont calc RS\n", crt_rs->ticker);
-                crt_rs->value = 0;
-            } else
+            } else {
                 crt_rs->value = stock_relative_strength(data, num_days);
+                num++;
+            }
         }
-        num++;
         if (num % 100 == 0)
             LOGINFO("%s for %4d / %4d tickers as of %s\n", rs_name, num, total,
                     asof_date);
     }
     LOGINFO("%s for %4d / %4d tickers as of %s\n", rs_name, num, total,
             asof_date);
-    indicators_rank(rs, asof_date, rs_name, total, 100, DESCENDING_ORDER);
+    indicators_rank(rs, asof_date, rs_name, num, 100, DESCENDING_ORDER);
     LOGINFO("%s: sorted tickers in RS descending order\n", rs_name);
     LOGINFO("%s: ranked tickers and inserted in DB\n", rs_name);
     if (rs != NULL) {
