@@ -270,3 +270,38 @@ def populate_industries(dt):
         except:
             logging.error(f'Failed to insert info for industry {industry}')
             tb.print_exc()
+
+def clone_groups_for_date(cloned_date, dt):
+    last_expiry = stxcal.prev_expiry(dt)
+    q = sql.Composed([
+        sql.SQL("INSERT INTO "),
+        sql.Identifier("ind_groups"),
+        sql.SQL('('),
+        sql.SQL(',').join([
+            sql.Identifier('stk'),
+            sql.Identifier('dt'),
+            sql.Identifier('source'),
+            sql.Identifier('industry'),
+            sql.Identifier('sector'),
+            sql.Identifier('profile')
+        ]),
+        sql.SQL(') SELECT '),
+        sql.SQL(',').join([
+            sql.Identifier('stk'),
+            sql.Literal(last_expiry),
+            sql.Identifier('source'),
+            sql.Identifier('industry'),
+            sql.Identifier('sector'),
+            sql.Identifier('profile')
+        ]),
+        sql.SQL(' FROM '),
+        sql.Identifier('ind_groups'),
+        sql.SQL(' WHERE dt='),
+        sql.Literal(cloned_date)
+    ])
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        logging.error('Failed to clone stock profile data from '
+                      f'{cloned_date} to {last_expiry}')
+        tb.print_exc()
