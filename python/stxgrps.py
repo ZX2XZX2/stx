@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import pandas as pd
 from psycopg2 import sql
 import requests
 import string
@@ -305,3 +306,43 @@ def clone_groups_for_date(cloned_date, dt):
         logging.error('Failed to clone stock profile data from '
                       f'{cloned_date} to {last_expiry}')
         tb.print_exc()
+
+def calc_group_indicator(indicator_name, dt):
+    group_dt = stxcal.prev_expiry(dt)
+    q = sql.Composed([
+        sql.SQL('SELECT '),
+        sql.SQL(',').join([
+            sql.Identifier('stk'),
+            sql.Identifier('industry'),
+            sql.Identifier('sector')
+        ]),
+        sql.SQL(' FROM '),
+        sql.Identifier('ind_groups'),
+        sql.SQL(' WHERE dt='),
+        sql.Literal(group_dt)
+    ])
+    group_df = pd.read_sql(q, stxdb.db_get_cnx())
+    group_df.columns = ['ticker', 'industry', 'sector']
+    q = sql.Composed([
+        sql.SQL('SELECT '),
+        sql.SQL(',').join([
+            sql.Identifier('ticker'),
+            sql.Identifier('dt'),
+            sql.Identifier('name'),
+            sql.Identifier('value'),
+            sql.Identifier('rank')
+        ]),
+        sql.SQL(' FROM '),
+        sql.Identifier('indicators_1'),
+        sql.SQL(' WHERE dt='),
+        sql.Literal(dt),
+        sql.SQL(' AND name='),
+        sql.Literal(indicator_name)
+    ])
+    indicator_df = pd.read_sql(q, stxdb.db_get_cnx())
+    df = pd.merge(group_df, indicator_df, on='ticker')
+    industry_df = df.groupby(['industry']).mean()
+    sector_df = df.groupby(['sector']).mean()
+    # Use this to get count and mean in the same dataframe https://stackoverflow.com/questions/41040132/pandas-groupby-count-and-mean-combined
+    sector_df.sort_values(by=['rank', 'value'], inplace=True)
+    return df
