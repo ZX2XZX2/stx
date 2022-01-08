@@ -146,3 +146,22 @@ def db_insert_eods(record_list):
                 'on conflict on constraint eods_pkey do update set '
                 'o=excluded.o, hi=excluded.hi, lo=excluded.lo, c=excluded.c, '
                 'v=excluded.v, oi=excluded.oi')
+
+# if the upsert_columns parameter is [] (default) then the data should
+# contain values for all the table columns; the case when
+# upsert_columns is not [] is not supported yet
+def db_upsert_multiple_records(table_name, record_list, conflict_resolution,
+                               upsert_columns=[]):
+    if len(upsert_columns) > 0:
+        print('Upserting a subset of table columns not supported')
+        return
+    with db_get_cnx().cursor() as crs:
+        table_columns = db_get_table_columns(table_name)
+        num_columns = len(table_columns)
+        mogrify_arg_list = num_columns * ['%s']
+        mogrify_args = f"({','.join(mogrify_arg_list)})"
+        args = [crs.mogrify(mogrify_args, x).decode('utf-8')
+                for x in record_list]
+        args_str = ', '.join(args)
+        crs.execute(f"INSERT INTO {table_name} VALUES {args_str} "
+                    f"{conflict_resolution}")
