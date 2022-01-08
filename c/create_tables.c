@@ -286,6 +286,7 @@ int main() {
         "value INTEGER NOT NULL, "                              \
         "rank INTEGER NOT NULL, "                               \
         "bucket_rank INTEGER NOT NULL, "                        \
+        "info JSONB NOT NULL DEFAULT '{}', "                    \
         "PRIMARY KEY(ticker, dt, name))";
     create_table_if_missing(cnx, "indicators_1", create_indicators_1);
 
