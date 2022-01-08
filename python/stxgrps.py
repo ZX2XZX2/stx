@@ -380,21 +380,27 @@ def calc_group_indicator(indicator_name, dt, ind_buckets=30,
                                        sector_buckets)
     industry_df = merge_value_indice_dfs(industry_df, industry_id_df,
                                          ind_buckets)
+    insert_data_in_db(sector_df, f'S{indicator_name}', dt)
+    insert_data_in_db(industry_df, f'I{indicator_name}', dt)
     
-    # sector_df['bucket_rank'] = sector_df.apply(bucketfun, 
-    sector_infos = sector_df[[
-        'value_mean', 'rank_mean',
-        'value_median', 'rank_median',
+def insert_data_in_db(df, indicator_name, as_of_date):
+    recs = df[[
+        'group_id', 'value', 'rank', 'bucket_rank'
+    ]].to_dict(orient='records')
+    infos = df[[
+        'ticker', 'value_mean', 'rank_mean', 'value_median', 'rank_median',
         'value_std', 'rank_std'
     ]].to_dict(orient='records')
-    industry_infos = industry_df[[
-        'value_mean', 'rank_mean',
-        'value_median', 'rank_median',
-        'value_std', 'rank_std'
-    ]].to_dict(orient='records')
-
-    return sector_df, industry_df
-
+    data_to_insert = [
+        (x.get('group_id'), as_of_date, indicator_name, x.get('value'),
+         x.get('rank'), x.get('bucket_rank'), json.dumps(info))
+        for x, info in zip(recs, infos)
+    ]
+    conflict_resolution = 'on conflict on constraint indicators_1_pkey do ' \
+        'update set value=excluded.value, rank=excluded.rank, ' \
+        'bucket_rank=excluded.bucket_rank, info=excluded.info'
+    stxdb.db_upsert_multiple_records('indicators_1', data_to_insert,
+                                     conflict_resolution)  
 
 def get_value_dataframe(df, sector_or_industry):
     # groupby to calc mean, median, std for each sector/industry
@@ -442,10 +448,7 @@ def merge_value_indice_dfs(val_df, id_df, num_buckets):
         for bucket_elt in range(adj_bucket_size):
             bucket_dct[ixx] = bucket
             ixx += 1
-    print(f'res_df.columns = {res_df.columns}')
     res_df['bucket_rank'] = res_df.apply(
         lambda r: bucket_dct.get(r['rank'], -1000), axis=1
     )
     return res_df
-    # sector_bucket_size = len(sector_df) / sector_buckets    
-    # sector_df['bucket_rank'] = sector_df.apply(bucketfun, 
