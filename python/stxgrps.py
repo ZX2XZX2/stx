@@ -314,7 +314,8 @@ def clone_groups_for_date(cloned_date, dt):
                       f'{cloned_date} to {last_expiry}')
         tb.print_exc()
 
-def calc_group_indicator(indicator_name, dt):
+def calc_group_indicator(indicator_name, dt, ind_buckets=30,
+                         sector_buckets=15):
     # get the sectors/industries as of the last expiry
     group_dt = stxcal.prev_expiry(dt)
     q = sql.Composed([
@@ -330,7 +331,7 @@ def calc_group_indicator(indicator_name, dt):
         sql.Literal(group_dt)
     ])
     group_df = pd.read_sql(q, stxdb.db_get_cnx())
-    group_df.columns = ['ticker', 'industry', 'sector']
+    group_df.rename(columns={'stk':'ticker'}, inplace=True)
     # get the indicator values as of the date dt
     q = sql.Composed([
         sql.SQL('SELECT '),
@@ -356,28 +357,10 @@ def calc_group_indicator(indicator_name, dt):
     df['value_std'] = df['value']
     df['rank_median'] = df['rank']
     df['rank_std'] = df['rank']
-    # use groupby to calculate mean, median, std for each group
-    industry_df = df.groupby('industry').agg({
-        'ticker':'size',
-        'value':'mean',
-        'rank':'mean',
-        'value_median':'median',
-        'rank_median':'median',
-        'value_std':'std',
-        'rank_std':'std'
-    })
-    sector_df = df.groupby('sector').agg({
-        'ticker':'size',
-        'value':'mean',
-        'rank':'mean',
-        'value_median':'median',
-        'rank_median':'median',
-        'value_std':'std',
-        'rank_std':'std'
-    })
-    # filter out groups with one ticker
-    industry_df = industry_df.query("ticker>1").copy()
-    sector_df = sector_df.query("ticker>1").copy()    
+    df.rename(columns={'rank': 'rank_mean', 'value': 'value_mean'},
+              inplace=True)
+    industry_df = get_value_dataframe(df, 'industry')
+    sector_df = get_value_dataframe(df, 'sector')
     q = sql.Composed([
         sql.SQL('SELECT '),
         sql.SQL(',').join([
@@ -391,38 +374,78 @@ def calc_group_indicator(indicator_name, dt):
         sql.Literal(group_dt)
     ])
     group_id_df = pd.read_sql(q, stxdb.db_get_cnx())
-    sector_id_df = group_id_df.query("group_type=='Sector'")
-    industry_id_df = group_id_df.query("group_type=='Industry'")
-    industry_df.reset_index(inplace=True)
-    sector_df.reset_index(inplace=True)
-    industry_id_df.reset_index(inplace=True)
-    sector_id_df.reset_index(inplace=True)
-    industry_df.columns = ['group_name', 'ticker',
-                           'value', 'rank',
-                           'value_median', 'rank_median',
-                           'value_std','rank_std']
-    sector_df.columns = ['group_name', 'ticker',
-                         'value', 'rank',
-                         'value_median', 'rank_median',
-                         'value_std','rank_std']
-    industry_id_df.drop(columns='group_type', inplace=True)
-    sector_id_df.drop(columns='group_type', inplace=True)
-
-    sector_df = pd.merge(sector_df, sector_id_df, on='group_name')
-    industry_df = pd.merge(industry_df, industry_id_df, on='group_name')
-
-    logging.info(f'sector_df: \n columns: {sector_df.columns} \n'
-                 f' head: {sector_df.head()}')
-    # logging.info(f'sector_id_df: \n columns: {sector_id_df.columns} \n'
-    #              f' head: {sector_id_df.head()}')
-    logging.info(f'industry_df: \n columns: {industry_df.columns} \n'
-                 f' head: {industry_df.head()}')
-    # logging.info(f'industry_id_df: \n columns: {industry_id_df.columns} \n'
-    #              f' head: {industry_id_df.head()}')
+    sector_id_df = get_indice_dataframe(group_id_df, 'Sector')
+    industry_id_df = get_indice_dataframe(group_id_df, 'Industry')
+    sector_df = merge_value_indice_dfs(sector_df, sector_id_df,
+                                       sector_buckets)
+    industry_df = merge_value_indice_dfs(industry_df, industry_id_df,
+                                         ind_buckets)
     
+    # sector_df['bucket_rank'] = sector_df.apply(bucketfun, 
+    sector_infos = sector_df[[
+        'value_mean', 'rank_mean',
+        'value_median', 'rank_median',
+        'value_std', 'rank_std'
+    ]].to_dict(orient='records')
+    industry_infos = industry_df[[
+        'value_mean', 'rank_mean',
+        'value_median', 'rank_median',
+        'value_std', 'rank_std'
+    ]].to_dict(orient='records')
+
     return sector_df, industry_df
 
-    # industry_df = df.groupby(['industry']).mean()
-    # sector_df = df.groupby(['sector']).mean()
-    # Use this to get count and mean in the same dataframe https://stackoverflow.com/questions/41040132/pandas-groupby-count-and-mean-combined
-    # sector_df.sort_values(by=['rank', 'value'], inplace=True)
+
+def get_value_dataframe(df, sector_or_industry):
+    # groupby to calc mean, median, std for each sector/industry
+    res_df = df.groupby(sector_or_industry).agg({
+        'ticker':'size',
+        'value_mean':'mean',
+        'rank_mean':'mean',
+        'value_median':'median',
+        'rank_median':'median',
+        'value_std':'std',
+        'rank_std':'std'
+    })
+    # filter out groups with one ticker
+    res_df = res_df.query("ticker>1").copy()
+    # remove sector/industry column from index; rename group_name
+    res_df.reset_index(inplace=True)
+    res_df.rename(columns={sector_or_industry: 'group_name'}, inplace=True)
+    return res_df
+
+def get_indice_dataframe(group_id_df, sector_or_industry):
+    res_df = group_id_df.query("group_type==@sector_or_industry").copy()
+    res_df.reset_index(inplace=True)
+    res_df.drop(columns='group_type', inplace=True)
+    return res_df
+
+def merge_value_indice_dfs(val_df, id_df, num_buckets):
+    # merge value and indice dataframes
+    res_df = pd.merge(val_df, id_df, on='group_name')
+    res_df.drop(columns='index', inplace=True)
+    # sort resulting df on median rank, convert median rank to int to
+    # fit in the DB
+    res_df['value'] = 10 * res_df['rank_median'].astype(int)
+    res_df.sort_values(by='value', inplace=True)
+    # reset the index so that it becomes the rank 
+    res_df.reset_index(drop=True, inplace=True)
+    res_df['rank'] = res_df.index
+    # calculate the rank bucket for each group
+    bucket_dct = {}
+    bucket_size = len(res_df) // num_buckets
+    larger_buckets = len(res_df) % num_buckets
+    ixx = 0
+    for bucket in range(num_buckets):
+        adj_bucket_size = (bucket_size + 1) if bucket < larger_buckets \
+            else bucket_size
+        for bucket_elt in range(adj_bucket_size):
+            bucket_dct[ixx] = bucket
+            ixx += 1
+    print(f'res_df.columns = {res_df.columns}')
+    res_df['bucket_rank'] = res_df.apply(
+        lambda r: bucket_dct.get(r['rank'], -1000), axis=1
+    )
+    return res_df
+    # sector_bucket_size = len(sector_df) / sector_buckets    
+    # sector_df['bucket_rank'] = sector_df.apply(bucketfun, 
