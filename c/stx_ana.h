@@ -9,6 +9,7 @@
 #include <string.h>
 #include <libpq-fe.h>
 #include "stx_core.h"
+#include "stx_indicators.h"
 #include "stx_jl.h"
 #include "stx_net.h"
 #include "stx_setups.h"
@@ -1383,19 +1384,32 @@ void ana_intraday_expiry(char *ana_date) {
     LOGINFO("Downloaded options for expiries %s, %s\n", exp_date, exp_date2);
 }
 
+void ana_indicators(cJSON *leaders, char *ana_date) {
+    indicators_relative_strength(leaders, ana_date, 4);
+    indicators_relative_strength(leaders, ana_date, 10);
+    indicators_relative_strength(leaders, ana_date, 45);
+    indicators_relative_strength(leaders, ana_date, 252);
+    indicators_on_balance_volume(leaders, ana_date, 4);
+    indicators_on_balance_volume(leaders, ana_date, 10);
+    indicators_on_balance_volume(leaders, ana_date, 45);
+    indicators_candle_strength(leaders, ana_date, 4);
+    indicators_candle_strength(leaders, ana_date, 10);
+    indicators_candle_strength(leaders, ana_date, 45);
+}
+
 /**
  * Main daily analysis method
  */
-void ana_stx_analysis(char *ana_date, cJSON *stx, bool download_spots,
+void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
+                      int max_opt_spread, bool download_spots,
                       bool download_options, bool eod) {
-    char *exp_date, *exp_date2, *prev_date;
+    char *exp_date, *exp_date2;
     int ana_ix = cal_ix(ana_date);
     int exp_ix = cal_expiry(ana_ix + (eod? 1: 0), &exp_date);
     cal_expiry(exp_ix + 1, &exp_date2);
-    cal_prev_bday(ana_ix, &prev_date);
     cJSON *ldr = NULL, *leaders = stx;
     if (leaders == NULL)
-        leaders = ana_get_leaders(exp_date, MAX_ATM_PRICE, MAX_OPT_SPREAD, 0);
+        leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread, 0);
     int num = 0, total = cJSON_GetArraySize(leaders);
     LOGINFO("ana_stx_analysis() will analyze %d leaders as of %s\n", total,
             ana_date);
@@ -1416,16 +1430,7 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, bool download_spots,
     char* next_dt = NULL;
     if (eod == true) {
         cal_next_bday(cal_ix(ana_date), &next_dt);
-        indicators_relative_strength(leaders, ana_date, 4);
-        indicators_relative_strength(leaders, ana_date, 10);
-        indicators_relative_strength(leaders, ana_date, 45);
-        indicators_relative_strength(leaders, ana_date, 252);
-        indicators_on_balance_volume(leaders, ana_date, 4);
-        indicators_on_balance_volume(leaders, ana_date, 10);
-        indicators_on_balance_volume(leaders, ana_date, 45);
-        indicators_candle_strength(leaders, ana_date, 4);
-        indicators_candle_strength(leaders, ana_date, 10);
-        indicators_candle_strength(leaders, ana_date, 45);
+        ana_indicators(leaders, ana_date);
     }
     cJSON_ArrayForEach(ldr, leaders) {
         if (cJSON_IsString(ldr) && (ldr->valuestring != NULL)) {
@@ -1439,11 +1444,6 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, bool download_spots,
             LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
     }
     LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
-    if (eod) {
-        LOGINFO("Calculating relative strength for %d stocks, as of %s\n",
-                total, ana_date);
-        /* ana_relative_strength(rs, ana_date, total); */
-    }
     LOGINFO("Freeing the memory\n");
     if (stx == NULL)
        cJSON_Delete(leaders);
