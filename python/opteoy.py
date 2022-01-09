@@ -75,7 +75,7 @@ class OptEOY:
         m_spots, m_opts = 0, 0
         with zipfile.ZipFile(zip_fname, 'r') as zip_file:
             zip_file.extractall(tmp_dir)
-        daily_opt_files = os.listdir(tmp_dir)
+        daily_opt_files = sorted(os.listdir(tmp_dir))
         for opt_file in daily_opt_files:
             file_day = int(opt_file[17:19])
             if file_day < day:
