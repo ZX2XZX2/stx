@@ -35,9 +35,9 @@ void indicators_shell_sort(eq_value_ptr recs, int num, int order) {
     for(ixxx = num / 2; ixxx > 0; ixxx /= 2) {
         for(ixx = ixxx; ixx < num; ixx++) {
             for(ix = ixx - ixxx; ix >= 0; ix -= ixxx) {
-                if ((order == ASCENDING_ORDER &&
+                if ((order == DESCENDING_ORDER &&
                      recs[ix].value < recs[ix + ixxx].value) ||
-                    (order == DESCENDING_ORDER &&
+                    (order == ASCENDING_ORDER &&
                      recs[ix].value > recs[ix + ixxx].value)) {
                     memset(&temp, 0, sizeof(eq_value));
                     strcpy(temp.ticker, recs[ix].ticker);
@@ -119,45 +119,75 @@ int stock_relative_strength(stx_data_ptr data, int rs_days) {
         rs_2 = rs_1;
         rs_3 = rs_1;
     }
-    res = 40 * rs_1 + 30 * rs_2 + 30 * rs_3;
+    res = 4000 * rs_1 + 3000 * rs_2 + 3000 * rs_3;
     return (int) res;
 }
 
-void indicators_stock_relative_strength(cJSON *tickers, char* asof_date,
-                                        int num_days) {
+int stock_on_balance_volume(stx_data_ptr data, int num_days) {
+    return 0;
+}
+
+int stock_candle_strength(stx_data_ptr data, int num_days) {
+    return 0;
+}
+
+void indicators(char* indicator_type, cJSON *tickers, char* asof_date,
+                int num_days) {
     cJSON *ticker = NULL;
     int num = 0, total = cJSON_GetArraySize(tickers);
-    char rs_name[8];
-    memset(rs_name, 0, 8);
-    sprintf(rs_name, "RS_%d", num_days);
-    LOGINFO("%s for %d tickers as of %s\n", rs_name, total, asof_date);
-    eq_value_ptr rs = (eq_value_ptr) calloc((size_t)total, sizeof(eq_value));
-    memset(rs, 0, total * sizeof(eq_value));
+    char indicator_name[8];
+    memset(indicator_name, 0, 8);
+    sprintf(indicator_name, "%s_%d", indicator_type, num_days);
+    LOGINFO("%s for %d tickers as of %s\n", indicator_name, total, asof_date);
+    eq_value_ptr ev = (eq_value_ptr) calloc((size_t)total, sizeof(eq_value));
+    memset(ev, 0, total * sizeof(eq_value));
     cJSON_ArrayForEach(ticker, tickers) {
         if (cJSON_IsString(ticker) && (ticker->valuestring != NULL)) {
-            eq_value_ptr crt_rs = rs + num;
-            strcpy(crt_rs->ticker, ticker->valuestring);
-            stx_data_ptr data = ts_get_ts(crt_rs->ticker, asof_date, 0);
+            eq_value_ptr crt_ev = ev + num;
+            strcpy(crt_ev->ticker, ticker->valuestring);
+            stx_data_ptr data = ts_get_ts(crt_ev->ticker, asof_date, 0);
             if (data == NULL || data->pos == -1) {
-                LOGERROR("No data for %s. Wont calc RS\n", crt_rs->ticker);
+                LOGERROR("No data for %s. Wont calc %s\n", crt_ev->ticker,
+                         indicator_name);
             } else {
-                crt_rs->value = stock_relative_strength(data, num_days);
-                num++;
+                if (!strcmp(indicator_type, "RS")) {
+                    crt_ev->value = stock_relative_strength(data, num_days);
+                    num++;
+                } else if (!strcmp(indicator_type, "OBV")) {
+                    crt_ev->value = stock_on_balance_volume(data, num_days);
+                    num++;
+                } else if (!strcmp(indicator_type, "CS")) {
+                    crt_ev->value = stock_candle_strength(data, num_days);
+                    num++;
+                }
             }
         }
         if (num % 100 == 0)
-            LOGINFO("%s for %4d / %4d tickers as of %s\n", rs_name, num, total,
-                    asof_date);
+            LOGINFO("  %s for %5d / %5d tickers as of %s\n", indicator_name,
+                    num, total, asof_date);
     }
-    LOGINFO("%s for %4d / %4d tickers as of %s\n", rs_name, num, total,
-            asof_date);
-    indicators_rank(rs, asof_date, rs_name, num, 100, DESCENDING_ORDER);
-    LOGINFO("%s: sorted tickers in RS descending order\n", rs_name);
-    LOGINFO("%s: ranked tickers and inserted in DB\n", rs_name);
-    if (rs != NULL) {
-        free(rs);
-        rs = NULL;
+    LOGINFO(" %s for %5d / %5d tickers as of %s\n", indicator_name, num,
+            total, asof_date);
+    indicators_rank(ev, asof_date, indicator_name, num, 100, ASCENDING_ORDER);
+    LOGINFO("%s: inserted in DB ranked records\n", indicator_name);
+    if (ev != NULL) {
+        free(ev);
+        ev = NULL;
     }
-    LOGINFO("%s: freed the data\n", rs_name);
+    LOGINFO("%s: freed the data\n", indicator_name);
+}
+
+void indicators_relative_strength(cJSON *tickers, char* asof_date,
+                                  int num_days) {
+    indicators("RS", tickers, asof_date, num_days);
+}
+
+void indicators_candle_strength(cJSON *tickers, char* asof_date, int num_days) {
+    indicators("CS", tickers, asof_date, num_days);
+}
+
+void indicators_on_balance_volume(cJSON *tickers, char* asof_date,
+                                  int num_days) {
+    indicators("OBV", tickers, asof_date, num_days);
 }
 #endif
