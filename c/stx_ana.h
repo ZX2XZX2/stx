@@ -1360,43 +1360,6 @@ void ana_scored_setups(char* stk, char* ana_date) {
     db_transaction(sql_cmd);
 }
 
-/* void ana_calc_rs(char* stk, char* dt, eq_value_ptr rs) { */
-/*     strcpy(rs->name, stk); */
-/*     jl_data_ptr jl = ana_get_jl(stk, dt, JL_050, JLF_050); */
-/*     if (jl == NULL) { */
-/*         LOGERROR("No data for %s. Wont calc RS\n", stk); */
-/*         rs->value = 0; */
-/*     } else */
-/*         rs->value = ts_relative_strength(jl->data, jl->data->pos, 252); */
-/* } */
-
-/* void ana_relative_strength(eq_value_ptr rs, char* dt, int num_stocks) { */
-/*     stock_shell_sort(rs, num_stocks); */
-/*     int bucket_size = num_stocks / 100, unbucketed = num_stocks % 100; */
-/*     int current_bucket_size = bucket_size, num_buckets = 100, total = 0, */
-/*         processed = 0; */
-
-/*     for(int ix = 0; ix < num_buckets; ix++) { */
-/*         printf("%d: (", ix); */
-/*         current_bucket_size = (ix < unbucketed)? bucket_size + 1: bucket_size; */
-/*         for(int ixx = 0; ixx < current_bucket_size; ixx++) { */
-/*             printf("%s ", rs[ixx + processed].name); */
-/*             cJSON* rs_info = cJSON_CreateObject(); */
-/*             cJSON_AddNumberToObject(rs_info, "rs", rs[ixx + processed].value); */
-/*             cJSON_AddNumberToObject(rs_info, "rs_rank", num_buckets - 1 - ix); */
-/*             char* rs_info_string = cJSON_Print(rs_info); */
-/*             char sql_cmd[1024]; */
-/*             sprintf(sql_cmd, "insert into indicators values ('%s', '%s', '%s')" */
-/*                     " on conflict on constraint indicators_pkey do " */
-/*                     "update set indicators='%s'", rs[ixx + processed].name, dt, */
-/*                     rs_info_string, rs_info_string); */
-/*             db_transaction(sql_cmd); */
-/*         } */
-/*         processed += current_bucket_size; */
-/*         printf(")\n"); */
-/*     } */
-/* } */
-
 /**
  * Separate implementation of daily analysis for the case when it is
  * running in intraday-expiry mode, when all it needs to do is
@@ -1451,11 +1414,18 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, bool download_spots,
     LOGINFO("Running %s analysis for %s\n", eod? "eod": "intraday", ana_date);
     LOGINFO("Calculating setups and relative strength for %d stocks\n", total);
     char* next_dt = NULL;
-    eq_value_ptr rs = NULL;
     if (eod == true) {
         cal_next_bday(cal_ix(ana_date), &next_dt);
-        rs = (eq_value_ptr) malloc(total * sizeof(eq_value));
-        memset(rs, 0, total * sizeof(eq_value));
+        indicators_relative_strength(leaders, ana_date, 4);
+        indicators_relative_strength(leaders, ana_date, 10);
+        indicators_relative_strength(leaders, ana_date, 45);
+        indicators_relative_strength(leaders, ana_date, 252);
+        indicators_on_balance_volume(leaders, ana_date, 4);
+        indicators_on_balance_volume(leaders, ana_date, 10);
+        indicators_on_balance_volume(leaders, ana_date, 45);
+        indicators_candle_strength(leaders, ana_date, 4);
+        indicators_candle_strength(leaders, ana_date, 10);
+        indicators_candle_strength(leaders, ana_date, 45);
     }
     cJSON_ArrayForEach(ldr, leaders) {
         if (cJSON_IsString(ldr) && (ldr->valuestring != NULL)) {
@@ -1475,10 +1445,6 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, bool download_spots,
         /* ana_relative_strength(rs, ana_date, total); */
     }
     LOGINFO("Freeing the memory\n");
-    if (rs != NULL) {
-        free(rs);
-        rs = NULL;
-    }
     if (stx == NULL)
        cJSON_Delete(leaders);
     LOGINFO("ana_stx_analysis(): done\n");
