@@ -67,8 +67,7 @@ typedef struct ldr_t {
  * Subsequently, leaders can be filtered, by choosing only those with
  * the average spread less than a threshold, and the ATM price less
  * than a max price.
-
-*/
+ */
 void ana_option_analysis(ldr_ptr leader, PGresult* sql_res, int spot) {
     int itm_calls = 0, otm_calls = 0, itm_puts = 0, otm_puts = 0;
     int avg_spread = 0, bid, ask, strike, num_calls = 0, num_puts = 0;
@@ -1299,24 +1298,20 @@ void get_quotes(cJSON *leaders, char *dt, char *exp_date, char *exp_date2,
 }
 
 /**
- * This method is a wrapper around ana_jl_setups
+ *  Find out the business day from which to start setup analysis for a
+ *  given stock.
  */
-void ana_scored_setups(char* stk, char* ana_date) {
-    /**
-     * Calculate setups for a single stock (stk) up to ana_date. If ana_date
-     * is NULL, setups (and their scores) will be calculated up to the current
-     * business date.
-     */
-    char sql_cmd[256];
-    char *setup_date = NULL;
+char* ana_get_setup_date(char *stk, char *ana_date) {
+    char *setup_date = NULL, sql_cmd[256];
     sprintf(sql_cmd, "SELECT dt FROM setup_dates WHERE stk='%s'", stk);
     PGresult* res = db_query(sql_cmd);
     int rows = PQntuples(res);
     if (rows == 0) {
-        /** If there is no last setup analysis date in the DB, find first date
-         *  (d1) when EOD is available for the stock.  Then move back a year
-         *  from the analysis date (d2).  Start analysis from the most recent
-         *  date among d1 and d2.
+        /**
+         * If there is no last setup analysis date in the DB, find
+         *  first date (d1) when EOD is available for the stock.  Then
+         *  move back a year from the analysis date (d2).  Start
+         *  analysis from the most recent date among d1 and d2.
          */
         PQclear(res);
         sprintf(sql_cmd, "SELECT min(dt) FROM eods WHERE stk='%s'", stk);
@@ -1325,7 +1320,7 @@ void ana_scored_setups(char* stk, char* ana_date) {
         if (rows == 0) {
             PQclear(res);
             LOGERROR("Could not find EOD data for stock %s, exit\n", stk);
-            return;
+            return NULL;
         }
         setup_date = PQgetvalue(res, 0, 0);
         cal_move_bdays(setup_date, 45, &setup_date);
@@ -1334,13 +1329,28 @@ void ana_scored_setups(char* stk, char* ana_date) {
         if (strcmp(setup_date, setup_date_1) < 0)
             setup_date = setup_date_1;
     } else {
-        /** Found last setup analysis date in DB. Start analysis from the next
-         *  business day.
+        /**
+         *  Found last setup analysis date in DB. Start analysis from
+         *  the next business day.
          */
         setup_date = PQgetvalue(res, 0, 0);
         cal_next_bday(cal_ix(setup_date), &setup_date);
     }
     PQclear(res);
+    return setup_date;
+}
+
+/**
+ * This method is a wrapper around ana_jl_setups
+ */
+void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
+    /**
+     * Calculate setups for a single stock (stk) up to ana_date. If ana_date
+     * is NULL, setups (and their scores) will be calculated up to the current
+     * business date.
+     */
+    char sql_cmd[256];
+    char *setup_date = ana_get_setup_date(stk, ana_date);
     /** Run the setup analysis all the way to ana_date */
     int ana_res = 0;
     while((ana_res == 0) && (strcmp(setup_date, ana_date) <= 0)) {
@@ -1403,10 +1413,16 @@ void ana_indicators(cJSON *leaders, char *ana_date) {
 void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
                       int max_opt_spread, bool download_spots,
                       bool download_options, bool eod) {
+    /**
+     *  Get the next two expiries
+     */
     char *exp_date, *exp_date2;
     int ana_ix = cal_ix(ana_date);
     int exp_ix = cal_expiry(ana_ix + (eod? 1: 0), &exp_date);
     cal_expiry(exp_ix + 1, &exp_date2);
+    /**
+     *  Get the list of stocks that will be analyzed
+     */
     cJSON *ldr = NULL, *leaders = stx;
     if (leaders == NULL)
         leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread, 0);
@@ -1426,14 +1442,13 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
         get_quotes(leaders, ana_date, exp_date, exp_date2, download_options);
     }
     LOGINFO("Running %s analysis for %s\n", eod? "eod": "intraday", ana_date);
-    LOGINFO("Calculating setups and relative strength for %d stocks\n", total);
+    LOGINFO("Calculating setups for %d stocks\n", total);
     char* next_dt = NULL;
-    if (eod == true) {
+    if (eod == true)
         cal_next_bday(cal_ix(ana_date), &next_dt);
-        ana_indicators(leaders, ana_date);
-    }
     cJSON_ArrayForEach(ldr, leaders) {
         if (cJSON_IsString(ldr) && (ldr->valuestring != NULL)) {
+            ana_scored_setups(ldr->valuestring, ana_date, next_dt, eod);
             /** TODO: fix this mess */
             /* ana_setups(ldr->valuestring, ana_date, next_dt, eod); */
             /* if (eod) */
@@ -1444,6 +1459,11 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
             LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
     }
     LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
+    if (eod == true) {
+        LOGINFO("Calculating the indicators for %d stocks as of %s\n",
+                total, ana_date);
+        ana_indicators(leaders, ana_date);
+    }
     LOGINFO("Freeing the memory\n");
     if (stx == NULL)
        cJSON_Delete(leaders);
