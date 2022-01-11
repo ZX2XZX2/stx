@@ -600,22 +600,17 @@ void ana_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
 }
 
 /** Check whether a given day intersects a channel built by connecting
- * two pivots.  This applies to both breakout detection, and trend
- * channel break detection.
- * TODO:
- * 1. Check interpolation logic (2021-11-01 SOS, NRZ totally off). (done)
- * 2. Up setups must break through a negative slope channel; (done)
- *    down setups must break through a positive slope channel. (done)
- * 3. Only consider setups where all the prices are above/below the
- *    channel that is broken through.
+ *  two pivots.  This applies to both breakout detection, and trend
+ *  channel break detection.
  */
-void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl,
-                          jl_channel_ptr channel) {
+void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl) {
+    jl_channel channel;
+    jl_get_channel(jl, &channel);
     /** return if the channel could not be built */
-    if (channel->ub.px1 == 0 || channel->lb.px1 == 0)
+    if (channel.ub.px1 == 0 || channel.lb.px1 == 0)
         return;
     /* filter out cases when upper channel is below lower channel */
-    if (channel->ub.ipx < channel->lb.ipx)
+    if (channel.ub.ipx < channel.lb.ipx)
         return;
     int ix = jl->data->pos;
     /** find the extremes for today's price either the high/low for
@@ -635,20 +630,20 @@ void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl,
 #endif
     jl_channel_boundary_ptr cb = NULL;
     int dir = 0;
-    if ((channel->ub.d1 >= MIN_CHANNEL_LEN) && (channel->ub.slope <= 0) &&
-        (channel->ub.ipx > lb) && (channel->ub.ipx < ub) &&
+    if ((channel.ub.d1 >= MIN_CHANNEL_LEN) && (channel.ub.slope <= 0) &&
+        (channel.ub.ipx > lb) && (channel.ub.ipx < ub) &&
         (jl->recs[ix].lns == ix) && jl_up(jl->last->prim_state)) {
-        cb = &(channel->ub);
+        cb = &(channel.ub);
         dir = 1;
     }
-    if ((channel->lb.d1 >= MIN_CHANNEL_LEN) && (channel->lb.slope >= 0) &&
-        (channel->lb.ipx > lb) && (channel->lb.ipx < ub) &&
+    if ((channel.lb.d1 >= MIN_CHANNEL_LEN) && (channel.lb.slope >= 0) &&
+        (channel.lb.ipx > lb) && (channel.lb.ipx < ub) &&
         (jl->recs[ix].lns == ix) && jl_down(jl->last->prim_state)) {
         if (dir == 1) { /** discard setups triggered in both directions */
             dir = 0;
             cb = NULL;
         } else {
-            cb = &(channel->lb);
+            cb = &(channel.lb);
             dir = -1;
         }
     }
@@ -1134,9 +1129,12 @@ void ana_candlesticks(jl_data_ptr jl) {
  *  - Candlestick setups
  *  - Daily setups (strong closes, gaps, and reversal days)
  **/
-int ana_jl_setups(char* stk, char* dt) {
+int ana_jl_setups(cJSON *setups, char* stk, char* dt) {
     int res = 0;
-    /** Get, or calculate if not already there, JL records for 4 factors. */
+    /** 
+     * Get, or calculate if not already there, JL records for 4
+     * factors.
+     */
     jl_data_ptr jl_050 = jl_get_jl(stk, dt, JL_050, JLF_050);
     jl_data_ptr jl_100 = jl_get_jl(stk, dt, JL_100, JLF_100);
     jl_data_ptr jl_150 = jl_get_jl(stk, dt, JL_150, JLF_150);
@@ -1144,13 +1142,14 @@ int ana_jl_setups(char* stk, char* dt) {
     if ((jl_050 == NULL) || (jl_100 == NULL) || (jl_150 == NULL) ||
         (jl_200 == NULL))
         return -1;
-    /** Get the channels for every one of the 4 JL factors */
-    jl_channel chan_050, chan_100, chan_150, chan_200;
-    jl_get_channel(jl_050, &chan_050);
-    jl_get_channel(jl_100, &chan_100);
-    jl_get_channel(jl_150, &chan_150);
-    jl_get_channel(jl_200, &chan_200);
-    cJSON *setups = cJSON_CreateArray();
+    /** 
+     *  Check for breaks, for all the factors (0.5, 1.0, 1.5, 2.0)
+     */
+    ana_check_for_breaks(setups, jl_050);
+    ana_check_for_breaks(setups, jl_100);
+    ana_check_for_breaks(setups, jl_150);
+    ana_check_for_breaks(setups, jl_200);
+
     jl_piv_ptr pivots_050 = NULL, pivots_100 = NULL, pivots_150 = NULL,
         pivots_200 = NULL;
     /** Get last 4 pivots and the last non-secondary record for factors 1.5
@@ -1183,11 +1182,6 @@ int ana_jl_setups(char* stk, char* dt) {
         pivots_050 = NULL;
         pivots_050 = jl_get_pivots(jl_050, 4);
     }
-    /** Check for breaks, for all the factors (0.5, 1.0, 1.5, 2.0) */
-    ana_check_for_breaks(setups, jl_050, &chan_050);
-    ana_check_for_breaks(setups, jl_100, &chan_100);
-    ana_check_for_breaks(setups, jl_150, &chan_150);
-    ana_check_for_breaks(setups, jl_200, &chan_200);
     /** Check for candlestick and daily setups (strong close, reversal day,
      *  gap)
      */
@@ -1322,20 +1316,27 @@ char* ana_get_setup_date(char *stk, char *ana_date) {
 }
 
 /**
- * This method is a wrapper around ana_jl_setups
+ * Calculate setups for a single stock (stk) up to ana_date. If
+ * ana_date is NULL, setups (and their scores) will be calculated up
+ * to the current business date.
  */
 void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
-    /**
-     * Calculate setups for a single stock (stk) up to ana_date. If ana_date
-     * is NULL, setups (and their scores) will be calculated up to the current
-     * business date.
-     */
     char sql_cmd[256];
+    /**
+     * setup_date is the date from which we start calculating setups
+     */
     char *setup_date = ana_get_setup_date(stk, ana_date);
-    /** Run the setup analysis all the way to ana_date */
+    /**
+     *  Create the JSON array that will contain all the calculated
+     *  setups
+     */
+    cJSON *setups = cJSON_CreateArray();
+    /** 
+     * Run the setup analysis all the way to ana_date 
+     */
     int ana_res = 0;
     while((ana_res == 0) && (strcmp(setup_date, ana_date) <= 0)) {
-        ana_res = ana_jl_setups(stk, setup_date);
+        ana_res = ana_jl_setups(setups, stk, setup_date);
         if (ana_res == 0)
             cal_next_bday(cal_ix(setup_date), &setup_date);
     }
