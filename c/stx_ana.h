@@ -391,25 +391,6 @@ void ana_setups(FILE* fp, char* stk, char* dt, char* next_dt, bool eod) {
         ana_setups_tomorrow(fp, stk, dt, next_dt, jl_recs);
 }
 
-jl_data_ptr ana_get_jl(char* stk, char* dt, const char* label, float factor) {
-    ht_item_ptr jl_ht = ht_get(ht_jl(label), stk);
-    jl_data_ptr jl_recs = NULL;
-    if (jl_ht == NULL) {
-        stx_data_ptr data = ts_load_stk(stk);
-        if (data == NULL) {
-            LOGERROR("Could not load JL_%s for %s, skipping...\n", label, stk);
-            return NULL;
-        }
-        jl_recs = jl_jl(data, dt, factor);
-        jl_ht = ht_new_data(stk, (void*)jl_recs);
-        ht_insert(ht_jl(label), jl_ht);
-    } else {
-        jl_recs = (jl_data_ptr) jl_ht->val.data;
-        jl_advance(jl_recs, dt);
-    }
-    return jl_recs;
-}
-
 int ana_clip(int value, int lb, int ub) {
     int res = value;
     if (res < lb)
@@ -1156,10 +1137,10 @@ void ana_candlesticks(jl_data_ptr jl) {
 int ana_jl_setups(char* stk, char* dt) {
     int res = 0;
     /** Get, or calculate if not already there, JL records for 4 factors. */
-    jl_data_ptr jl_050 = ana_get_jl(stk, dt, JL_050, JLF_050);
-    jl_data_ptr jl_100 = ana_get_jl(stk, dt, JL_100, JLF_100);
-    jl_data_ptr jl_150 = ana_get_jl(stk, dt, JL_150, JLF_150);
-    jl_data_ptr jl_200 = ana_get_jl(stk, dt, JL_200, JLF_200);
+    jl_data_ptr jl_050 = jl_get_jl(stk, dt, JL_050, JLF_050);
+    jl_data_ptr jl_100 = jl_get_jl(stk, dt, JL_100, JLF_100);
+    jl_data_ptr jl_150 = jl_get_jl(stk, dt, JL_150, JLF_150);
+    jl_data_ptr jl_200 = jl_get_jl(stk, dt, JL_200, JLF_200);
     if ((jl_050 == NULL) || (jl_100 == NULL) || (jl_150 == NULL) ||
         (jl_200 == NULL))
         return -1;
@@ -1358,12 +1339,14 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
         if (ana_res == 0)
             cal_next_bday(cal_ix(setup_date), &setup_date);
     }
-    /** Undo the last iteration of the while loop that moved setup_date one day
-     *  too far ahead
+    /** 
+     *  Undo the last iteration of the while loop that moved
+     *  setup_date one day too far ahead
      */
     cal_prev_bday(cal_ix(setup_date), &setup_date);
-    /** Update the setup_dates table with the last date when the analysis was
-     *  run for the given stock
+    /** 
+     *  Update the setup_dates table with the last date when the
+     *  analysis was run for the given stock
      */
     memset(sql_cmd, 0, 256 * sizeof(char));
     sprintf(sql_cmd, "INSERT INTO setup_dates VALUES ('%s', '%s') ON CONFLICT"

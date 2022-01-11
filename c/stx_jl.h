@@ -929,15 +929,37 @@ int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
     LOGDEBUG("U: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
              jld->data->data[pos - jlc->ub.d1].date, jlc->ub.d1,
              jld->data->data[pos - jlc->ub.d2].date, jlc->ub.d2,
-             jlc->ub.px1, jlc->ub.px2, jlc->ub.ipx, jlc->ub.slope / jld->recs[jld->pos].rg);
+             jlc->ub.px1, jlc->ub.px2, jlc->ub.ipx,
+             jlc->ub.slope / jld->recs[jld->pos].rg);
     LOGDEBUG("L: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
              jld->data->data[pos - jlc->lb.d1].date, jlc->lb.d1,
              jld->data->data[pos - jlc->lb.d2].date, jlc->lb.d2,
-             jlc->lb.px1, jlc->lb.px2, jlc->lb.ipx, jlc->lb.slope / jld->recs[jld->pos].rg);
+             jlc->lb.px1, jlc->lb.px2, jlc->lb.ipx,
+             jlc->lb.slope / jld->recs[jld->pos].rg);
 #endif
  end:
     if (pivs != NULL)
         free(pivs);
     return res;
 }
+
+jl_data_ptr jl_get_jl(char* stk, char* dt, const char* label, float factor) {
+    ht_item_ptr jl_ht = ht_get(ht_jl(label), stk);
+    jl_data_ptr jl_recs = NULL;
+    if (jl_ht == NULL) {
+        stx_data_ptr data = ts_load_stk(stk);
+        if (data == NULL) {
+            LOGERROR("Could not load JL_%s for %s, skipping...\n", label, stk);
+            return NULL;
+        }
+        jl_recs = jl_jl(data, dt, factor);
+        jl_ht = ht_new_data(stk, (void*)jl_recs);
+        ht_insert(ht_jl(label), jl_ht);
+    } else {
+        jl_recs = (jl_data_ptr) jl_ht->val.data;
+        jl_advance(jl_recs, dt);
+    }
+    return jl_recs;
+}
+
 #endif
