@@ -574,8 +574,11 @@ void ana_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
                        int dir, cJSON *info, bool triggered) {
     if (setups == NULL)
         setups = cJSON_CreateArray();
-    /** Check if the last setup in the array is JL_P or JL_B.  Remove it,
-     * because it is a lower strength setup for a smaller factor */
+    /**
+     *  Check if the last setup in the array is JL_P, JL_SR, or JL_B.
+     *  Remove it,because it is a lower strength setup for a smaller
+     *  factor
+     */
     if (!strcmp(setup_name, "JL_B") || !strcmp(setup_name, "JL_P")) {
         int num_setups = cJSON_GetArraySize(setups);
         if (num_setups > 0) {
@@ -599,7 +602,8 @@ void ana_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
     cJSON_AddItemToArray(setups, res);
 }
 
-/** Check whether a given day intersects a channel built by connecting
+/**
+ *  Check whether a given day intersects a channel built by connecting
  *  two pivots.  This applies to both breakout detection, and trend
  *  channel break detection.
  */
@@ -613,17 +617,21 @@ void ana_check_for_breaks(cJSON *setups, jl_data_ptr jl) {
     if (channel.ub.ipx < channel.lb.ipx)
         return;
     int ix = jl->data->pos;
-    /** find the extremes for today's price either the high/low for
-     *  the day, or yesterday's close */
+    /**
+     *  find the extremes for today's price either the high/low for
+     *  the day, or yesterday's close
+     */
     daily_record_ptr r = &(jl->data->data[ix]), r_1 = &(jl->data->data[ix - 1]);
     int ub = (r->high > r_1->close)? r->high: r_1->close;
     int lb = (r->low < r_1->close)? r->low: r_1->close;
     /** get the average volume for the last 20 (JL window) days */
     int v_pos_2 = (jl->recs[jl->pos - 2].volume == 0)? 1:
         jl->recs[jl->pos - 2].volume;
-    /** only add JL_B setup if the current record is a primary record for the
-     * factor and in the direction of the trend (e.g. RALLY or UPTREND for an
-     * up direction setup) */
+    /**
+     *  only add JL_B setup if the current record is a primary record
+     *  for the factor and in the direction of the trend (e.g. RALLY
+     *  or UPTREND for an up direction setup)
+     */
 #ifdef JL_CHANNEL_DEBUG
     LOGDEBUG("ix = %d, jl->recs[ix].lns = %d, jl->last->prim_state = %s\n",
              ix, jl->recs[ix].lns, jl_state_to_string(jl->last->prim_state));
@@ -791,52 +799,104 @@ void ana_check_for_pullbacks(cJSON *setups, jl_data_ptr jl, jl_piv_ptr pivs,
 
 }
 
-/** Check whether the action on a given day stops at a resistance/support
- *  point, or whether it pierces that resistance/support (on high volume),
- *  and whether it recovers after piercing or not.
+/**
+ *  Check whether the action on a given day stops at a resistance /
+ *  support point, or whether it pierces that resistance / support (on
+ *  high volume), and whether it recovers after piercing or not.
  */
-void ana_check_for_support_resistance(cJSON *setups, jl_data_ptr jl,
-                                      jl_piv_ptr pivs) {
+void ana_check_for_support_resistance(cJSON *setups, jl_data_ptr jl) {
+    jl_piv_ptr pivs = jl_get_pivots(jl, 10);
+    /**
+     *  Return if we do not have enough pivot points
+     */
+    if (pivs->num < 5)
+        goto end;
     int i = jl->data->pos, num_pivots = pivs->num;
     jl_pivot_ptr pivots = pivs->pivots;
     daily_record_ptr r = &(jl->data->data[i]);
     jl_record_ptr jlr = &(jl->recs[i]), jlr_1 = &(jl->recs[i - 1]);
-    /** Return if the current record is not a primary record */
+    
+    /**
+     *  Return if the current record is not a primary record
+     */
     if (strcmp(pivots[num_pivots - 1].date, r->date))
-        return;
-    /** Return if the current record is not the first record in a new trend */
+        goto end;
+    /**
+     *  Return if current record not first record in a new trend
+     */
     int last_ns = pivots[num_pivots - 1].state;
     int prev_ns = jl_prev_ns(jl);
     if ((jl_up(last_ns) && jl_up(prev_ns)) ||
         (jl_down(last_ns) && jl_down(prev_ns)))
-        return;
+        goto end;
     jl_pivot_ptr last_pivot = pivots + num_pivots - 2;
     int last_pivot_ix = ts_find_date_record(jl->data, last_pivot->date, 0);
     daily_record_ptr last_pivot_r = &(jl->data->data[last_pivot_ix]);
     jl_record_ptr jlr_pivot = &(jl->recs[last_pivot_ix]);
-    /** For now, add the support/resistance setup with the following info:
-     *  - the price where support/resistance occur
-     *  - the ratio between the volume and the average volume on that day
-     */
-    /** Prevent division by zero in the volume ratio calculation */
     int last_piv_volume = (last_pivot_r->volume == 0)? 1: last_pivot_r->volume;
     int last_piv_avg_volume = (jlr_pivot->volume == 0)? 1: jlr_pivot->volume;
     int num_sr_pivots = 0, sr_price = 0, dir = jl_up(last_pivot->state)? -1: 1;
     float sr_volume_ratio = 100 * last_piv_volume / last_piv_avg_volume;
+    int sr_pivot_indices[10];
+    memset(sr_pivot_indices, 0, 10 * sizeof(int));
+    /**
+     *  Add to the SR list any past pivots for which the price
+     *  difference from the last pivot is within 1/5 of the average
+     *  range
+     */
     for(int ix = 0; ix < num_pivots - 3; ix++) {
         if (abs(last_pivot->price - pivots[ix].price) < jlr->rg / 5) {
             if (num_sr_pivots == 0)
                 sr_price = pivots[ix].price;
+            sr_pivot_indices[num_sr_pivots] = ix;
             num_sr_pivots++;
         }
     }
+    /**
+     *  If at least one pivot was found, add a JL_SR setup with the
+     *  following additional info:
+     *  - a list of SR pivots, including date, price, state and obv
+     *    (obv calculated relative to last pivot)
+     *  - the last SR pivot is the latest pivot.
+     *  - the price at which support/resistance occurred
+     *  - the ratio between latest pivot volume and the average volume
+     *  - setup length - number of business days between earliest SR
+          pivot and latest pivot
+     */
     if (num_sr_pivots > 0) {
+        cJSON *sr_pivots = cJSON_CreateArray();
+        for (int ix = 0; ix < num_sr_pivots; ++ix) {
+            jl_pivot_ptr sr_piv = pivots + sr_pivot_indices[ix];
+            cJSON* sr_pivot = cJSON_CreateObject();
+            cJSON_AddStringToObject(sr_pivot, "date", sr_piv->date);
+            cJSON_AddStringToObject(sr_pivot, "state",
+                                    jl_state_to_string(sr_piv->state));
+            cJSON_AddNumberToObject(sr_pivot, "price", sr_piv->price);
+            cJSON_AddNumberToObject(sr_pivot, "obv",
+                (last_pivot->obv - sr_piv->obv));
+            cJSON_AddItemToArray(sr_pivots, sr_pivot);
+        }
+
+        cJSON* sr_pivot = cJSON_CreateObject();
+        cJSON_AddStringToObject(sr_pivot, "date", last_pivot->date);
+        cJSON_AddStringToObject(sr_pivot, "state",
+                                jl_state_to_string(last_pivot->state));
+        cJSON_AddNumberToObject(sr_pivot, "price", last_pivot->price);
+        cJSON_AddNumberToObject(sr_pivot, "obv", 0);
+        cJSON_AddItemToArray(sr_pivots, sr_pivot);
+        
         cJSON* info = cJSON_CreateObject();
         cJSON_AddNumberToObject(info, "sr", sr_price);
         cJSON_AddNumberToObject(info, "vr", sr_volume_ratio);
         cJSON_AddNumberToObject(info, "num_sr", num_sr_pivots);
+        jl_pivot_ptr srp0 = pivots + sr_pivot_indices[0];
+        cJSON_AddNumberToObject(info, "length",
+                                cal_num_busdays(srp0->date, last_pivot->date));
+        cJSON_AddItemToObject(info, "sr_pivots", sr_pivots);
         ana_add_to_setups(setups, jl, "JL_SR", dir, info, true);
     }
+ end:
+    jl_free_pivots(pivs);
 }
 
 void ana_insert_setups_in_database(cJSON *setups, char *dt, char *stk) {
@@ -1124,14 +1184,15 @@ void ana_candlesticks(jl_data_ptr jl) {
 }
 
 
-/** This method calculates for a given stock, as of a certain date:
+/**
+ *  This method calculates for a given stock, as of a certain date:
  *  - JL setups (breakouts, pullbacks, support/resistance),
  *  - Candlestick setups
  *  - Daily setups (strong closes, gaps, and reversal days)
- **/
+ */
 int ana_jl_setups(cJSON *setups, char* stk, char* dt) {
     int res = 0;
-    /** 
+    /**
      * Get, or calculate if not already there, JL records for 4
      * factors.
      */
@@ -1142,68 +1203,77 @@ int ana_jl_setups(cJSON *setups, char* stk, char* dt) {
     if ((jl_050 == NULL) || (jl_100 == NULL) || (jl_150 == NULL) ||
         (jl_200 == NULL))
         return -1;
-    /** 
+    /**
      *  Check for breaks, for all the factors (0.5, 1.0, 1.5, 2.0)
      */
     ana_check_for_breaks(setups, jl_050);
     ana_check_for_breaks(setups, jl_100);
     ana_check_for_breaks(setups, jl_150);
     ana_check_for_breaks(setups, jl_200);
+    /**
+     *  Check for support resistance
+     */
+    ana_check_for_support_resistance(setups, jl_050);
+    ana_check_for_support_resistance(setups, jl_100);
+    /**
+     *  Check for pullbacks bouncing from a longer-term channel
+     */
+    /* ana_check_for_pullbacks(setups, jl_050, jl_100, jl_150, jl_200); */
 
-    jl_piv_ptr pivots_050 = NULL, pivots_100 = NULL, pivots_150 = NULL,
-        pivots_200 = NULL;
-    /** Get last 4 pivots and the last non-secondary record for factors 1.5
-     *  and 2.0. Exit if there are less than 4 pivots.
-     */
-    pivots_150 = jl_get_pivots(jl_150, 4);
-    pivots_200 = jl_get_pivots(jl_200, 4);
-    if ((pivots_150->num < 5) || (pivots_200->num < 5)) {
-        goto end;
-    }
-    /** For the factors 0.5 and 1.0, first see how many pivots are after the
-     *  last two pivots for factors 1.5 and 2.0.  If there are 4 pivots or
-     *  more, use those pivots.  Otherwise, just get the last 4 pivots for the
-     *  factors 0.5 and 1.0.
-     */
-    char *lrdt_150 = pivots_150->pivots[pivots_150->num - 3].date,
-        *lrdt_200 = pivots_200->pivots[pivots_200->num - 3].date;
-    char *lrdt = (strcmp(lrdt_150, lrdt_200) >= 0)? lrdt_200: lrdt_150;
-    pivots_100 = jl_get_pivots_date(jl_100, lrdt);
-    if (pivots_100->num < 5) {
-        free(pivots_100->pivots);
-        free(pivots_100);
-        pivots_100 = NULL;
-        pivots_100 = jl_get_pivots(jl_100, 4);
-    }
-    pivots_050 = jl_get_pivots_date(jl_050, lrdt);
-    if (pivots_050->num < 5) {
-        free(pivots_050->pivots);
-        free(pivots_050);
-        pivots_050 = NULL;
-        pivots_050 = jl_get_pivots(jl_050, 4);
-    }
-    /** Check for candlestick and daily setups (strong close, reversal day,
-     *  gap)
-     */
-    ana_candlesticks(jl_050);
-    ana_daily_setups(jl_050);
-    /** Check for pullbacks for factors 0.5 and 1.0 */
-    ana_check_for_pullbacks(setups, jl_050, pivots_050, pivots_150, pivots_200);
-    ana_check_for_pullbacks(setups, jl_100, pivots_100, pivots_150, pivots_200);
-    ana_check_for_support_resistance(setups, jl_050, pivots_050);
-    ana_check_for_support_resistance(setups, jl_100, pivots_100);
-    ana_insert_setups_in_database(setups, dt, stk);
+    /* jl_piv_ptr pivots_050 = NULL, pivots_100 = NULL, pivots_150 = NULL, */
+    /*     pivots_200 = NULL; */
+    /* /\** Get last 4 pivots and the last non-secondary record for factors 1.5 */
+    /*  *  and 2.0. Exit if there are less than 4 pivots. */
+    /*  *\/ */
+    /* pivots_150 = jl_get_pivots(jl_150, 4); */
+    /* pivots_200 = jl_get_pivots(jl_200, 4); */
+    /* if ((pivots_150->num < 5) || (pivots_200->num < 5)) { */
+    /*     goto end; */
+    /* } */
+    /* /\** For the factors 0.5 and 1.0, first see how many pivots are after the */
+    /*  *  last two pivots for factors 1.5 and 2.0.  If there are 4 pivots or */
+    /*  *  more, use those pivots.  Otherwise, just get the last 4 pivots for the */
+    /*  *  factors 0.5 and 1.0. */
+    /*  *\/ */
+    /* char *lrdt_150 = pivots_150->pivots[pivots_150->num - 3].date, */
+    /*     *lrdt_200 = pivots_200->pivots[pivots_200->num - 3].date; */
+    /* char *lrdt = (strcmp(lrdt_150, lrdt_200) >= 0)? lrdt_200: lrdt_150; */
+    /* pivots_100 = jl_get_pivots_date(jl_100, lrdt); */
+    /* if (pivots_100->num < 5) { */
+    /*     free(pivots_100->pivots); */
+    /*     free(pivots_100); */
+    /*     pivots_100 = NULL; */
+    /*     pivots_100 = jl_get_pivots(jl_100, 4); */
+    /* } */
+    /* pivots_050 = jl_get_pivots_date(jl_050, lrdt); */
+    /* if (pivots_050->num < 5) { */
+    /*     free(pivots_050->pivots); */
+    /*     free(pivots_050); */
+    /*     pivots_050 = NULL; */
+    /*     pivots_050 = jl_get_pivots(jl_050, 4); */
+    /* } */
+    /* /\** Check for candlestick and daily setups (strong close, reversal day, */
+    /*  *  gap) */
+    /*  *\/ */
+    /* ana_candlesticks(jl_050); */
+    /* ana_daily_setups(jl_050); */
+    /* /\** Check for pullbacks for factors 0.5 and 1.0 *\/ */
+    /* ana_check_for_pullbacks(setups, jl_050, pivots_050, pivots_150, pivots_200); */
+    /* ana_check_for_pullbacks(setups, jl_100, pivots_100, pivots_150, pivots_200); */
+    /* ana_check_for_support_resistance(setups, jl_050, pivots_050); */
+    /* ana_check_for_support_resistance(setups, jl_100, pivots_100); */
+    /* ana_insert_setups_in_database(setups, dt, stk); */
  end:
-    if (pivots_050 != NULL)
-        free(pivots_050);
-    if (pivots_100 != NULL)
-        free(pivots_100);
-    if (pivots_150 != NULL)
-        free(pivots_150);
-    if (pivots_200 != NULL)
-        free(pivots_200);
+    /* if (pivots_050 != NULL) */
+    /*     free(pivots_050); */
+    /* if (pivots_100 != NULL) */
+    /*     free(pivots_100); */
+    /* if (pivots_150 != NULL) */
+    /*     free(pivots_150); */
+    /* if (pivots_200 != NULL) */
+    /*     free(pivots_200); */
     cJSON_Delete(setups);
-    ana_update_score(stk, dt);
+    /* ana_update_score(stk, dt); */
     return 0;
 }
 
@@ -1331,7 +1401,7 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
      *  setups
      */
     cJSON *setups = cJSON_CreateArray();
-    /** 
+    /**
      * Run the setup analysis all the way to ana_date 
      */
     int ana_res = 0;
@@ -1340,12 +1410,12 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
         if (ana_res == 0)
             cal_next_bday(cal_ix(setup_date), &setup_date);
     }
-    /** 
+    /**
      *  Undo the last iteration of the while loop that moved
      *  setup_date one day too far ahead
      */
     cal_prev_bday(cal_ix(setup_date), &setup_date);
-    /** 
+    /**
      *  Update the setup_dates table with the last date when the
      *  analysis was run for the given stock
      */
