@@ -297,6 +297,20 @@ int jl_prev_ns(jl_data_ptr jl) {
     return jl_primary(jlr_pns->state2)? jlr_pns->state2: jlr_pns->state;
 }
 
+/**
+ *  Free memory allocated to JL pivots
+ */
+void jl_free_pivots(jl_piv_ptr pivs) {
+    if (pivs != NULL) {
+        if (pivs->pivots != NULL) {
+            free(pivs->pivots);
+            pivs->pivots = NULL;
+        }
+        free(pivs);
+        pivs = NULL;
+    }
+}
+
 cJSON* jl_pivots_json(jl_data_ptr jl, int num_pivots) {
     jl_piv_ptr jl_pivs = jl_get_pivots(jl, num_pivots);
     cJSON *json_jl = cJSON_CreateObject();
@@ -331,8 +345,7 @@ cJSON* jl_pivots_json(jl_data_ptr jl, int num_pivots) {
         cJSON_AddItemToArray(pivs, pivot);
     }
  end:
-    free(jl_pivs->pivots);
-    free(jl_pivs);
+    jl_free_pivots(jl_pivs);
     return json_jl;
 }
 
@@ -938,8 +951,7 @@ int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
              jlc->lb.slope / jld->recs[jld->pos].rg);
 #endif
  end:
-    if (pivs != NULL)
-        free(pivs);
+    jl_free_pivots(pivs);
     return res;
 }
 
