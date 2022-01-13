@@ -921,8 +921,7 @@ void ana_insert_setups_in_database(cJSON *setups, char *dt, char *stk) {
     }
 }
 
-void ana_daily_setups(jl_data_ptr jl) {
-    cJSON *setups = cJSON_CreateArray();
+void ana_daily_setups(cJSON *setups, jl_data_ptr jl) {
     daily_record_ptr r[2];
     jl_record_ptr jlr[2];
     int ix_0 = jl->data->pos;
@@ -934,8 +933,10 @@ void ana_daily_setups(jl_data_ptr jl) {
     int jlr_1_rg = (jlr[1]->rg == 0)? 1: jlr[1]->rg;
     char *stk = jl->data->stk, *dt = r[0]->date;
     LOGINFO("ana_daily_setups(): stk = %s, dt = %s\n", stk, dt);
-    /** Find strong closes up or down; rr/vr capture range/volume
+    /**
+     *  Find strong closes up or down; rr/vr capture range/volume
      *  significance
+     *  TODO: add marubozu info
      */
     int sc_dir = ts_strong_close(r[0]);
     if (sc_dir != 0) {
@@ -951,7 +952,11 @@ void ana_daily_setups(jl_data_ptr jl) {
         cJSON_AddNumberToObject(info, "rr", rr);
         ana_add_to_setups(setups, NULL, "SC", sc_dir, info, true);
     }
-    /** Find gaps */
+    /**
+     *  Find gaps.  TODO: Add gaps for which the open is higher than
+     *  the close.  Add in the info whether the gap was closed during
+     *  the day.
+     */
     int gap_dir = 0;
     if (r[0]->open > r[1]->high)
         gap_dir = 1;
@@ -972,7 +977,10 @@ void ana_daily_setups(jl_data_ptr jl) {
         cJSON_AddNumberToObject(info, "drawdown", 100 * drawdown / jlr_1_rg);
         ana_add_to_setups(setups, NULL, "Gap", gap_dir, info, true);
     }
-    /** Find reversal days */
+    /**
+     *  Find reversal days: TODO - document the definition of a
+     *  reversal day
+     */
     int rd_dir = 0, min_oc = MIN(r[0]->open, r[1]->close);
     int max_oc = MAX(r[0]->open, r[1]->close);
     if ((r[0]->low < r[1]->low) && (r[0]->low < min_oc - jlr[1]->rg) &&
@@ -993,21 +1001,21 @@ void ana_daily_setups(jl_data_ptr jl) {
                                 100 * (r[0]->close - r[0]->open) / jlr_1_rg);
         ana_add_to_setups(setups, NULL, "RDay", rd_dir, info, true);
     }
-    ana_insert_setups_in_database(setups, dt, stk);
 }
 
-/** Implement these candlestick patterns:
- *  hammer
- *  engulfing
- *  piercing/dark cloud cover/kicking
- *  three white soldiers / black crows
- *  star
- *  CBS
- *  engulfing harami
+/**
+ *  The following candlestick patterns are implemented:
+ *  - hammer
+ *  - engulfing
+ *  - piercing/dark cloud cover/kicking
+ *  - three white soldiers / black crows
+ *   -star
+ *  - CBS
+ *  - engulfing harami
  */
-void ana_candlesticks(jl_data_ptr jl) {
+void ana_candlesticks(cJSON *setups, jl_data_ptr jl) {
     daily_record_ptr r[6];
-    cJSON *info = cJSON_CreateObject(), *setups = cJSON_CreateArray();
+    cJSON *info = cJSON_CreateObject();
     int ix_0 = jl->data->pos - 1;
     for(int ix = 0; ix < 6; ix++)
         r[ix] = &(jl->data->data[ix_0 - ix]);
@@ -1019,7 +1027,10 @@ void ana_candlesticks(jl_data_ptr jl) {
     }
     int marubozu[6], engulfing[2], harami[5], piercing = 0, star = 0, cbs = 0;
     int three = 0, three_in = 0, three_out = 0, kicking = 0, eng_harami = 0;
-    /** Calculate marubozu and harami patterns for the last 6 (5) days */
+    /**
+     *  Calculate marubozu and harami patterns for the last 6 (5)
+     *  days
+     */
     for(int ix = 0; ix < 6; ix++) {
         /** Handle the case when open == high == low == close */
         int h_l = r[ix]->high - r[ix]->low;
@@ -1037,7 +1048,9 @@ void ana_candlesticks(jl_data_ptr jl) {
         else
             harami[ix] = 0;
     }
-    /** Calculate engulfing pattern for the last two days */
+    /**
+     *  Calculate engulfing pattern for the last two days 
+     */
     for(int ix = 0; ix < 2; ix++) {
         if ((body[ix] * body[ix + 1] < 0) &&
             (abs(body[ix]) > abs(body[ix + 1])) &&
@@ -1047,7 +1060,9 @@ void ana_candlesticks(jl_data_ptr jl) {
         else
             engulfing[ix] = 0;
     }
-    /** Calculate piercing pattern */
+    /**
+     *  Calculate piercing pattern
+     */
     if ((body[0] * body[1] < 0) &&
         (100 * abs(body[1]) > jl->recs[ix_0 - 2].rg *
          CANDLESTICK_LONG_DAY_AVG_RATIO) &&
@@ -1060,16 +1075,17 @@ void ana_candlesticks(jl_data_ptr jl) {
             (2 * r[0]->close < (r[1]->low + r[1]->high)))
             piercing = -1;
     }
-    /** Check for star patterns. Rules of Recognition
-     * 1. First day always the color established by ensuing trend
-     * 2. Second day always gapped from body of first day. Color not
-     *    important.
-     * 3. Third day always opposite color of first day.
-     * 4. First day, maybe the third day, are long days.
+    /**
+     *  Check for star patterns. Rules of Recognition
+     *  1. First day always the color established by ensuing trend
+     *  2. Second day always gapped from body of first day. Color not
+     *     important.
+     *  3. Third day always opposite color of first day.
+     *  4. First day, maybe the third day, are long days.
      *
-     * If third day closes deeply (more than halfway) into first day
-     * body, a much stronger move should ensue, especially if heavy
-     * volume occurs on third day.
+     *  If third day closes deeply (more than halfway) into first day
+     *  body, a much stronger move should ensue, especially if heavy
+     *  volume occurs on third day.
      */
     if ((100 * abs(body[2]) > jl->recs[ix_0 - 3].rg *
          CANDLESTICK_LONG_DAY_AVG_RATIO) && (body[0] * body[2] < 0) &&
@@ -1086,13 +1102,17 @@ void ana_candlesticks(jl_data_ptr jl) {
             (2 * r[0]->close < r[2]->open + r[2]->close))
             star = -1;
     }
-    /** Three (white soldiers / black crows). 
-        1. Three consecutive long white days occur, each with a higher close.
-        2. Each day opens within the body of the previous day.
-        3. Each day closes at or near its high.
-        1. Three consecutive long black days occur, each with a lower close.
-        2. Each day opens within the body of the previous day.
-        3. Each day closes at or near its lows.
+    /**
+     *  Three (white soldiers / black crows).  
+     *  1. Three consecutive long white days occur, each with a higher
+     *     close.  
+     *  2. Each day opens within the body of the previous day.
+     *  3. Each day closes at or near its high.
+     *
+     *  1. Three consecutive long black days occur, each with a lower
+     *     close.  
+     *  2. Each day opens within the body of the previous day.
+     *  3. Each day closes at or near its lows.
      */
     if (((body[2] > 0 && body[1] > 0 && body[0] > 0) ||
          (body[2] < 0 && body[1] < 0 && body[0] < 0)) &&
@@ -1115,9 +1135,11 @@ void ana_candlesticks(jl_data_ptr jl) {
             (4 * r[2]->close < 3 * r[2]->low + r[2]->high))
             three = -1;
     }
-    /** Kicking:
-     * 1. A Marubozu of one color is followed by another of opposite color
-     * 2. A gap must occur between the two lines.
+    /**
+     *  Kicking:
+     *  1. A Marubozu of one color is followed by another of opposite
+     *     color
+     *  2. A gap must occur between the two lines.
      */
     if (marubozu[1] * marubozu[0] < 0) {
         if ((marubozu[0] > 0) && (r[0]->open > r[1]->open))
@@ -1125,26 +1147,31 @@ void ana_candlesticks(jl_data_ptr jl) {
         if ((marubozu[0] < 0) && (r[0]->open < r[1]->open))
             kicking = -1;
     }
-    /** CBS:
-     * 1. First two days are Black Marubozu
-     * 2. Third day is black, gaps down at open, pierces previous day body.
-     * 3. Fourth black day completely engulfs third day, including shadow.
+    /**
+     *  CBS:
+     *  1. First two days are Black Marubozu
+     *  2. Third day is black, gaps down at open, pierces previous day
+     *     body.
+     *  3. Fourth black day completely engulfs third day, including
+     *     shadow.
      */
     if ((marubozu[3] < 0) && (marubozu[2] < 0) && (body[1] < 0) &&
         (r[1]->open < r[2]->close) && (body[0] < 0) &&
         (r[0]->open > r[1]->high) && (r[0]->close < r[1]->low))
         cbs = 1;
-
-    /** 3in, 3out, eng harami */
+    /**
+     *  3out: engulfing pattern, followed by a close in the direction
+     *  of the trend
+     */
     if ((engulfing[1] > 0) && (body[0] > 0) && (r[0]->close > r[1]->close))
         three_out = 1;
     if ((engulfing[1] < 0) && (body[0] < 0) && (r[0]->close < r[1]->close))
         three_out = -1;
-
-    /** The bearish engulfing harami pattern consists of two
-     * combination patterns. The first is a harami pattern and the
-     * second is an engulfing pattern. The end result is a pattern
-     * whose two sides are black marubozu candlesticks.
+    /**
+     *  The bullish/bearish engulfing harami pattern consists of two
+     *  combination patterns. The first is a harami pattern and the
+     *  second is an engulfing pattern. The end result is a pattern
+     *  whose two sides are white/black marubozu candlesticks.
      */
     int min_40o = MIN(r[4]->open, r[0]->open);
     int min_40c = MIN(r[4]->close, r[0]->close);
@@ -1160,8 +1187,9 @@ void ana_candlesticks(jl_data_ptr jl) {
     if ((harami[3] == 1) && (body[4] < 0) && (engulfing[0] == -1) &&
         (max_oc[2] < max_40o) && (min_oc[2] > min_40c))
         eng_harami = -1;
-
-    char *stk = jl->data->stk, *dt = r[0]->date;
+    /**
+     *  Add all the computed candlestick setups to the setups array
+     */
     if (engulfing[1] != 0)
         ana_add_to_setups(setups, NULL, "Engulfing", engulfing[0], NULL, true);
     if (piercing != 0)
@@ -1180,7 +1208,6 @@ void ana_candlesticks(jl_data_ptr jl) {
         ana_add_to_setups(setups, NULL, "Kicking", kicking, NULL, true);
     if (eng_harami != 0)
         ana_add_to_setups(setups, NULL, "EngHarami", eng_harami, NULL, true);
-    ana_insert_setups_in_database(setups, dt, stk);
 }
 
 
@@ -1190,7 +1217,7 @@ void ana_candlesticks(jl_data_ptr jl) {
  *  - Candlestick setups
  *  - Daily setups (strong closes, gaps, and reversal days)
  */
-int ana_jl_setups(cJSON *setups, char* stk, char* dt) {
+int ana_jl_setups(cJSON *setups, char* stk, char* dt, bool eod) {
     int res = 0;
     /**
      * Get, or calculate if not already there, JL records for 4
@@ -1219,6 +1246,14 @@ int ana_jl_setups(cJSON *setups, char* stk, char* dt) {
      *  Check for pullbacks bouncing from a longer-term channel
      */
     /* ana_check_for_pullbacks(setups, jl_050, jl_100, jl_150, jl_200); */
+    if (eod) {
+        ana_candlesticks(setups, jl_050);
+        ana_daily_setups(setups, jl_050);
+    }
+    /**
+     *  Insert in the database  all the calculated setups
+     */
+    ana_insert_setups_in_database(setups, dt, stk);
 
     /* jl_piv_ptr pivots_050 = NULL, pivots_100 = NULL, pivots_150 = NULL, */
     /*     pivots_200 = NULL; */
@@ -1406,7 +1441,7 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
      */
     int ana_res = 0;
     while((ana_res == 0) && (strcmp(setup_date, ana_date) <= 0)) {
-        ana_res = ana_jl_setups(setups, stk, setup_date);
+        ana_res = ana_jl_setups(setups, stk, setup_date, eod);
         if (ana_res == 0)
             cal_next_bday(cal_ix(setup_date), &setup_date);
     }
