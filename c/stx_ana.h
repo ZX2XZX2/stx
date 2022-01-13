@@ -1465,7 +1465,8 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
  * running in intraday-expiry mode, when all it needs to do is
  * download the option prices
  */
-void ana_intraday_expiry(char *ana_date) {
+void ana_intraday_expiry(char *ana_date, int max_atm_price,
+                         int max_opt_spread) {
     char *exp_date, *exp_date2;
     int ana_ix = cal_ix(ana_date), exp_ix = cal_expiry(ana_ix, &exp_date);
     cal_expiry(exp_ix + 1, &exp_date2);
@@ -1478,7 +1479,7 @@ void ana_intraday_expiry(char *ana_date) {
     LOGINFO("%s is an expiry. Downloading options for expiries %s and %s\n",
             ana_date, exp_date, exp_date2);
     bool download_options = true;
-    cJSON *ldrs = ana_get_leaders(exp_date, MAX_ATM_PRICE, MAX_OPT_SPREAD, 0);
+    cJSON *ldrs = ana_get_leaders(exp_date, max_atm_price, max_opt_spread, 0);
     get_quotes(ldrs, ana_date, exp_date, exp_date2, download_options);
     LOGINFO("Downloaded options for expiries %s, %s\n", exp_date, exp_date2);
 }
