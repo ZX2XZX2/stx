@@ -568,4 +568,27 @@ void stp_daily_setups(cJSON *setups, jl_data_ptr jl) {
         stp_add_to_setups(setups, NULL, "RDay", rd_dir, info, true);
     }
 }
+
+void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk) {
+    int num_setups = cJSON_GetArraySize(setups);
+    if (num_setups > 0) {
+        LOGINFO("Inserting %d setups for %s on %s\n", num_setups, stk, dt);
+        cJSON* setup;
+        cJSON_ArrayForEach(setup, setups) {
+            cJSON *info = cJSON_GetObjectItem(setup, "info");
+            char *info_string = (info != NULL)? cJSON_Print(info): "{}";
+            char sql_cmd[2048];
+            sprintf(sql_cmd, "insert into jl_setups values ('%s','%s','%s',%d,"
+                    "'%s',%s,%d,'%s')", dt, stk,
+                    cJSON_GetObjectItem(setup, "setup")->valuestring,
+                    cJSON_GetObjectItem(setup, "factor")->valueint,
+                    cJSON_GetObjectItem(setup, "direction")->valuestring,
+                    cJSON_GetObjectItem(setup, "triggered")->valuestring,
+                    cJSON_GetObjectItem(setup, "score")->valueint,
+                    info_string);
+            db_transaction(sql_cmd);
+        }
+    }
+}
+
 #endif
