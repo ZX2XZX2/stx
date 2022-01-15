@@ -43,7 +43,9 @@ class DBbackup():
         backup directory, otherwise, create a new backup directory,
         named after current timestamp '''
         if overwrite:
-            db_bkp_dir = db_bkp_dirs[-1]
+            db_bkp_dir = os.path.join(db_backup_dir, db_bkp_dirs[-1])
+            logging.info(f'Overwrite {db_name} DB backup.  '
+                         f'Remove all previous backup files in {db_bkp_dir}')
             for filename in os.listdir(db_bkp_dir):
                 file_path = os.path.join(db_bkp_dir, filename)
                 try:
@@ -59,12 +61,13 @@ class DBbackup():
                                       crt_date.strftime('%Y-%m-%d_%H%M%S'))
             try:
                 os.makedirs(db_bkp_dir)
-                logging.info('Creating directory {0:s}'.format(db_bkp_dir))
+                logging.info('Created directory {0:s}'.format(db_bkp_dir))
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     logging.error('Exception while creating {0:s}: {1:s}'.
                                   format(db_bkp_dir, str(e)))
                     raise
+        logging.info(f'Backing up DB {db_name} in {db_bkp_dir}')
         '''launch the subprocesses that back up the database'''
         try:
             cmd1 = 'sudo -u postgres pg_dump -Fc {0:s}'.format(db_name)
@@ -86,7 +89,7 @@ class DBbackup():
             except OSError as e:
                 logging.error(f"Error: {e.filename} - {e.strerror}")
 
-    def db_usb_backup(self, overwrite):
+    def usb_backup_database(self, overwrite):
         logging.info('Starting USB backup')
         '''get DB name from config file'''
         db_name = self.config.get('postgres_db', 'db_name')
@@ -114,7 +117,7 @@ class DBbackup():
         ]
         for usb in usb_list:
             if not os.path.exists(usb):
-                logging.info('{0:s} not found; skipping'.format(usb))
+                logging.info(f'{usb} not found; skipping')
                 continue
             logging.info(f'Backing up {db_name} DB to {usb} USB')
             usb_backup_dir = os.path.join(usb, 'db_backup', db_name)
@@ -133,20 +136,19 @@ class DBbackup():
                     ''' remove the previous usb db backup at this location
                     and copy the db backup from the pc '''
                     logging.info(
-                        f'Removing last DB backup at {usb_db_backup_dir_path}')
-                    shutil.rmtree(usb_db_backup_dir_path)
+                        f'Removing last DB backup at {usb_db_bkp_dir_path}')
+                    shutil.rmtree(usb_db_bkp_dir_path)
                     logging.info(
-                        f'Copying DB backup from {db_backup_dir_path} '
-                        f'to {usb_db_backup_dir_path}')
-                    shutil.copytree(db_backup_dir_path, usb_db_backup_dir_path)
+                        f'Copying DB backup from {db_bkp_dir_path} '
+                        f'to {usb_db_bkp_dir_path}')
+                    shutil.copytree(db_bkp_dir_path, usb_db_bkp_dir_path)
                 else:
-                    logging.info(f'{usb_db_backup_dir_path} already exists, '
-                                 f'skipping')
+                    logging.info(f'{usb_db_bkp_dir_path} exists, skipping')
             else:
                 logging.info(
-                    f'Copying DB backup from {db_backup_dir_path} '
-                    f'to {usb_db_backup_dir_path}')
-                shutil.copytree(db_backup_dir_path, usb_db_backup_dir_path)
+                    f'Copying DB backup from {db_bkp_dir_path} '
+                    f'to {usb_db_bkp_dir_path}')
+                shutil.copytree(db_bkp_dir_path, usb_db_bkp_dir_path)
 
 '''
 
