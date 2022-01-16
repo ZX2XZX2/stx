@@ -41,7 +41,7 @@ typedef struct ldr_t {
 } ldr, *ldr_ptr;
 
 
-/** 
+/**
  * Analyze option data to determine whether a stock is a leader or
  * not. To be a leader a stock must:
  * 1. Have at least 2 ATM/ITM calls and puts, and 2 ATM/OTM calls and puts.
@@ -112,12 +112,14 @@ void ana_option_analysis(ldr_ptr leader, PGresult* sql_res, int spot) {
     leader->atm_price = atm_price / 2;
 }
 
-/** This function returns the average option spread for stocks that
+/**
+ *  This function returns the average option spread for stocks that
  *  are leaders, or -1, if the stock is not a leader.
  */
 ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp, 
                    bool realtime_analysis, bool download_options) {
-    /** A stock is a leader at a given date if:
+    /**
+     *  A stock is a leader at a given date if:
      *  1. Its average activity is above a threshold.
      *  2. Its average range is above a threshold.
      *  3. It has call and put options for that date, expiring in one month,
@@ -191,7 +193,7 @@ ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp,
 
 int ana_expiry_analysis(char* dt, bool realtime_analysis, bool download_spots,
                         bool download_options) {
-    /** 
+    /**
      * special case when the date is an option expiry date
      * if the data is NULL, only run for the most recent business day
      * 1. wait until eoddata is downloaded. 
@@ -386,174 +388,80 @@ int ana_clip(int value, int lb, int ub) {
     return res;
 }
 
-void ana_update_score(char *stk, char *setup_date) {
-    char sql_cmd[256];
-    sprintf(sql_cmd, "SELECT * FROM jl_setups where stk='%s' and dt='%s'",
-            stk, setup_date);
-    PGresult *res = db_query(sql_cmd);
-    int trigger_score = 0, trend_score = 0;
-    int rows = PQntuples(res);
-    for(int ix = 0; ix < rows; ++ix) {
-        char *setup_name = PQgetvalue(res, ix, 2);
-        int setup_score = atoi(PQgetvalue(res, ix, 6));
-        if (!strcmp(setup_name, "JL_B") || !strcmp(setup_name, "JL_P") ||
-            !strcmp(setup_name, "EngHarami") || !strcmp(setup_name, "Star") ||
-            !strcmp(setup_name, "Piercing") || !strcmp(setup_name, "Kicking"))
-            trigger_score += setup_score;
-        if (strcmp(setup_name, "JL_B") && strcmp(setup_name, "JL_P"))
-            trend_score += setup_score;
-    }
-    PQclear(res);
-    char *prev_date;
-    cal_prev_bday(cal_ix(setup_date), &prev_date);
-    memset(sql_cmd, 0, 256 * sizeof(char));
-    sprintf(sql_cmd, "SELECT * FROM setup_scores WHERE stk='%s' AND "
-            "dt BETWEEN '%s' AND '%s'", stk, prev_date, setup_date);
-    res = db_query(sql_cmd);
-    rows = PQntuples(res);
-    if (rows == 1) {
-        char *score_date = PQgetvalue(res, 0, 0);
-        if (!strcmp(score_date, setup_date)) {
-            LOGWARN("Scores already calculated for %s (%s)\n", stk, setup_date);
-            goto end;
-        } else
-            trend_score += 7 * atoi(PQgetvalue(res, 0, 3)) / 8;
-    } else if (rows == 2) {
-        LOGWARN("Scores already calculated for %s on %s\n", stk, setup_date);
-        goto end;
-    } else if (rows == 0)
-        LOGINFO("Starting setup score calculation for %s on %s\n",
-                stk, setup_date);
-    memset(sql_cmd, 0, 256 * sizeof(char));
-    sprintf(sql_cmd, "INSERT INTO setup_scores VALUES ('%s', '%s', %d, %d)",
-            setup_date, stk, trigger_score, trend_score);
-    db_transaction(sql_cmd);
-end:
-    if (rows > 0)
-        PQclear(res);
-}
-
-int ana_daily_score(char* stk, char* start_date, char* end_date) {
-    int score = 0;
-    char sql_cmd[256];
-    sprintf(sql_cmd, "SELECT * FROM jl_setups WHERE stk='%s' AND dt BETWEEN"
-            " '%s' and '%s' ORDER BY dt", stk, start_date, end_date);
-    PGresult* res = db_query(sql_cmd);
-    int rows = PQntuples(res);
-    if (rows == 0)
-        return score;
-    char *crs_date = start_date;
-    for (int ix = 0; ix < rows; ix++) {
-        char setup_dt[16];
-        strcpy(setup_dt, PQgetvalue(res, ix, 0));
-        while(strcmp(crs_date, setup_dt) < 0) {
-            cal_next_bday(cal_ix(crs_date), &crs_date);
-            score = score * 7 / 8;
-        }
-        score += atoi(PQgetvalue(res, ix, 6));
-    }
-    while(strcmp(crs_date, end_date) < 0) {
-        cal_next_bday(cal_ix(crs_date), &crs_date);
-        score = score * 7 / 8;
-    }
-    PQclear(res);
-    return score;
-}
-
-/**
-   TODO: review this method (ana_calculate_score).
-   Also, review ana_daily_score.
-   Should make the following changes:
-   1. Cap the score for a setup.  SC, Gap: [-200, 200]
-   2. Give points when gaps are closed, 2x points in opposite direction.
-   3. Give points for JL breakout, SR, pullback
-   4. Give points when JL breakout, SR, pullback are reversed,
-      2x points in opposite direction
-   5. Configurable parameters:
-      a. daily fade
-      b. cap value for different setups
-      c. bonus for the stock being in a trend for specific JL factor
-      d. bonus for closing a gap, reversing JL setup
-      e. RS bonus
-      f. score for candlestick setups
-    6. RS wrt S&P 500, industry group index. RS of industry group
-       index wrt to S&P500
-*/
-
-int ana_calculate_score(cJSON *setup) {
-    char* setup_name = cJSON_GetObjectItem(setup, "setup")->valuestring;
-    char* dir_str = cJSON_GetObjectItem(setup, "direction")->valuestring;
-    cJSON* info = cJSON_GetObjectItem(setup, "info");
-    int dir = (*dir_str == 'U')? 1: -1;
-    int score = 0;
-    if (!strcmp(setup_name, "SC")) {
-        int vr = ana_clip(cJSON_GetObjectItem(info, "vr")->valueint, 50, 250);
-        int rr = ana_clip(cJSON_GetObjectItem(info, "rr")->valueint, 50, 250);
-        score = (vr - 50 + rr - 50) * dir;
-    } else if (!strcmp(setup_name, "Gap")) { 
-        /** TODO: add more params to distinguish between breakaway and exhaustion gaps */
-        int vr = cJSON_GetObjectItem(info, "vr")->valueint;
-        int eod_gain = cJSON_GetObjectItem(info, "eod_gain")->valueint;
-        int drawdown = cJSON_GetObjectItem(info, "drawdown")->valueint;
-        score = vr * (eod_gain + drawdown) / 150;
-    } else if (!strcmp(setup_name, "RDay")) {
-        int vr = cJSON_GetObjectItem(info, "vr")->valueint;
-        int rd_gain = cJSON_GetObjectItem(info, "rd_gain")->valueint;
-        int rd_drawdown = cJSON_GetObjectItem(info, "rd_drawdown")->valueint;
-        int rdr = ana_clip(abs(rd_gain) + abs(rd_drawdown), 0, 300);
-        score = dir * vr * rdr / 150;
-    } else if (!strcmp(setup_name, "JL_P")) {
-        int ls = cJSON_GetObjectItem(info, "ls")->valueint;
-        int lvd = cJSON_GetObjectItem(info, "lvd")->valueint;
-        int obv = cJSON_GetObjectItem(info, "obv")->valueint;
-        score = 5 * obv;
-        if (((dir == 1) && (ls == UPTREND)) ||
-            ((dir == -1) && (ls == DOWNTREND)))
-                score += (dir * 50);
-        else if ((ls == RALLY) || (ls == REACTION))
-                score += (dir * 25);
-        if (lvd * dir > 0)
-            score -= (5 * lvd);
-        else
-            score -= (2 * lvd);
-        if (dir * score < 0)
-            score = 0;
-    } else if (!strcmp(setup_name, "JL_B")) {
-        int vr = cJSON_GetObjectItem(info, "vr")->valueint;
-        int len = cJSON_GetObjectItem(info, "len")->valueint;
-        int obv = cJSON_GetObjectItem(info, "obv")->valueint;
-        int last_ns = cJSON_GetObjectItem(info, "last_ns")->valueint;
-        int prev_ns = cJSON_GetObjectItem(info, "prev_ns")->valueint;
-        score = 5 * obv;
-        score = score * vr / 150;
-        score = score * ana_clip(len, 50, 250) / 50;
-        if (dir == 1) {
-            if (last_ns == UPTREND) {
-                if (prev_ns == UPTREND)
-                    score = score / 2;
-                else if (prev_ns == RALLY)
-                    score = score * 2;
-            }
-        } else { /** dir == -1 */
-            if (last_ns == DOWNTREND) {
-                if (prev_ns == DOWNTREND)
-                    score = score / 2;
-                else if (prev_ns == REACTION)
-                    score = score * 2;
-            }
-        }
-    } else if (!strcmp(setup_name, "Piercing") ||
-               !strcmp(setup_name, "Kicking") ||
-               !strcmp(setup_name, "EngHarami"))
-        score = dir * 100;
-    else if (!strcmp(setup_name, "Star"))
-        score = dir * 150;
-    else if (!strcmp(setup_name, "Engulfing"))
-        score = dir * 50;
-    else if (!strcmp(setup_name, "3out"))
-        score = dir * 50;
-    return score;
-}
+/* int ana_calculate_score(cJSON *setup) { */
+/*     char* setup_name = cJSON_GetObjectItem(setup, "setup")->valuestring; */
+/*     char* dir_str = cJSON_GetObjectItem(setup, "direction")->valuestring; */
+/*     cJSON* info = cJSON_GetObjectItem(setup, "info"); */
+/*     int dir = (*dir_str == 'U')? 1: -1; */
+/*     int score = 0; */
+/*     if (!strcmp(setup_name, "SC")) { */
+/*         int vr = ana_clip(cJSON_GetObjectItem(info, "vr")->valueint, 50, 250); */
+/*         int rr = ana_clip(cJSON_GetObjectItem(info, "rr")->valueint, 50, 250); */
+/*         score = (vr - 50 + rr - 50) * dir; */
+/*     } else if (!strcmp(setup_name, "Gap")) {  */
+/*         /\** TODO: add more params to distinguish between breakaway and exhaustion gaps *\/ */
+/*         int vr = cJSON_GetObjectItem(info, "vr")->valueint; */
+/*         int eod_gain = cJSON_GetObjectItem(info, "eod_gain")->valueint; */
+/*         int drawdown = cJSON_GetObjectItem(info, "drawdown")->valueint; */
+/*         score = vr * (eod_gain + drawdown) / 150; */
+/*     } else if (!strcmp(setup_name, "RDay")) { */
+/*         int vr = cJSON_GetObjectItem(info, "vr")->valueint; */
+/*         int rd_gain = cJSON_GetObjectItem(info, "rd_gain")->valueint; */
+/*         int rd_drawdown = cJSON_GetObjectItem(info, "rd_drawdown")->valueint; */
+/*         int rdr = ana_clip(abs(rd_gain) + abs(rd_drawdown), 0, 300); */
+/*         score = dir * vr * rdr / 150; */
+/*     } else if (!strcmp(setup_name, "JL_P")) { */
+/*         int ls = cJSON_GetObjectItem(info, "ls")->valueint; */
+/*         int lvd = cJSON_GetObjectItem(info, "lvd")->valueint; */
+/*         int obv = cJSON_GetObjectItem(info, "obv")->valueint; */
+/*         score = 5 * obv; */
+/*         if (((dir == 1) && (ls == UPTREND)) || */
+/*             ((dir == -1) && (ls == DOWNTREND))) */
+/*                 score += (dir * 50); */
+/*         else if ((ls == RALLY) || (ls == REACTION)) */
+/*                 score += (dir * 25); */
+/*         if (lvd * dir > 0) */
+/*             score -= (5 * lvd); */
+/*         else */
+/*             score -= (2 * lvd); */
+/*         if (dir * score < 0) */
+/*             score = 0; */
+/*     } else if (!strcmp(setup_name, "JL_B")) { */
+/*         int vr = cJSON_GetObjectItem(info, "vr")->valueint; */
+/*         int len = cJSON_GetObjectItem(info, "len")->valueint; */
+/*         int obv = cJSON_GetObjectItem(info, "obv")->valueint; */
+/*         int last_ns = cJSON_GetObjectItem(info, "last_ns")->valueint; */
+/*         int prev_ns = cJSON_GetObjectItem(info, "prev_ns")->valueint; */
+/*         score = 5 * obv; */
+/*         score = score * vr / 150; */
+/*         score = score * ana_clip(len, 50, 250) / 50; */
+/*         if (dir == 1) { */
+/*             if (last_ns == UPTREND) { */
+/*                 if (prev_ns == UPTREND) */
+/*                     score = score / 2; */
+/*                 else if (prev_ns == RALLY) */
+/*                     score = score * 2; */
+/*             } */
+/*         } else { /\** dir == -1 *\/ */
+/*             if (last_ns == DOWNTREND) { */
+/*                 if (prev_ns == DOWNTREND) */
+/*                     score = score / 2; */
+/*                 else if (prev_ns == REACTION) */
+/*                     score = score * 2; */
+/*             } */
+/*         } */
+/*     } else if (!strcmp(setup_name, "Piercing") || */
+/*                !strcmp(setup_name, "Kicking") || */
+/*                !strcmp(setup_name, "EngHarami")) */
+/*         score = dir * 100; */
+/*     else if (!strcmp(setup_name, "Star")) */
+/*         score = dir * 150; */
+/*     else if (!strcmp(setup_name, "Engulfing")) */
+/*         score = dir * 50; */
+/*     else if (!strcmp(setup_name, "3out")) */
+/*         score = dir * 50; */
+/*     return score; */
+/* } */
 
 
 void ana_add_jl_pullback_setup(cJSON *setups, jl_data_ptr jl, int direction,
@@ -730,61 +638,7 @@ int ana_jl_setups(cJSON *setups, char* stk, char* dt, bool eod) {
      *  Insert in the database  all the calculated setups
      */
     stp_insert_setups_in_database(setups, dt, stk);
-
-    /* jl_piv_ptr pivots_050 = NULL, pivots_100 = NULL, pivots_150 = NULL, */
-    /*     pivots_200 = NULL; */
-    /* /\** Get last 4 pivots and the last non-secondary record for factors 1.5 */
-    /*  *  and 2.0. Exit if there are less than 4 pivots. */
-    /*  *\/ */
-    /* pivots_150 = jl_get_pivots(jl_150, 4); */
-    /* pivots_200 = jl_get_pivots(jl_200, 4); */
-    /* if ((pivots_150->num < 5) || (pivots_200->num < 5)) { */
-    /*     goto end; */
-    /* } */
-    /* /\** For the factors 0.5 and 1.0, first see how many pivots are after the */
-    /*  *  last two pivots for factors 1.5 and 2.0.  If there are 4 pivots or */
-    /*  *  more, use those pivots.  Otherwise, just get the last 4 pivots for the */
-    /*  *  factors 0.5 and 1.0. */
-    /*  *\/ */
-    /* char *lrdt_150 = pivots_150->pivots[pivots_150->num - 3].date, */
-    /*     *lrdt_200 = pivots_200->pivots[pivots_200->num - 3].date; */
-    /* char *lrdt = (strcmp(lrdt_150, lrdt_200) >= 0)? lrdt_200: lrdt_150; */
-    /* pivots_100 = jl_get_pivots_date(jl_100, lrdt); */
-    /* if (pivots_100->num < 5) { */
-    /*     free(pivots_100->pivots); */
-    /*     free(pivots_100); */
-    /*     pivots_100 = NULL; */
-    /*     pivots_100 = jl_get_pivots(jl_100, 4); */
-    /* } */
-    /* pivots_050 = jl_get_pivots_date(jl_050, lrdt); */
-    /* if (pivots_050->num < 5) { */
-    /*     free(pivots_050->pivots); */
-    /*     free(pivots_050); */
-    /*     pivots_050 = NULL; */
-    /*     pivots_050 = jl_get_pivots(jl_050, 4); */
-    /* } */
-    /* /\** Check for candlestick and daily setups (strong close, reversal day, */
-    /*  *  gap) */
-    /*  *\/ */
-    /* ana_candlesticks(jl_050); */
-    /* ana_daily_setups(jl_050); */
-    /* /\** Check for pullbacks for factors 0.5 and 1.0 *\/ */
-    /* ana_check_for_pullbacks(setups, jl_050, pivots_050, pivots_150, pivots_200); */
-    /* ana_check_for_pullbacks(setups, jl_100, pivots_100, pivots_150, pivots_200); */
-    /* ana_check_for_support_resistance(setups, jl_050, pivots_050); */
-    /* ana_check_for_support_resistance(setups, jl_100, pivots_100); */
-    /* ana_insert_setups_in_database(setups, dt, stk); */
- end:
-    /* if (pivots_050 != NULL) */
-    /*     free(pivots_050); */
-    /* if (pivots_100 != NULL) */
-    /*     free(pivots_100); */
-    /* if (pivots_150 != NULL) */
-    /*     free(pivots_150); */
-    /* if (pivots_200 != NULL) */
-    /*     free(pivots_200); */
     cJSON_Delete(setups);
-    /* ana_update_score(stk, dt); */
     return 0;
 }
 
@@ -864,7 +718,7 @@ char* ana_get_setup_date(char *stk, char *ana_date) {
     int rows = PQntuples(res);
     if (rows == 0) {
         /**
-         * If there is no last setup analysis date in the DB, find
+         *  If there is no last setup analysis date in the DB, find
          *  first date (d1) when EOD is available for the stock.  Then
          *  move back a year from the analysis date (d2).  Start
          *  analysis from the most recent date among d1 and d2.
