@@ -999,4 +999,8 @@ bool jl_first_new_trend(jl_data_ptr jl) {
         return false;
     return true;
 }
+
+int jl_pivot_bounce_channel(jl_pivot_ptr pivot, jl_channel_ptr channel) {
+    return 0;
+}
 #endif
