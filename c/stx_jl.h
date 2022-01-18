@@ -881,7 +881,8 @@ void jl_print(jl_data_ptr jl, bool print_pivots_only, bool print_nils) {
     }
 }
 
-/** Return true if the pivots p1 and p2 have the same date and the
+/**
+ *  Return true if the pivots p1 and p2 have the same date and the
  *  same price.  This is used to identify that a pivot on a faster
  *  time scale is the same as a pivot or last non-secondary record on
  *  a slower time scale.
@@ -890,7 +891,8 @@ bool jl_same_pivot(jl_pivot_ptr p1, jl_pivot_ptr p2) {
     return (!strcmp(p1->date, p2->date) && (p1->price == p2->price));
 }
 
-/** Return the upper or lower boundary of a channel.  This is a helper
+/**
+ *  Return the upper or lower boundary of a channel.  This is a helper
  *  function that is called from jl_get_channel.  It should not be
  *  called directly, as it does not check that it has enough pivots
  */
@@ -912,7 +914,8 @@ void jl_update_channel_width(jl_data_ptr jld, jl_channel_ptr jlc) {
 
 }
 
-/** Return a channel that is formed by the last four pivots of a JL
+/**
+ *   Return a channel that is formed by the last four pivots of a JL
  *  record set.  Return 0 if success -1 if not enough pivots
  */
 int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
@@ -974,4 +977,26 @@ jl_data_ptr jl_get_jl(char* stk, char* dt, const char* label, float factor) {
     return jl_recs;
 }
 
+/**
+ *  Helper function, used by stp_jl_support_resistance and
+ *  stp_jl_pullbacks.  Returns TRUE if the current record is a primary
+ *  record, and it is the first record in a new trend, FALSE otherwise
+ */
+bool jl_first_new_trend(jl_data_ptr jl) {
+    int i = jl->data->pos;
+    jl_record_ptr jlr = &(jl->recs[i]), jlr_1 = &(jl->recs[i - 1]);
+    /**
+     *  Return false if the current record is not a primary record
+     */
+    if (!jl_primary(jlr->state))
+        return false;
+    /**
+     *  Return false if current record not first record in a new trend
+     */
+    int last_ns = jlr->state, prev_ns = jl_prev_ns(jl);
+    if ((jl_up(last_ns) && jl_up(prev_ns)) ||
+        (jl_down(last_ns) && jl_down(prev_ns)))
+        return false;
+    return true;
+}
 #endif
