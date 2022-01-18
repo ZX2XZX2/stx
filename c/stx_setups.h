@@ -350,87 +350,40 @@ void stp_jl_pullbacks(cJSON *setups, jl_data_ptr jl_050, jl_data_ptr jl_100,
         pivs_050 = jl_get_pivots(jl_050, 4);
     }
 
-    
-    /* int i = jl->data->pos, num = pivs->num; */
-    /* jl_pivot_ptr pivots = pivs->pivots; */
-    /* daily_record_ptr r = &(jl->data->data[i]); */
-    /* jl_record_ptr jlr = &(jl->recs[i]), jlr_1 = &(jl->recs[i - 1]); */
+    /**
+     *  TODO: 
+     *  1. Implement jl_pivot_bounce_channel() function
+     *  2. Fix ana_add_jl_pullback_setup() and rename it to stp_...
+     *  3. Define hybrid channels that:
+     *     a. start from the last long term pivot
+     *     b. get all short term pivots after last long term pivot
+     *     c. if less than 6 short term pivots, no hybrid channel
+     *     d. connect long term pivot with -3, -5, ... short term pivots
+     *     e. get the smallest slope, thats the hybrid channel
+     *     f. ...
+     *  4. run jl_pivot_bounce_channel() for hybrid channels
+     */
+    jl_channel channel_100, channel_150, channel_200;
+    jl_get_channel(jl_100, &channel_100);
+    jl_get_channel(jl_150, &channel_150);
+    jl_get_channel(jl_200, &channel_200);
 
-    /* jl_pivot_ptr lns_150 = &(pivs_150->pivots[pivs_150->num - 1]); */
-    /* jl_pivot_ptr lns_200 = &(pivs_200->pivots[pivs_200->num - 1]); */
-    /* /\** Record pullback if short-term pivots have changed from DOWNTREND to */
-    /*  *  REACTION, DOWNTREND pivot matches last primary record from a long-term */
-    /*  *  trend, and there are no volume anomalies. */
-    /*  *\/ */
-    /* if (jl_up(last_ns) && */
-    /*     ((pivots[num - 2].state == REACTION) && */
-    /*      (pivots[num - 4].state == DOWNTREND) && */
-    /*     (jl_same_pivot(lns_150, &(pivots[num - 4])) || */
-    /*      jl_same_pivot(lns_200, &(pivots[num - 4]))) && */
-    /*      (pivots[num - 2].obv < pivots[num - 4].obv + 5))) */
-    /*     ana_add_jl_pullback_setup(setups, jl, 1, 4, false, pivs, pivs_150, */
-    /*                               pivs_200); */
-    /* /\** Record pullback for the down direction, when short-term pivots change */
-    /*  *  from UPTREND to RALLY, and under same conditions as above. */
-    /*  *\/ */
-    /* if (jl_down(last_ns) && */
-    /*     (((pivots[num - 2].state == RALLY) && */
-    /*      (pivots[num - 4].state == UPTREND) && */
-    /*     (jl_same_pivot(lns_150, &(pivots[num - 4])) || */
-    /*      jl_same_pivot(lns_200, &(pivots[num - 4]))) && */
-    /*      (pivots[num - 2].obv > pivots[num - 4].obv + 5)))) */
-    /*     ana_add_jl_pullback_setup(setups, jl, -1, 4, false, pivs, pivs_150, */
-    /*                               pivs_200); */
-    /* /\** Record pullback if the stock is in a long-term uptrend, and it gets in */
-    /*  *  a short-term pullback (REACTION), but the volume is still ok, and the */
-    /*  *  up pivot coincides with the last long-term primary record. */
-    /*  *\/ */
-    /* if ((((lns_200->state == UPTREND) && */
-    /*       (jl_same_pivot(&(pivots[num - 3]), lns_200) || */
-    /*       jl_same_pivot(&(pivots[num - 1]), lns_200))) || */
-    /*       ((lns_150->state == UPTREND) && */
-    /*       (jl_same_pivot(&(pivots[num - 3]), lns_150) || */
-    /*       jl_same_pivot(&(pivots[num - 1]), lns_150)))) && */
-    /*     (pivots[num - 2].state == REACTION) && */
-    /*     (pivots[num - 2].obv < pivots[num - 4].obv + 5)) */
-    /*     ana_add_jl_pullback_setup(setups, jl, 1, 3, false, pivs, pivs_150, */
-    /*                               pivs_200); */
-    /* /\** Record pullback if the stock is in a long-term downtrend, and it gets in */
-    /*  *  a short-term pullback (RALLY), but the volume is still ok, and the down */
-    /*  *  pivot coincides with the last long-term primary record. */
-    /*  *\/ */
-    /* if ((((lns_200->state == DOWNTREND) && */
-    /*       (jl_same_pivot(&(pivots[num - 3]), lns_200) || */
-    /*       jl_same_pivot(&(pivots[num - 1]), lns_200))) || */
-    /*       ((lns_150->state == DOWNTREND) && */
-    /*       (jl_same_pivot(&(pivots[num - 3]), lns_150) || */
-    /*       jl_same_pivot(&(pivots[num - 1]), lns_150)))) && */
-    /*     (pivots[num - 2].state == RALLY) && */
-    /*     (pivots[num - 2].obv > pivots[num - 4].obv - 5)) */
-    /*     ana_add_jl_pullback_setup(setups, jl, -1, 3, false, pivs, pivs_150, */
-    /*                               pivs_200); */
-    /* /\** Record pullback if short-term pivots have changed from DOWNTREND to */
-    /*  *  REACTION, DOWNTREND pivot matches last pivot from a long-term */
-    /*  *  trend, and there are no volume anomalies. */
-    /*  *\/ */
-    /* jl_pivot_ptr p1_150 = &(pivs_150->pivots[pivs_150->num - 2]); */
-    /* jl_pivot_ptr p1_200 = &(pivs_200->pivots[pivs_200->num - 2]); */
-    /* if (jl_up(last_ns) && */
-    /*     (((pivots[num - 2].state == REACTION) && */
-    /*      (pivots[num - 4].state == DOWNTREND) && */
-    /*     (jl_same_pivot(p1_150, &(pivots[num - 4])) || */
-    /*      jl_same_pivot(p1_200, &(pivots[num - 4]))) && */
-    /*      (pivots[num - 2].obv < pivots[num - 4].obv - 5)))) */
-    /*     ana_add_jl_pullback_setup(setups, jl, 1, 4, true, pivs, pivs_150, */
-    /*                               pivs_200); */
-    /* if (jl_down(last_ns) && */
-    /*     (((pivots[num - 2].state == RALLY) && */
-    /*      (pivots[num - 4].state == UPTREND) && */
-    /*     (jl_same_pivot(p1_150, &(pivots[num - 4])) || */
-    /*      jl_same_pivot(p1_200, &(pivots[num - 4]))) && */
-    /*      (pivots[num - 2].obv > pivots[num - 4].obv + 5)))) */
-    /*     ana_add_jl_pullback_setup(setups, jl, -1, 4, true, pivs, pivs_150, */
-    /*                               pivs_200); */
+    jl_pivot_ptr last_piv_050 = &(pivs_050->pivots[pivs_050->num - 2]);
+    int direction = jl_pivot_bounce_channel(last_piv_050, &channel_100);
+    if (direction != 0)
+        ana_add_jl_pullback_setup(setups, jl_050, direction, 
+                                  pivs_050->num - 2, true, pivs_050,
+                                  pivs_150, pivs_200);
+    direction = jl_pivot_bounce_channel(last_piv_050, &channel_100);
+    if (direction != 0)
+        ana_add_jl_pullback_setup(setups, jl_050, direction, 
+                                  pivs_050->num - 2, true, pivs_050,
+                                  pivs_150, pivs_200);
+    direction = jl_pivot_bounce_channel(last_piv_050, &channel_200);
+    if (direction != 0)
+        ana_add_jl_pullback_setup(setups, jl_050, direction, 
+                                  pivs_050->num - 2, true, pivs_050,
+                                  pivs_150, pivs_200);
  end:
     jl_free_pivots(pivs_050);
     jl_free_pivots(pivs_100);
