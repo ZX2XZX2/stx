@@ -96,6 +96,7 @@ typedef struct jl_channel_boundary_t {
 } jl_channel_boundary, *jl_channel_boundary_ptr;
 
 typedef struct jl_channel_t {
+    char date[16];
     jl_channel_boundary ub; /** upper_bound */
     jl_channel_boundary lb; /** lower_bound */
 } jl_channel, *jl_channel_ptr;
@@ -922,6 +923,7 @@ int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
     int res = 0;
     /** cleanup channel placeholder */
     memset(jlc, 0, sizeof(jl_channel));
+    strcpy(jlc->date, jld->data->data[jld->pos].date);
     /** get 4 last pivots, exit if not enough pivots */
     jl_piv_ptr pivs = jl_get_pivots(jld, 4);
     if (pivs->num < 5) {
@@ -1001,6 +1003,29 @@ bool jl_first_new_trend(jl_data_ptr jl) {
 }
 
 int jl_pivot_bounce_channel(jl_pivot_ptr pivot, jl_channel_ptr channel) {
+    /**
+     *  1. Determine the upper and lower bound prices at the pivot
+     *  2. Check that upper channel bound price > lower channel bound price
+     *  3. If UT/NRa pivot, price must be below and close to the channel bound
+     *  4. If DT/NRe pivot, price must be above and close to the channel bound
+     */
+    int piv_dist = cal_num_busdays(pivot->date, channel->date);
+    float ub_channel_price = channel->ub.ipx - channel->ub.slope * piv_dist;
+    float lb_channel_price = channel->lb.ipx - channel->lb.slope * piv_dist;
+    if (ub_channel_price <= lb_channel_price)
+        return 0;
+    if (jl_up(pivot->state) && (pivot->price <= ub_channel_price) &&
+        (pivot->price > ub_channel_price - pivot->rg / 5))
+        return 2;
+    if (jl_up(pivot->state) && (pivot->price <= lb_channel_price) &&
+        (pivot->price > lb_channel_price - pivot->rg / 5))
+        return 1;
+    if (jl_down(pivot->state) && (pivot->price >= ub_channel_price) &&
+        (pivot->price < ub_channel_price + pivot->rg / 5))
+        return -2;
+    if (jl_down(pivot->state) && (pivot->price >= lb_channel_price) &&
+        (pivot->price < lb_channel_price + pivot->rg / 5))
+        return -1;
     return 0;
 }
 #endif
