@@ -89,6 +89,8 @@ typedef struct jl_channel_boundary_t {
     int d2; /** number of days from nearest pivot to current date */
     int px1; /** price of the furthest pivot */
     int px2; /** price of the nearest pivot */
+    int s1; /** state of the furthest pivot */
+    int s2; /** state of the nearest pivot */
     int ipx; /** price at the current date */
     float slope; /** slope of the boundary */
     int obv1; /** on-the-balance volume from furthest pivot */
@@ -905,6 +907,8 @@ void jl_init_channel_boundary(jl_data_ptr jld, jl_piv_ptr pivs, int offset,
     jlcb->d2 = cal_num_busdays(pivs->pivots[num - 2 - offset].date, r->date);
     jlcb->px1 = pivs->pivots[num - 4 - offset].price;
     jlcb->px2 = pivs->pivots[num - 2 - offset].price;
+    jlcb->s1 = pivs->pivots[num - 4 - offset].state;
+    jlcb->s2 = pivs->pivots[num - 2 - offset].state;
     jlcb->slope = (float) (jlcb->px2 - jlcb->px1) / (jlcb->d1 - jlcb->d2);
     jlcb->ipx = (int) (jlcb->px1 + jlcb->slope * jlcb->d1);
     jlcb->obv1 = pivs->pivots[num - 4 - offset].obv;
