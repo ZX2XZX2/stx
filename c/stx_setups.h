@@ -255,7 +255,7 @@ void stp_jl_support_resistance(cJSON *setups, jl_data_ptr jl) {
         cJSON_AddStringToObject(sr_pivot, "state",
                                 jl_state_to_string(last_pivot->state));
         cJSON_AddNumberToObject(sr_pivot, "price", last_pivot->price);
-        cJSON_AddNumberToObject(sr_pivot, "obv", 0);
+        cJSON_AddNumberToObject(sr_pivot, "obv", last_pivot->obv);
         cJSON_AddItemToArray(sr_pivots, sr_pivot);
         cJSON* info = cJSON_CreateObject();
         cJSON_AddNumberToObject(info, "sr", sr_price);
@@ -272,35 +272,68 @@ void stp_jl_support_resistance(cJSON *setups, jl_data_ptr jl) {
 }
 
 
-void ana_add_jl_pullback_setup(cJSON *setups, jl_data_ptr jl, int direction,
-                               int piv_ix, bool lt_piv, jl_piv_ptr pivs,
-                               jl_piv_ptr pivs_150, jl_piv_ptr pivs_200) {
-    int num = pivs->num, num_150 = pivs_150->num, num_200 = pivs_200->num;
-    jl_pivot_ptr pivots = pivs->pivots, pivots_150 = pivs_150->pivots;
-    jl_pivot_ptr pivots_200 = pivs_200->pivots;
-    jl_pivot_ptr lns_150 = &(pivots_150[num_150 - (lt_piv? 2: 1)]);
-    jl_pivot_ptr lns_200 = &(pivots_200[num_200 - (lt_piv? 2: 1)]);
-    bool lt_200 = jl_same_pivot(lns_200, &(pivots[num - piv_ix]));
-    if (piv_ix == 3)
-        lt_200 = lt_200 &&
-            (lns_200->state == ((direction > 0)? UPTREND: DOWNTREND));
-    int lt_factor = lt_200? 200: 150;
-    int vd = pivots[num - 2].obv - pivots[num - 4].obv;
-    int lt_vd = vd;
-    if (!lt_piv)
-        lt_vd = lt_200? (lns_200->obv - pivots_200[num_200 - 3].obv):
-            (lns_150->obv - pivots_150[num_150 - 3].obv);
+/**
+This is the final objective of stp_add_jl_pullback_setup
+{
+    "cp": 2800,
+    "length": 100,
+    "state": "NRa",
+    "channel": {
+        "bound": "lower",
+        "p1": {
+            "dt": "2021-01-04",
+            "st": "NRe",
+            "px": 2800,
+            "obv": 1.34
+        },
+        "p2": {
+            "dt": "2021-01-04",
+            "st": "NRe",
+            "px": 2800,
+            "obv": 1.34
+        }
+    },
+    "pivot": {
+        "dt": "2021-01-04",
+        "st": "NRe",
+        "px": 2800,
+        "obv": 1.34
+    }
+}
+
+*/
+
+void stp_add_jl_pullback_setup(cJSON *setups, jl_data_ptr jl,
+                               jl_channel_ptr channel, int direction,
+                               jl_piv_ptr pivs_050) {
+    jl_channel_boundary_ptr cb = 
+        (abs(direction) > 1)? &(channel->ub): &(channel->lb);
+    jl_pivot_ptr pivot = &(pivs_050->pivots[pivs_050->num - 2]);
+    char *bound = (abs(direction) > 1)? "upper": "lower";
+    cJSON *p1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(p1, "date", jl->data->data[jl->pos - cb->d1].date);
+    cJSON_AddStringToObject(p1, "state", jl_state_to_string(cb->s1));
+    cJSON_AddNumberToObject(p1, "price", cb->px1);
+    cJSON_AddNumberToObject(p1, "obv", cb->obv1);
+    cJSON *p2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(p2, "date", jl->data->data[jl->pos - cb->d2].date);
+    cJSON_AddStringToObject(p2, "state", jl_state_to_string(cb->s2));
+    cJSON_AddNumberToObject(p2, "price", cb->px2);
+    cJSON_AddNumberToObject(p2, "obv", cb->obv2);
+    cJSON* piv = cJSON_CreateObject();
+    cJSON_AddStringToObject(piv, "date", pivot->date);
+    cJSON_AddStringToObject(piv, "state", jl_state_to_string(pivot->state));
+    cJSON_AddNumberToObject(piv, "price", pivot->price);
+    cJSON_AddNumberToObject(piv, "obv", pivot->obv);    
+    cJSON *chan = cJSON_CreateObject();
+    cJSON_AddStringToObject(chan, "bound", bound);
+    cJSON_AddItemToObject(chan, "p1", p1);
+    cJSON_AddItemToObject(chan, "p2", p2);
     cJSON *info = cJSON_CreateObject();
-    cJSON_AddNumberToObject(info, "obv", pivots[num - 4].obv);
-    cJSON_AddNumberToObject(info, "vd", vd);
-    cJSON_AddNumberToObject(info, "s1", pivots[num - 2].state);
-    cJSON_AddNumberToObject(info, "s2", pivots[num - 4].state);
-    cJSON_AddNumberToObject(info, "lf", lt_factor);
-    cJSON_AddNumberToObject(info, "ls",
-                            (lt_200? lns_200->state: lns_150->state));
-    cJSON_AddNumberToObject(info, "lls", lns_200->state);
-    cJSON_AddNumberToObject(info, "lvd", lt_vd);
-    stp_add_to_setups(setups, jl, "JL_P", direction, info, true);
+    cJSON_AddItemToObject(info, "pivot", piv);
+    cJSON_AddItemToObject(info, "channel", chan);
+    stp_add_to_setups(setups, jl, "JL_P", direction / abs(direction),
+                      info, true);
 }
 
 /**
@@ -371,19 +404,16 @@ void stp_jl_pullbacks(cJSON *setups, jl_data_ptr jl_050, jl_data_ptr jl_100,
     jl_pivot_ptr last_piv_050 = &(pivs_050->pivots[pivs_050->num - 2]);
     int direction = jl_pivot_bounce_channel(last_piv_050, &channel_100);
     if (direction != 0)
-        ana_add_jl_pullback_setup(setups, jl_050, direction, 
-                                  pivs_050->num - 2, true, pivs_050,
-                                  pivs_150, pivs_200);
-    direction = jl_pivot_bounce_channel(last_piv_050, &channel_100);
+        stp_add_jl_pullback_setup(setups, jl_100, &channel_100, direction,
+                                  pivs_050);
+    direction = jl_pivot_bounce_channel(last_piv_050, &channel_150);
     if (direction != 0)
-        ana_add_jl_pullback_setup(setups, jl_050, direction, 
-                                  pivs_050->num - 2, true, pivs_050,
-                                  pivs_150, pivs_200);
+        stp_add_jl_pullback_setup(setups, jl_150, &channel_150, direction,
+                                  pivs_050);
     direction = jl_pivot_bounce_channel(last_piv_050, &channel_200);
     if (direction != 0)
-        ana_add_jl_pullback_setup(setups, jl_050, direction, 
-                                  pivs_050->num - 2, true, pivs_050,
-                                  pivs_150, pivs_200);
+        stp_add_jl_pullback_setup(setups, jl_200, &channel_200, direction,
+                                  pivs_050);
  end:
     jl_free_pivots(pivs_050);
     jl_free_pivots(pivs_100);
