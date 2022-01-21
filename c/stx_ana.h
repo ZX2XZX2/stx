@@ -23,14 +23,6 @@
 #define UP 'U'
 #define DOWN 'D'
 #define JL_FACTOR 2.00
-#define JLF_050 0.50
-#define JLF_100 1.0
-#define JLF_150 1.50
-#define JLF_200 2.00
-#define JL_050 "050"
-#define JL_100 "100"
-#define JL_150 "150"
-#define JL_200 "200"
 
 typedef struct ldr_t {
     int activity;
@@ -423,10 +415,10 @@ int ana_jl_setups(cJSON *setups, char* stk, char* dt, bool eod) {
      *  Check for pullbacks bouncing from a longer-term channel
      */
     stp_jl_pullbacks(setups, jl_050, jl_100, jl_150, jl_200);
-    if (eod) {
-        stp_candlesticks(setups, jl_050);
-        stp_daily_setups(setups, jl_050);
-    }
+    /* if (eod) { */
+    /*     stp_candlesticks(setups, jl_050); */
+    /*     stp_daily_setups(setups, jl_050); */
+    /* } */
     /**
      *  Insert in the database  all the calculated setups
      */
@@ -553,7 +545,8 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
     /**
      * setup_date is the date from which we start calculating setups
      */
-    char *setup_date = ana_get_setup_date(stk, ana_date);
+    /* char *setup_date = ana_get_setup_date(stk, ana_date); */
+    char *setup_date = ana_date;
     /**
      *  Create the JSON array that will contain all the calculated
      *  setups
@@ -675,7 +668,7 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     if (eod == true) {
         LOGINFO("Calculating the indicators for %d stocks as of %s\n",
                 total, ana_date);
-        ana_indicators(leaders, ana_date);
+        /* ana_indicators(leaders, ana_date); */
     }
     LOGINFO("Freeing the memory\n");
     if (stx == NULL)

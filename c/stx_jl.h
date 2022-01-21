@@ -29,6 +29,15 @@
 #define NO_OBV 1000000000
 #define NO_RANGE -1
 
+#define JLF_050 0.50
+#define JLF_100 1.0
+#define JLF_150 1.50
+#define JLF_200 2.00
+#define JL_050 "050"
+#define JL_100 "100"
+#define JL_150 "150"
+#define JL_200 "200"
+
 typedef struct jl_record_t {
     int ix;
     int rg;
