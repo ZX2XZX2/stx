@@ -324,12 +324,13 @@ void stp_add_jl_pullback_setup(cJSON *setups, jl_data_ptr jl,
     cJSON_AddStringToObject(piv, "date", pivot->date);
     cJSON_AddStringToObject(piv, "state", jl_state_to_string(pivot->state));
     cJSON_AddNumberToObject(piv, "price", pivot->price);
-    cJSON_AddNumberToObject(piv, "obv", pivot->obv);    
+    cJSON_AddNumberToObject(piv, "obv", pivot->obv);
     cJSON *chan = cJSON_CreateObject();
     cJSON_AddStringToObject(chan, "bound", bound);
     cJSON_AddItemToObject(chan, "p1", p1);
     cJSON_AddItemToObject(chan, "p2", p2);
     cJSON *info = cJSON_CreateObject();
+    cJSON_AddNumberToObject(info, "length", cb->d1);
     cJSON_AddItemToObject(info, "pivot", piv);
     cJSON_AddItemToObject(info, "channel", chan);
     stp_add_to_setups(setups, jl, "JL_P", direction / abs(direction),
@@ -720,13 +721,13 @@ void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk) {
             cJSON *info = cJSON_GetObjectItem(setup, "info");
             char *info_string = (info != NULL)? cJSON_Print(info): "{}";
             char sql_cmd[2048];
-            sprintf(sql_cmd, "insert into jl_setups values ('%s','%s','%s',%d,"
-                    "'%s',%s,%d,'%s')", dt, stk,
+            sprintf(sql_cmd, "insert into setups_temp values ('%s','%s','%s',"
+                    "%d,'%s',%s,%d,'%s') on conflict do nothing", dt, stk,
                     cJSON_GetObjectItem(setup, "setup")->valuestring,
                     cJSON_GetObjectItem(setup, "factor")->valueint,
                     cJSON_GetObjectItem(setup, "direction")->valuestring,
                     cJSON_GetObjectItem(setup, "triggered")->valuestring,
-                    cJSON_GetObjectItem(setup, "score")->valueint,
+                    0, // cJSON_GetObjectItem(setup, "score")->valueint,
                     info_string);
             db_transaction(sql_cmd);
         }
