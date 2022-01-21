@@ -1020,16 +1020,16 @@ int jl_pivot_bounce_channel(jl_pivot_ptr pivot, jl_channel_ptr channel) {
         return 0;
     if (jl_up(pivot->state) && (pivot->price <= ub_channel_price) &&
         (pivot->price > ub_channel_price - pivot->rg / 5))
-        return 2;
+        return -2;
     if (jl_up(pivot->state) && (pivot->price <= lb_channel_price) &&
         (pivot->price > lb_channel_price - pivot->rg / 5))
-        return 1;
+        return -1;
     if (jl_down(pivot->state) && (pivot->price >= ub_channel_price) &&
         (pivot->price < ub_channel_price + pivot->rg / 5))
-        return -2;
+        return 2;
     if (jl_down(pivot->state) && (pivot->price >= lb_channel_price) &&
         (pivot->price < lb_channel_price + pivot->rg / 5))
-        return -1;
+        return 1;
     return 0;
 }
 #endif
