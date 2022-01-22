@@ -40,8 +40,8 @@
 
 typedef struct jl_record_t {
     int ix;
-    int rg;
-    int volume;
+    int rg; /** average true range calc over JL window (usually 20 days) */
+    int volume; /** average volume calc over JL window (usually 20 days) */
     int state;
     int price;
     bool pivot;
