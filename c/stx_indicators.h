@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "stx_core.h"
+#include "stx_jl.h"
 #include "stx_ts.h"
 #include <time.h>
 
@@ -123,8 +124,48 @@ int stock_relative_strength(stx_data_ptr data, int rs_days) {
     return (int) res;
 }
 
+/**
+ *  This is actually a variation on the A/D formula; the calculation
+ *  of the daily indicators is done in the jl_set_obv function. The
+ *  value is divided every day by the (20-day) average volume for that
+ *  day and multiplied by 100.  Which means that OBV for 1 day of 100
+ *  is when the OBV is equal to the average daily volume for that day
+ */
 int stock_on_balance_volume(stx_data_ptr data, int num_days) {
-    return 0;
+    int obv = 0, end = data->pos;
+    int start = (end >= num_days - 1)? (end - num_days + 1): 0;
+    jl_data_ptr jld = jl_get_jl(data->stk, data->data[data->pos].date, JL_050,
+                                JLF_050);
+    jl_record_ptr jls = &(jld->recs[start]), jle = &(jld->recs[end]);
+    if (jls->volume == 0)
+        return 0;
+    for (int ix = start; ix <= end; ix++) {
+        int daily_obv = 0;
+        for (int ixx = 0; ixx < 3; ixx++)
+            daily_obv += jld->recs[ix].obv[ixx];
+        /**
+         *  Use average_volume to avoid division by 0
+         */
+        int average_volume = (jld->recs[ix].volume > 0)?
+            jld->recs[ix].volume: 1000000;
+#ifdef DEBUG_OBV
+        fprintf(stderr, "%s, %s- %s: daily_obv = %d, average_volume = %d\n",
+                data->stk, data->data[data->pos].date, data->data[ix].date,
+                daily_obv, average_volume);
+#endif
+        daily_obv = 100 * daily_obv / average_volume;
+        obv += daily_obv;
+#ifdef DEBUG_OBV
+        fprintf(stderr, "%s, %s- %s: daily_obv = %d, average_volume = %d\n",
+                data->stk, data->data[data->pos].date, data->data[ix].date,
+                daily_obv, average_volume);
+#endif
+    }
+#ifdef DEBUG_OBV
+        fprintf(stderr, "%s, %s: obv = %d\n", data->stk,
+                data->data[data->pos].date, obv);
+#endif
+    return obv;
 }
 
 int stock_candle_strength(stx_data_ptr data, int num_days) {
@@ -157,8 +198,8 @@ void indicators(char* indicator_type, cJSON *tickers, char* asof_date,
                     crt_ev->value = stock_on_balance_volume(data, num_days);
                     num++;
                 } else if (!strcmp(indicator_type, "CS")) {
-                    crt_ev->value = stock_candle_strength(data, num_days);
-                    num++;
+                    /* crt_ev->value = stock_candle_strength(data, num_days); */
+                    /* num++; */
                 }
             }
         }
