@@ -169,21 +169,102 @@ int stock_on_balance_volume(stx_data_ptr data, int num_days) {
 }
 
 /**
- *  Look for storng closes, wide range days (marubozus), reversal
- *  days, and gaps in each direction.  Assign each one of these setups
- *  a score.  Cap the scores, to prevent one setup from playing a
- *  dominant role in the indicator calculation.
+ *  Return a score associated with a strong close day.  The score is
+ *  calculated based on three factors: the range ratio, the volume
+ *  ratio, and the body ratio.
+ */
+int strong_close_score(jl_data_ptr jld, int ix) {
+    /**
+     *  Do not calculate scores for the first 20 days, because the
+     *  first 20 JL records are not fully populated with average
+     *  ranges and volumes
+     */
+    if (ix < 20)
+        return 0;
+    /**
+     *  Pointers to current daily record, and previous JL record
+     */
+    jl_record_ptr jlr = &(jld->recs[ix - 1]);
+    daily_record_ptr dr = &(jld->data->data[ix]);
+    /**
+     *  Avoid division by zero (for average volume or range)
+     */
+    int jlr_volume = (jlr->volume == 0)? 1: jlr->volume;
+    int jlr_rg = (jlr->rg == 0)? 1: jlr->rg;
+    /**
+     *  Calculate the range of the day, and compare it with the
+     *  average range.  Do not use true range, as that will be taken
+     *  into account during the gap score calculation.
+     */
+    int hl = dr->high - dr->low, range_ratio = 100 * hl / jlr_rg;
+    /**
+     *  Compare the volume of the day with the average volume.
+     */
+    int volume_ratio = 100 * dr->volume / jlr_volume;
+    /**
+     *  Determine if the day was a marubozu or not.  Strongest
+     *  patterns are wide range, high volume days days where the stock
+     *  opens near the low(high) and closes near the high (low).
+     */
+    int body = dr->close - dr->open, body_ratio = 100 * body / hl;
+    /**
+     *  Cap the range and volume ratios at 200. The marubozu ratio is
+     *  automatically capped at 100.  It also gives the sign of the
+     *  score (negative for down, positive for up).  Divide by 10000,
+     *  so that a strong close score is always between -400 and 400
+     */
+    if (range_ratio > 200)
+        range_ratio = 200;
+    if (volume_ratio > 200)
+        volume_ratio = 200;
+    return range_ratio * volume_ratio * body_ratio / 10000;
+}
+
+/**
+ *  Return a score for a gap.  The score is based on three factors:
+ *  the range magnitude of the gap, the volume of the gap, and the
+ *  fact whether the gap was closed, or not.  ix represents the index
+ *  at which the gap occurs.  end is the index of the current day.  We
+ *  look if the gap was closed in the time interval between ix and
+ *  end.
+ */
+int gap_score(jl_data_ptr jld, int ix, int end) {
+    int gap_dir = 0;
+    if (r[0]->open > r[1]->high)
+        gap_dir = 1;
+    if (r[0]->open < r[1]->low)
+        gap_dir = -1;
+    if (gap_dir != 0) {
+        int drawdown = 0;
+        if (gap_dir == 1)
+            drawdown = (r[0]->close - r[0]->high);
+        else
+            drawdown = (r[0]->close - r[0]->low);
+    }
+}
+
+/**
+ *  Look for strong closes, wide range days (marubozus), and gaps in
+ *  each direction.  Assign each one of these setups a score.  Cap the
+ *  scores, to prevent one setup from playing a dominant role in the
+ *  indicator calculation.
  */
 int stock_candle_strength(stx_data_ptr data, int num_days) {
-    int obv = 0, end = data->pos;
+    int cs = 0, end = data->pos;
     int start = (end >= num_days - 1)? (end - num_days + 1): 0;
     jl_data_ptr jld = jl_get_jl(data->stk, data->data[data->pos].date, JL_100,
                                 JLF_100);
     for (int ix = start; ix <= end; ++ix) {
-        int gap = 0, wrd = 0;
-        int strong_close = ts_strong_close(r[0]);
+        int daily_score = 0;
+        int strong_close = ts_strong_close(data, ix);
+        if (strong_close != 0)
+            cs_score += strong_close_score(jld, ix);
+            /* int sc_score = strong_close * vr * rr * abs(mr); */
+        int gap = ts_gap(data, ix);
+        if (gap != 0)
+            cs_score += gap_score(jld, ix);
     }
-    return 0;
+    return cs_score;
 }
 
 void indicators(char* indicator_type, cJSON *tickers, char* asof_date,
