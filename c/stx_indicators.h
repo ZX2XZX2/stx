@@ -186,6 +186,9 @@ int strong_close_score(jl_data_ptr jld, int ix) {
      */
     jl_record_ptr jlr = &(jld->recs[ix - 1]);
     daily_record_ptr dr = &(jld->data->data[ix]);
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, "SC %s %s: ", jld->data->stk, dr->date);
+#endif
     /**
      *  Avoid division by zero (for average volume or range)
      */
@@ -213,11 +216,21 @@ int strong_close_score(jl_data_ptr jld, int ix) {
      *  score (negative for down, positive for up).  Divide by 10000,
      *  so that a strong close score is always between -400 and 400
      */
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, "rr=%d vr=%d br=%d", range_ratio, volume_ratio, body_ratio);
+#endif
     if (range_ratio > 200)
         range_ratio = 200;
     if (volume_ratio > 200)
         volume_ratio = 200;
-    return range_ratio * volume_ratio * body_ratio / 10000;
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, " cap_rr=%d cap_vr=%d", range_ratio, volume_ratio);
+#endif
+    int daily_score = range_ratio * volume_ratio * body_ratio / 10000;
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, " cs=%d\n", daily_score);
+#endif
+    return daily_score;
 }
 
 /**
@@ -242,13 +255,20 @@ int gap_score(jl_data_ptr jld, int gap_ix, int end) {
     jl_record_ptr jlr = &(jld->recs[gap_ix - 1]);
     daily_record_ptr dr = &(jld->data->data[gap_ix]),
         dr_1 = &(jld->data->data[gap_ix - 1]);
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, "GAP %s %s: ", jld->data->stk, dr->date);
+#endif
     /**
      *  If today's open equals yesterday's close, there is no gap, and
      *  the score is 0
      */
     int sod_gap = dr->open - dr_1->close;
-    if (sod_gap == 0)
+    if (sod_gap == 0) {
+#ifdef DEBUG_CANDLE_STRENGTH
+        fprintf(stderr, "sod=%d, gap=0\n", sod_gap);
+#endif
         return 0;
+    }
     /**
      *  Avoid division by zero (for average volume or range)
      */
@@ -265,12 +285,25 @@ int gap_score(jl_data_ptr jld, int gap_ix, int end) {
      *  case, change the score sign, and stop iterating.  Otherwise,
      *  the gap value will be the minimum of the sod_gap and eod_gap
      */
-    int eod_gap = sod_gap;
-    for (int ix = gap_ix; ix <= end; ++ix) {
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, "sod=%d vr=%d\n", sod_gap, volume_ratio);
+#endif
+    int eod_gap = sod_gap, ix = gap_ix;
+    for (ix = gap_ix; ix <= end; ++ix) {
         dr = &(jld->data->data[ix]);
         eod_gap = dr->close - dr_1->close;
-        if (eod_gap * sod_gap < 0)
+#ifdef DEBUG_CANDLE_STRENGTH
+        fprintf(stderr, "  %s: sod=%d eod=%d", dr->date, sod_gap, eod_gap);
+#endif
+        if (eod_gap * sod_gap < 0) {
+#ifdef DEBUG_CANDLE_STRENGTH
+            fprintf(stderr, "  CLOSED\n");
+#endif
             break;
+        }
+#ifdef DEBUG_CANDLE_STRENGTH
+            fprintf(stderr, "\n");
+#endif
     }
     /**
      *  Calculate the ratio between the uncovered portion of the gap
@@ -287,6 +320,10 @@ int gap_score(jl_data_ptr jld, int gap_ix, int end) {
         else
             range_ratio = 100 * sod_gap / jlr_rg;
     }
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, "GAP %s %s: rr=%d, vr=%d ", jld->data->stk,
+            jld->data->data[jld->data->pos].date, range_ratio, volume_ratio);
+#endif
     /**
      *  Cap the range and volume ratios at 200.  Divide by 100, so
      *  that a gap score is always between -400 and 400
@@ -297,7 +334,12 @@ int gap_score(jl_data_ptr jld, int gap_ix, int end) {
         range_ratio = -200;
     if (volume_ratio > 200)
         volume_ratio = 200;
-    return range_ratio * volume_ratio / 100;
+    int daily_score = range_ratio * volume_ratio / 100;
+#ifdef DEBUG_CANDLE_STRENGTH
+    fprintf(stderr, "cap_rr=%d, cap_vr=%d gap=%d\n", range_ratio, volume_ratio,
+            daily_score);
+#endif
+    return daily_score;
 }
 
 /**
@@ -317,7 +359,15 @@ int stock_candle_strength(stx_data_ptr data, int num_days) {
         if (strong_close != 0)
             cs_score += strong_close_score(jld, ix);
         cs_score += gap_score(jld, ix, end);
+#ifdef DEBUG_CANDLE_STRENGTH
+        fprintf(stderr, "CS: %s %s %s cs=%d\n", data->stk,
+                data->data[data->pos].date, data->data[ix].date, cs_score);
+#endif
     }
+#ifdef DEBUG_CANDLE_STRENGTH
+        fprintf(stderr, "CS: %s %s cs=%d\n", data->stk,
+                data->data[data->pos].date, cs_score);
+#endif
     return cs_score;
 }
 
@@ -347,8 +397,8 @@ void indicators(char* indicator_type, cJSON *tickers, char* asof_date,
                     crt_ev->value = stock_on_balance_volume(data, num_days);
                     num++;
                 } else if (!strcmp(indicator_type, "CS")) {
-                    /* crt_ev->value = stock_candle_strength(data, num_days); */
-                    /* num++; */
+                    crt_ev->value = stock_candle_strength(data, num_days);
+                    num++;
                 }
             }
         }
