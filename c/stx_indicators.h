@@ -222,25 +222,82 @@ int strong_close_score(jl_data_ptr jld, int ix) {
 
 /**
  *  Return a score for a gap.  The score is based on three factors:
- *  the range magnitude of the gap, the volume of the gap, and the
- *  fact whether the gap was closed, or not.  ix represents the index
- *  at which the gap occurs.  end is the index of the current day.  We
- *  look if the gap was closed in the time interval between ix and
- *  end.
+ *  the range magnitude of the gap, the volume of the gap, and whether
+ *  the gap was closed, or not.  ix represents the index at which the
+ *  gap occurs.  end is the index of the current day.  If the gap was
+ *  closed (close below/above the close before the gap) in the time
+ *  interval between ix and end, then its score changes sign.
  */
-int gap_score(jl_data_ptr jld, int ix, int end) {
-    int gap_dir = 0;
-    if (r[0]->open > r[1]->high)
-        gap_dir = 1;
-    if (r[0]->open < r[1]->low)
-        gap_dir = -1;
-    if (gap_dir != 0) {
-        int drawdown = 0;
-        if (gap_dir == 1)
-            drawdown = (r[0]->close - r[0]->high);
-        else
-            drawdown = (r[0]->close - r[0]->low);
+int gap_score(jl_data_ptr jld, int gap_ix, int end) {
+    /**
+     *  Do not calculate scores for the first 20 days, because the
+     *  first 20 JL records are not fully populated with average
+     *  ranges and volumes
+     */
+    if (gap_ix < 20)
+        return 0;
+    /**
+     *  Pointers to current, previous daily record, and previous JL record
+     */
+    jl_record_ptr jlr = &(jld->recs[gap_ix - 1]);
+    daily_record_ptr dr = &(jld->data->data[gap_ix]),
+        dr_1 = &(jld->data->data[gap_ix - 1]);
+    /**
+     *  If today's open equals yesterday's close, there is no gap, and
+     *  the score is 0
+     */
+    int sod_gap = dr->open - dr_1->close;
+    if (sod_gap == 0)
+        return 0;
+    /**
+     *  Avoid division by zero (for average volume or range)
+     */
+    int jlr_volume = (jlr->volume == 0)? 1: jlr->volume;
+    int jlr_rg = (jlr->rg == 0)? 1: jlr->rg;
+    /**
+     *  Compare the volume of the gap day with the average volume.
+     */
+    int volume_ratio = 100 * dr->volume / jlr_volume;
+    /**
+     *  Iterate through every day. eod_gap is difference between the
+     *  last close before the gap and the cursor close.  If eod_gap
+     *  and sod_gap have opposite signs, the gap was closed.  In this
+     *  case, change the score sign, and stop iterating.  Otherwise,
+     *  the gap value will be the minimum of the sod_gap and eod_gap
+     */
+    int eod_gap = sod_gap;
+    for (int ix = gap_ix; ix <= end; ++ix) {
+        dr = &(jld->data->data[ix]);
+        eod_gap = dr->close - dr_1->close;
+        if (eod_gap * sod_gap < 0)
+            break;
     }
+    /**
+     *  Calculate the ratio between the uncovered portion of the gap
+     *  and the average daily range.  If the gap was covered, calc the
+     *  ratio of the initial gap and the average daily range.  Take
+     *  the opposite sign, as the gap was covered.
+     */
+    int range_ratio = 0;
+    if (eod_gap * sod_gap < 0)
+        range_ratio = -100 * sod_gap / jlr_rg;
+    else {
+        if (abs(eod_gap) < abs(sod_gap))
+            range_ratio = 100 * eod_gap / jlr_rg;
+        else
+            range_ratio = 100 * sod_gap / jlr_rg;
+    }
+    /**
+     *  Cap the range and volume ratios at 200.  Divide by 100, so
+     *  that a gap score is always between -400 and 400
+     */
+    if (range_ratio > 200)
+        range_ratio = 200;
+    if (range_ratio < -200)
+        range_ratio = -200;
+    if (volume_ratio > 200)
+        volume_ratio = 200;
+    return range_ratio * volume_ratio / 100;
 }
 
 /**
@@ -250,19 +307,16 @@ int gap_score(jl_data_ptr jld, int ix, int end) {
  *  indicator calculation.
  */
 int stock_candle_strength(stx_data_ptr data, int num_days) {
-    int cs = 0, end = data->pos;
+    int cs_score = 0, end = data->pos;
     int start = (end >= num_days - 1)? (end - num_days + 1): 0;
     jl_data_ptr jld = jl_get_jl(data->stk, data->data[data->pos].date, JL_100,
                                 JLF_100);
     for (int ix = start; ix <= end; ++ix) {
         int daily_score = 0;
-        int strong_close = ts_strong_close(data, ix);
+        int strong_close = ts_strong_close(&(data->data[ix]));
         if (strong_close != 0)
             cs_score += strong_close_score(jld, ix);
-            /* int sc_score = strong_close * vr * rr * abs(mr); */
-        int gap = ts_gap(data, ix);
-        if (gap != 0)
-            cs_score += gap_score(jld, ix);
+        cs_score += gap_score(jld, ix, end);
     }
     return cs_score;
 }
