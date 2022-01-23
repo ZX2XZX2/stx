@@ -38,6 +38,23 @@ int ts_strong_close(daily_record_ptr dr) {
     return sc_dir;
 }
 
+int ts_gap(stx_data_ptr data, int ix) {
+    if (ix < 1)
+        return 0;
+    daily_record_ptr r = data->data + ix, r_1 = data->data + ix - 1;
+    if (r->open == r_1->close)
+        return 0;
+    if (r->open > r_1->high)
+        return 2;
+    if (r->open > r_1->close)
+        return 1;
+    if (r->open < r_1->low)
+        return -2;
+    if (r->open < r_1->close)
+        return -1;
+    return 0;
+}
+
 int ts_weighted_price(stx_data_ptr data, int ix) {
     return (data->data[ix].high + data->data[ix].low + data->data[ix].close)
         / 3;
