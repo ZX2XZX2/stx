@@ -168,7 +168,21 @@ int stock_on_balance_volume(stx_data_ptr data, int num_days) {
     return obv;
 }
 
+/**
+ *  Look for storng closes, wide range days (marubozus), reversal
+ *  days, and gaps in each direction.  Assign each one of these setups
+ *  a score.  Cap the scores, to prevent one setup from playing a
+ *  dominant role in the indicator calculation.
+ */
 int stock_candle_strength(stx_data_ptr data, int num_days) {
+    int obv = 0, end = data->pos;
+    int start = (end >= num_days - 1)? (end - num_days + 1): 0;
+    jl_data_ptr jld = jl_get_jl(data->stk, data->data[data->pos].date, JL_100,
+                                JLF_100);
+    for (int ix = start; ix <= end; ++ix) {
+        int gap = 0, wrd = 0;
+        int strong_close = ts_strong_close(r[0]);
+    }
     return 0;
 }
 
