@@ -179,4 +179,4 @@ if __name__ == '__main__':
 
     dbbkp = DBbackup()
     dbbkp.backup_database(args.overwrite, args.usb_only)
-    dbbkp.usb_backup(args.overwrite)
+    dbbkp.usb_backup_database(args.overwrite)
