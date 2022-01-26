@@ -605,11 +605,11 @@ void ana_indicators(cJSON *leaders, char *ana_date) {
     indicators_relative_strength(leaders, ana_date, 10);
     indicators_relative_strength(leaders, ana_date, 45);
     indicators_relative_strength(leaders, ana_date, 252);
-    indicators_on_balance_volume(leaders, ana_date, 4);
     indicators_on_balance_volume(leaders, ana_date, 10);
+    indicators_on_balance_volume(leaders, ana_date, 20);
     indicators_on_balance_volume(leaders, ana_date, 45);
-    indicators_candle_strength(leaders, ana_date, 4);
     indicators_candle_strength(leaders, ana_date, 10);
+    indicators_candle_strength(leaders, ana_date, 20);
     indicators_candle_strength(leaders, ana_date, 45);
 }
 
