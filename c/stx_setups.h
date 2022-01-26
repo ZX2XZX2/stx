@@ -712,7 +712,8 @@ void stp_daily_setups(cJSON *setups, jl_data_ptr jl) {
     }
 }
 
-void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk) {
+void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk,
+                                   char* setup_time) {
     int num_setups = cJSON_GetArraySize(setups);
     if (num_setups > 0) {
         LOGINFO("Inserting %d setups for %s on %s\n", num_setups, stk, dt);
@@ -721,14 +722,13 @@ void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk) {
             cJSON *info = cJSON_GetObjectItem(setup, "info");
             char *info_string = (info != NULL)? cJSON_Print(info): "{}";
             char sql_cmd[2048];
-            sprintf(sql_cmd, "insert into setups_temp values ('%s','%s','%s',"
-                    "%d,'%s',%s,%d,'%s') on conflict do nothing", dt, stk,
+            sprintf(sql_cmd, "insert into setups_time values ('%s','%s','%s',"
+                    "%d,'%s',%s,'%s','%s') on conflict do nothing", dt, stk,
                     cJSON_GetObjectItem(setup, "setup")->valuestring,
                     cJSON_GetObjectItem(setup, "factor")->valueint,
                     cJSON_GetObjectItem(setup, "direction")->valuestring,
                     cJSON_GetObjectItem(setup, "triggered")->valuestring,
-                    0, // cJSON_GetObjectItem(setup, "score")->valueint,
-                    info_string);
+                    setup_time, info_string);
             db_transaction(sql_cmd);
         }
     }
