@@ -29,10 +29,19 @@
 #define NO_OBV 1000000000
 #define NO_RANGE -1
 
+#define JLF_050 0.50
+#define JLF_100 1.0
+#define JLF_150 1.50
+#define JLF_200 2.00
+#define JL_050 "050"
+#define JL_100 "100"
+#define JL_150 "150"
+#define JL_200 "200"
+
 typedef struct jl_record_t {
     int ix;
-    int rg;
-    int volume;
+    int rg; /** average true range calc over JL window (usually 20 days) */
+    int volume; /** average volume calc over JL window (usually 20 days) */
     int state;
     int price;
     bool pivot;
@@ -89,11 +98,16 @@ typedef struct jl_channel_boundary_t {
     int d2; /** number of days from nearest pivot to current date */
     int px1; /** price of the furthest pivot */
     int px2; /** price of the nearest pivot */
+    int s1; /** state of the furthest pivot */
+    int s2; /** state of the nearest pivot */
     int ipx; /** price at the current date */
     float slope; /** slope of the boundary */
+    int obv1; /** on-the-balance volume from furthest pivot */
+    int obv2; /** on-the-balance volume from nearest pivot */
 } jl_channel_boundary, *jl_channel_boundary_ptr;
 
 typedef struct jl_channel_t {
+    char date[16];
     jl_channel_boundary ub; /** upper_bound */
     jl_channel_boundary lb; /** lower_bound */
 } jl_channel, *jl_channel_ptr;
@@ -295,6 +309,20 @@ int jl_prev_ns(jl_data_ptr jl) {
     return jl_primary(jlr_pns->state2)? jlr_pns->state2: jlr_pns->state;
 }
 
+/**
+ *  Free memory allocated to JL pivots
+ */
+void jl_free_pivots(jl_piv_ptr pivs) {
+    if (pivs != NULL) {
+        if (pivs->pivots != NULL) {
+            free(pivs->pivots);
+            pivs->pivots = NULL;
+        }
+        free(pivs);
+        pivs = NULL;
+    }
+}
+
 cJSON* jl_pivots_json(jl_data_ptr jl, int num_pivots) {
     jl_piv_ptr jl_pivs = jl_get_pivots(jl, num_pivots);
     cJSON *json_jl = cJSON_CreateObject();
@@ -329,8 +357,7 @@ cJSON* jl_pivots_json(jl_data_ptr jl, int num_pivots) {
         cJSON_AddItemToArray(pivs, pivot);
     }
  end:
-    free(jl_pivs->pivots);
-    free(jl_pivs);
+    jl_free_pivots(jl_pivs);
     return json_jl;
 }
 
@@ -866,7 +893,8 @@ void jl_print(jl_data_ptr jl, bool print_pivots_only, bool print_nils) {
     }
 }
 
-/** Return true if the pivots p1 and p2 have the same date and the
+/**
+ *  Return true if the pivots p1 and p2 have the same date and the
  *  same price.  This is used to identify that a pivot on a faster
  *  time scale is the same as a pivot or last non-secondary record on
  *  a slower time scale.
@@ -875,7 +903,8 @@ bool jl_same_pivot(jl_pivot_ptr p1, jl_pivot_ptr p2) {
     return (!strcmp(p1->date, p2->date) && (p1->price == p2->price));
 }
 
-/** Return the upper or lower boundary of a channel.  This is a helper
+/**
+ *  Return the upper or lower boundary of a channel.  This is a helper
  *  function that is called from jl_get_channel.  It should not be
  *  called directly, as it does not check that it has enough pivots
  */
@@ -887,21 +916,27 @@ void jl_init_channel_boundary(jl_data_ptr jld, jl_piv_ptr pivs, int offset,
     jlcb->d2 = cal_num_busdays(pivs->pivots[num - 2 - offset].date, r->date);
     jlcb->px1 = pivs->pivots[num - 4 - offset].price;
     jlcb->px2 = pivs->pivots[num - 2 - offset].price;
+    jlcb->s1 = pivs->pivots[num - 4 - offset].state;
+    jlcb->s2 = pivs->pivots[num - 2 - offset].state;
     jlcb->slope = (float) (jlcb->px2 - jlcb->px1) / (jlcb->d1 - jlcb->d2);
     jlcb->ipx = (int) (jlcb->px1 + jlcb->slope * jlcb->d1);
+    jlcb->obv1 = pivs->pivots[num - 4 - offset].obv;
+    jlcb->obv2 = pivs->pivots[num - 2 - offset].obv;
 }
 
 void jl_update_channel_width(jl_data_ptr jld, jl_channel_ptr jlc) {
 
 }
 
-/** Return a channel that is formed by the last four pivots of a JL
+/**
+ *   Return a channel that is formed by the last four pivots of a JL
  *  record set.  Return 0 if success -1 if not enough pivots
  */
 int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
     int res = 0;
     /** cleanup channel placeholder */
     memset(jlc, 0, sizeof(jl_channel));
+    strcpy(jlc->date, jld->data->data[jld->pos].date);
     /** get 4 last pivots, exit if not enough pivots */
     jl_piv_ptr pivs = jl_get_pivots(jld, 4);
     if (pivs->num < 5) {
@@ -925,15 +960,85 @@ int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
     LOGDEBUG("U: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
              jld->data->data[pos - jlc->ub.d1].date, jlc->ub.d1,
              jld->data->data[pos - jlc->ub.d2].date, jlc->ub.d2,
-             jlc->ub.px1, jlc->ub.px2, jlc->ub.ipx, jlc->ub.slope / jld->recs[jld->pos].rg);
+             jlc->ub.px1, jlc->ub.px2, jlc->ub.ipx,
+             jlc->ub.slope / jld->recs[jld->pos].rg);
     LOGDEBUG("L: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
              jld->data->data[pos - jlc->lb.d1].date, jlc->lb.d1,
              jld->data->data[pos - jlc->lb.d2].date, jlc->lb.d2,
-             jlc->lb.px1, jlc->lb.px2, jlc->lb.ipx, jlc->lb.slope / jld->recs[jld->pos].rg);
+             jlc->lb.px1, jlc->lb.px2, jlc->lb.ipx,
+             jlc->lb.slope / jld->recs[jld->pos].rg);
 #endif
  end:
-    if (pivs != NULL)
-        free(pivs);
+    jl_free_pivots(pivs);
     return res;
+}
+
+jl_data_ptr jl_get_jl(char* stk, char* dt, const char* label, float factor) {
+    ht_item_ptr jl_ht = ht_get(ht_jl(label), stk);
+    jl_data_ptr jl_recs = NULL;
+    if (jl_ht == NULL) {
+        stx_data_ptr data = ts_load_stk(stk);
+        if (data == NULL) {
+            LOGERROR("Could not load JL_%s for %s, skipping...\n", label, stk);
+            return NULL;
+        }
+        jl_recs = jl_jl(data, dt, factor);
+        jl_ht = ht_new_data(stk, (void*)jl_recs);
+        ht_insert(ht_jl(label), jl_ht);
+    } else {
+        jl_recs = (jl_data_ptr) jl_ht->val.data;
+        jl_advance(jl_recs, dt);
+    }
+    return jl_recs;
+}
+
+/**
+ *  Helper function, used by stp_jl_support_resistance and
+ *  stp_jl_pullbacks.  Returns TRUE if the current record is a primary
+ *  record, and it is the first record in a new trend, FALSE otherwise
+ */
+bool jl_first_new_trend(jl_data_ptr jl) {
+    int i = jl->data->pos;
+    jl_record_ptr jlr = &(jl->recs[i]), jlr_1 = &(jl->recs[i - 1]);
+    /**
+     *  Return false if the current record is not a primary record
+     */
+    if (!jl_primary(jlr->state))
+        return false;
+    /**
+     *  Return false if current record not first record in a new trend
+     */
+    int last_ns = jlr->state, prev_ns = jl_prev_ns(jl);
+    if ((jl_up(last_ns) && jl_up(prev_ns)) ||
+        (jl_down(last_ns) && jl_down(prev_ns)))
+        return false;
+    return true;
+}
+
+int jl_pivot_bounce_channel(jl_pivot_ptr pivot, jl_channel_ptr channel) {
+    /**
+     *  1. Determine the upper and lower bound prices at the pivot
+     *  2. Check that upper channel bound price > lower channel bound price
+     *  3. If UT/NRa pivot, price must be below and close to the channel bound
+     *  4. If DT/NRe pivot, price must be above and close to the channel bound
+     */
+    int piv_dist = cal_num_busdays(pivot->date, channel->date);
+    float ub_channel_price = channel->ub.ipx - channel->ub.slope * piv_dist;
+    float lb_channel_price = channel->lb.ipx - channel->lb.slope * piv_dist;
+    if (ub_channel_price <= lb_channel_price)
+        return 0;
+    if (jl_up(pivot->state) && (pivot->price <= ub_channel_price) &&
+        (pivot->price > ub_channel_price - pivot->rg / 5))
+        return -2;
+    if (jl_up(pivot->state) && (pivot->price <= lb_channel_price) &&
+        (pivot->price > lb_channel_price - pivot->rg / 5))
+        return -1;
+    if (jl_down(pivot->state) && (pivot->price >= ub_channel_price) &&
+        (pivot->price < ub_channel_price + pivot->rg / 5))
+        return 2;
+    if (jl_down(pivot->state) && (pivot->price >= lb_channel_price) &&
+        (pivot->price < lb_channel_price + pivot->rg / 5))
+        return 1;
+    return 0;
 }
 #endif

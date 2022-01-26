@@ -16,6 +16,7 @@ import shlex
 import shutil
 import stxcal
 import stxdb
+import stxgrps
 from stxidx import StxIndex
 from stxts import StxTS
 import subprocess
@@ -512,6 +513,27 @@ class StxDatafeed:
             logging.info('Moved {0:s} into {1:s}'.format(stooq_file,
                 archive_file))
 
+    def get_profile_count(self, dt):
+        profile_count = 0
+        logging.info(f'Checking if sectors, industries and stock profiles '
+                     f'have been downloaded for the last expiry date {dt}')
+        q = sql.Composed([
+            sql.SQL("SELECT COUNT(*) FROM ind_groups WHERE dt="),
+            sql.Literal(dt),
+            sql.SQL(" AND sector!="),
+            sql.Literal('N/A')
+        ])
+        try:
+            res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+            profile_count = res[0][0]
+        except:
+            logging.error(f'Failed to retrieve the profile count from DB')
+            tb.print_exc()
+            sys.exit(-1)
+        logging.info(f'Found {profile_count} stock profiles in the DB '
+                     f'as of {last_expiry}')
+        return profile_count
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -532,14 +554,12 @@ if __name__ == '__main__':
     si = StxIndex()
     index_end_date = stxcal.current_busdate(hr=9)
     index_start_date = stxcal.move_busdays(index_end_date, -5)
-
     for idx in ['^GSPC', '^IXIC', '^DJI']:
         try:
             si.get_quote(idx, index_start_date, index_end_date)
         except:
             logging.error(f'Get index quote failed for {idx}')
             tb.print_exc()
-
     sdf = StxDatafeed()
     res = stxdb.db_read_cmd("SELECT dt FROM analyses WHERE "
                             "analysis='eod_datafeed'")
@@ -548,5 +568,13 @@ if __name__ == '__main__':
     res = stxdb.db_read_cmd("SELECT MAX(dt) FROM dividends")
     splits_start_date = str(res[0][0]) if res else '2000-01-01'
     sdf.parse_stooq_new(start_date)
+    last_expiry = stxcal.prev_expiry(index_end_date)
+    profile_count = sdf.get_profile_count(last_expiry)
+    if profile_count < 5000:
+        logging.info(f'Not sufficient data available for {last_expiry}, '
+                     f'downloading stock profiles')
+        stxgrps.stock_groups(last_expiry)
+        stxgrps.populate_sectors(last_expiry)
+        stxgrps.populate_industries(last_expiry)
     sdf.handle_splits(splits_start_date)
     sdf.backup_database()

@@ -24,9 +24,9 @@ char* crt_timestamp() {
         seconds++;
         milliseconds = 0;
     }
-    static char _retval[24];
-    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&seconds));
-    snprintf(_retval, 24, "%s.%03ld", buff, milliseconds);
+    static char _retval[32];
+    strftime(buff, 24, "%Y-%m-%d %H:%M:%S", localtime(&seconds));
+    snprintf(_retval, 32, "%s.%03u", buff, (unsigned short) milliseconds);
     return _retval;
 }
 
@@ -570,7 +570,8 @@ int cal_expiry(int ix, char** exp_date) {
             month = 1;
             year++;
         }
-        sprintf(tmp, "%d-%02d-01", year, month);
+        sprintf(tmp, "%u-%02u-01", (unsigned short)year,
+                (unsigned short) month);
         start_of_month_ix = cal_ix(tmp);
         start_of_month_day_of_week = start_of_month_ix % 7;
         third_friday = 15 + ((11 - start_of_month_day_of_week) % 7);
@@ -645,6 +646,14 @@ bool cal_is_today_busday() {
     return cal_get()->list[ix].val.cal->is_busday;
 }
 
+/** This function returns true if dt is a business day.  It is a
+ * convenience wrapper around the calendar internals
+ */
+bool cal_is_busday(char* dt) {
+    int ix = cal_ix(dt);
+    return cal_get()->list[ix].val.cal->is_busday;
+}
+
 long cal_long_expiry(char* exp_dt) {
     char *month = NULL, *day = NULL, year[16];
     struct tm result;
@@ -665,32 +674,51 @@ long cal_long_expiry(char* exp_dt) {
     return (long)tt;
 }
 
-/** Code to sort the stocks.  Initially used to calculate relative
- *  strength, IBD style.
+/**
+ *  This function returns the current time to be used when inserting
+ *  setups in the database
  */
-
-typedef struct eq_value_t {
-    char name[16];
-    int value;
-} eq_value, *eq_value_ptr;
-
-void stock_shell_sort(eq_value_ptr selected, int nb_stocks) {
-    int ix, ixx, ixxx, ixxxx;
-    eq_value temp;
-    for(ixxx = nb_stocks / 2; ixxx > 0; ixxx /= 2) {
-        for(ixx = ixxx; ixx < nb_stocks; ixx++) {
-            for(ix = ixx - ixxx; ix >= 0; ix -= ixxx) {
-                if (selected[ix].value < selected[ix + ixxx].value) {
-                    memset(&temp, 0, sizeof(eq_value));
-                    strcpy(temp.name, selected[ix].name);
-                    temp.value= selected[ix].value;
-                    strcpy(selected[ix].name, selected[ix + ixxx].name);
-                    selected[ix].value = selected[ix + ixxx].value;
-                    strcpy(selected[ix + ixxx].name, temp.name);
-                    selected[ix + ixxx].value = temp.value;
-                }
-            }
-        }
+char* cal_setup_time(bool eod) {
+    static char _setup_time_retval[8];
+    if (eod) {
+        strcpy(_setup_time_retval, "20:00");
+    } else {
+        time_t seconds;
+        struct timespec spec;
+        clock_gettime(CLOCK_REALTIME, &spec);
+        seconds = spec.tv_sec;
+        struct tm *ts = localtime(&seconds);
+        strftime(_setup_time_retval, 8, "%H:%M", ts);
     }
+    return _setup_time_retval;
 }
+
+/** These two hashtables keep in memory data or JL records calculated
+ *  for various equities
+ */
+static hashtable_ptr stx = NULL;
+static hashtable_ptr jl = NULL;
+
+/** Return the hash table with EOD stock data. */
+hashtable_ptr ht_data() {
+    if (stx == NULL) 
+        stx = ht_new(NULL, 20000);
+    return stx;
+}
+
+/** Return the hash table with JL stock data for a given factor */
+hashtable_ptr ht_jl(const char* factor) {
+    if (jl == NULL) 
+        jl = ht_new(NULL, 5);
+    ht_item_ptr jlht = ht_get(jl, factor);
+    hashtable_ptr jl_factor_ht = NULL;
+    if (jlht == NULL) {
+        jl_factor_ht = ht_new(NULL, 20000);
+        jlht = ht_new_data(factor, (void *) jl_factor_ht);
+        ht_insert(jl, jlht);
+    } else
+        jl_factor_ht = (hashtable_ptr) jlht->val.data;
+    return jl_factor_ht;
+}
+
 #endif

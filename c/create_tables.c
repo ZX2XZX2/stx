@@ -214,6 +214,7 @@ int main() {
         "PRIMARY KEY(tag, in_dt, out_dt, stk, setup, cp, exp_dt, strike))";
     create_table_if_missing(cnx, "trades", create_trades);
 
+    /* ALTER TABLE jl_setups ADD COLUMN tm TIME NOT NULL DEFAULT '20:00'; */
     char* create_jl_setups = "CREATE TABLE jl_setups( "  \
         "dt DATE NOT NULL, "                             \
         "stk VARCHAR(16) NOT NULL, "                     \
@@ -238,9 +239,11 @@ int main() {
     create_index_if_missing(cnx, "jl_setups", "jl_setups_setup_idx",
                             create_jl_setups_setup_idx);
 
-    /** This table stores the trend (cumulative) setup score, calculated daily
-     * (score decreases by 7/8 each day), and the trigger score which only
-     * applies for the day where the setups occur.
+    /**
+     *  This table stores the trend (cumulative) setup score,
+     *  calculated daily (score decreases by 7/8 each day), and the
+     *  trigger score which only applies for the day where the setups
+     *  occur.
      */
     char* create_setup_scores = "CREATE TABLE setup_scores( "   \
         "dt DATE NOT NULL, "                                    \
@@ -250,8 +253,9 @@ int main() {
         "PRIMARY KEY(dt, stk))";
     create_table_if_missing(cnx, "setup_scores", create_setup_scores);
 
-    /** This table stores, for each <stock, setup> tuple, the last date when
-     * 'setup' and its daily score were calculated for 'stock'.
+    /**
+     *  This table stores, for each stock the last date when setups
+     *  and daily score were calculated for that stock.
     */
     char* create_setup_dates = "CREATE TABLE setup_dates( " \
         "stk VARCHAR(16) NOT NULL, "                        \
@@ -259,9 +263,11 @@ int main() {
         "PRIMARY KEY(stk))";
     create_table_if_missing(cnx, "setup_dates", create_setup_dates);
 
-    /** This table stores additional analytics about the stocks. Analysis is
-     *  stored in a JSONB field. To start, we have rs (relative strength) and
-     *  rs_rank (getting each stock in a bucket from 0 to 99).
+    /**
+     *  This table stores additional analytics about the
+     *  stocks. Analysis is stored in a JSONB field. To start, we have
+     *  rs (relative strength) and rs_rank (getting each stock in a
+     *  bucket from 0 to 99).
      */
     char* create_indicators = "CREATE TABLE indicators( "   \
         "stk VARCHAR(16) NOT NULL, "                        \
@@ -270,7 +276,28 @@ int main() {
         "PRIMARY KEY(stk, dt))";
     create_table_if_missing(cnx, "indicators", create_indicators);
 
-    /** This table stores ETFs: ticker, name, and category
+    /**
+     *  Store additional analytics about the stocks and/or industry
+     *  groups or sectors.  Ticker for the stock or industry/sector.
+     *  For industry/sectors, ticker is taken from the industry_groups
+     *  table.  Name identifies each analysis.  Value is the indicator
+     *  value.  Rank is the absolute rank among all the stocks
+     *  evaluated.  BucketRank is the rank fit into 100 buckets (from
+     *  0 to 99).
+     */
+    char* create_indicators_1 = "CREATE TABLE indicators_1( "   \
+        "ticker VARCHAR(16) NOT NULL, "                         \
+        "dt DATE NOT NULL, "                                    \
+        "name VARCHAR(16) NOT NULL, "                           \
+        "value INTEGER NOT NULL, "                              \
+        "rank INTEGER NOT NULL, "                               \
+        "bucket_rank INTEGER NOT NULL, "                        \
+        "info JSONB NOT NULL DEFAULT '{}', "                    \
+        "PRIMARY KEY(ticker, dt, name))";
+    create_table_if_missing(cnx, "indicators_1", create_indicators_1);
+
+    /**
+     *  This table stores ETFs: ticker, name, and category
      */
     char* create_etfs = "CREATE TABLE etfs( "   \
         "ticker VARCHAR(16) NOT NULL, "         \
@@ -279,7 +306,8 @@ int main() {
         "PRIMARY KEY(ticker))";
     create_table_if_missing(cnx, "etfs", create_etfs);
 
-    /** This table stores stock to ETFs mappings
+    /**
+     *  This table stores stock to ETFs mappings
      */
     char* create_stk_etfs = "CREATE TABLE stk_etfs( "   \
         "stk VARCHAR(16) NOT NULL, "                    \
@@ -287,7 +315,8 @@ int main() {
         "PRIMARY KEY(stk, etf))";
     create_table_if_missing(cnx, "stk_etfs", create_stk_etfs);
 
-    /** This table stores stock to industry groups mappings
+    /**
+     *  This table stores stock to industry groups mappings
      */
     char* create_stk_ind_groups = "CREATE TABLE ind_groups( "   \
         "stk VARCHAR(16) NOT NULL, "                            \
@@ -299,6 +328,49 @@ int main() {
         "PRIMARY KEY(stk, dt, source))";
     create_table_if_missing(cnx, "ind_groups", create_stk_ind_groups);
 
+    /**
+     *  This table stores the ids and mappings of sectors and industry
+     *  groups
+     */
+    char* create_sectors_industries = "CREATE TABLE sectors_industries( "   \
+        "dt DATE NOT NULL, "                                                \
+        "group_type VARCHAR NOT NULL, "                                     \
+        "group_name VARCHAR NOT NULL, "                                     \
+        "group_id VARCHAR(16) NOT NULL,"                                    \
+        "sector_id VARCHAR(16) NOT NULL, "                                  \
+        "PRIMARY KEY(dt, group_type, group_name))";
+    create_table_if_missing(cnx, "sectors_industries",
+                            create_sectors_industries);
+
+    /**
+     *  New setup table, designed to store both intraday and eod
+     *  setups.  Each setup has a time associated with it.  20:00 is
+     *  the default time, and it means this is either an EOD setup, or
+     *  we don't know the time at which it occured intraday.
+     */
+    char* create_time_setups = "CREATE TABLE time_setups( "  \
+        "dt DATE NOT NULL, "                                 \
+        "stk VARCHAR(16) NOT NULL, "                         \
+        "setup VARCHAR(16) NOT NULL, "                       \
+        "factor INTEGER NOT NULL, "                          \
+        "direction CHAR(1) NOT NULL, "                       \
+        "triggered BOOLEAN NOT NULL, "                       \
+        "tm TIME NOT NULL DEFAULT '20:00',"                  \
+        "info JSONB NOT NULL, "                              \
+        "PRIMARY KEY(dt, stk, setup, direction, factor))";
+    create_table_if_missing(cnx, "time_setups", create_time_setups);
+    char* create_time_setups_stk_idx = "CREATE INDEX time_setups_stk_idx ON " \
+        "time_setups(stk)";
+    create_index_if_missing(cnx, "time_setups", "time_setups_stk_idx",
+                            create_time_setups_stk_idx);
+    char* create_time_setups_dt_idx = "CREATE INDEX time_setups_dt_idx ON " \
+        "time_setups(dt)";
+    create_index_if_missing(cnx, "time_setups", "time_setups_dt_idx",
+                            create_time_setups_dt_idx);
+    char* create_time_setups_setup_idx = "CREATE INDEX time_setups_setup_idx " \
+        "ON time_setups(setup)";
+    create_index_if_missing(cnx, "time_setups", "time_setups_setup_idx",
+                            create_time_setups_setup_idx);
     PQfinish(cnx);
     return 0;
 }

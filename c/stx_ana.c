@@ -40,6 +40,7 @@ int main(int argc, char** argv) {
       eod = false, no_rt = false, run_expiry = false;
     char ana_name[32], *ana_type = NULL, *start_date = cal_current_busdate(5),
         *end_date = cal_current_busdate(5);
+    int max_atm_price = MAX_ATM_PRICE, max_opt_spread = MAX_OPT_SPREAD;
     cJSON *stx = NULL;
     strcpy(ana_name, "JL_Analysis");
     for (int ix = 1; ix < argc; ix++) {
@@ -49,6 +50,10 @@ int main(int argc, char** argv) {
             start_date = cal_move_to_bday(argv[ix], true);
         else if (!strcmp(argv[ix], "--end-date") && (ix++ < argc - 1))
             end_date = cal_move_to_bday(argv[ix], false);
+        else if (!strcmp(argv[ix], "--max-atm-price") && (ix++ < argc - 1))
+            max_atm_price = atoi(argv[ix]);
+        else if (!strcmp(argv[ix], "--max-opt-spread") && (ix++ < argc - 1))
+            max_opt_spread = atoi(argv[ix]);
         else if (!strcmp(argv[ix], "--stx") && (ix++ < argc - 1)) {
             stx = cJSON_CreateArray();
             if (stx == NULL) {
@@ -86,7 +91,7 @@ int main(int argc, char** argv) {
             ana_type = argv[ix] + 2;
         }  else if (!strcmp(argv[ix], "--no-rt"))
             no_rt = true;
-	else if (!strcmp(argv[ix], "--run-expiry"))
+        else if (!strcmp(argv[ix], "--run-expiry"))
             run_expiry = true;
         else if (!strcmp(argv[ix], "--cron"))
             if (!cal_is_today_busday()) {
@@ -98,7 +103,7 @@ int main(int argc, char** argv) {
     LOGINFO("Current business date is: %s\n", crt_busdate);
     if ((ana_type != NULL) && !strcmp(ana_type, "intraday-expiry")) {
         LOGINFO("Running intraday expiry for %s\n", crt_busdate);
-        ana_intraday_expiry(crt_busdate);
+        ana_intraday_expiry(crt_busdate, max_atm_price, max_opt_spread);
         return 0;
     }
     if (!strcmp(start_date, crt_busdate) && !strcmp(end_date, crt_busdate) &&
@@ -123,8 +128,8 @@ int main(int argc, char** argv) {
                 ana_expiry_analysis(crt_busdate, rt_ana, download_spots,
                                     download_options);
         }
-        ana_stx_analysis(crt_busdate, stx, download_spots, download_options,
-                         eod);
+        ana_stx_analysis(crt_busdate, stx, max_atm_price, max_opt_spread,
+                         download_spots, download_options, eod);
         curl_global_cleanup();
         if (stx != NULL)
             cJSON_Delete(stx);
@@ -152,7 +157,8 @@ int main(int argc, char** argv) {
             ana_expiry_analysis(crs_date, rt_ana, download_spots,
                                 download_options);
         }
-        ana_stx_analysis(crs_date, stx, download_spots, download_options, eod);
+        ana_stx_analysis(crs_date, stx, max_atm_price, max_opt_spread,
+                         download_spots, download_options, eod);
         ix = cal_next_bday(ix, &crs_date);
     }
     if (stx != NULL)
