@@ -674,6 +674,25 @@ long cal_long_expiry(char* exp_dt) {
     return (long)tt;
 }
 
+/**
+ *  This function returns the current time to be used when inserting
+ *  setups in the database
+ */
+char* cal_setup_time(bool eod) {
+    static char _setup_time_retval[8];
+    if (eod) {
+        strcpy(_setup_time_retval, "20:00");
+    } else {
+        time_t seconds;
+        struct timespec spec;
+        clock_gettime(CLOCK_REALTIME, &spec);
+        seconds = spec.tv_sec;
+        struct tm *ts = localtime(&seconds);
+        strftime(_setup_time_retval, 8, "%H:%M", ts);
+    }
+    return _setup_time_retval;
+}
+
 /** These two hashtables keep in memory data or JL records calculated
  *  for various equities
  */
