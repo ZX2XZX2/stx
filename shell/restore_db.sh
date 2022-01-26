@@ -23,14 +23,20 @@ then
     exit 0
 else
     echo -e 'Concatenating backup files into a single file'
-    cat $DB_BACKUP_DIR/$BACKUP_NAME* > $DB_BACKUP_DIR/all
+    cat $DB_BACKUP_DIR/$BACKUP_NAME* > /tmp/all
 fi
+
+echo "Remove existing $DB_NAME database"
+dropdb $DB_NAME
 
 echo "Creating database $DB_NAME, if non-existent"
 createdb $DB_NAME
 
 echo "Rebuilding database $DB_NAME from files in $DB_BACKUP_DIR/$BACKUP_NAME"
-pg_restore -d $DB_NAME $DB_BACKUP_DIR/all
+pg_restore -d $DB_NAME /tmp/all
 
 echo "Deleting the backup concatenation file $DB_BACKUP_DIR/all"
 rm -f $DB_BACKUP_DIR/all
+
+echo "Run create_tables.exe to add any missing tables"
+${HOME}/stx/c/create_tables.exe
