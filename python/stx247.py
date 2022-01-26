@@ -255,7 +255,7 @@ img {
 
     def get_jl_setups(self, dt):
         q = sql.Composed([
-            sql.SQL("SELECT * FROM jl_setups WHERE dt="),
+            sql.SQL("SELECT * FROM time_setups WHERE dt="),
             sql.Literal(dt),
             sql.SQL(" AND ((setup="), sql.Literal("JL_SR"),
             sql.SQL(" AND factor="), sql.Literal(100),
