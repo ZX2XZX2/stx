@@ -1,3 +1,4 @@
+import argparse
 import json
 import logging
 import os
@@ -42,11 +43,13 @@ def stock_groups(as_of_date, stx=[]):
     logging.info(f'{crt_bus_date}: Getting profiles for {len(stx)} stocks')
     num = 0
     for stk in stx:
+        # convert DB format to YF format
+        yf_stk = stk.replace('.', '-')
         num += 1
         if num % 100 == 0:
             logging.info(f'Got profiles for {num}/{len(stx)} stocks')
         req = '&'.join([
-            f'{base_url}/{stk}?formatted=true',
+            f'{base_url}/{yf_stk}?formatted=true',
             f'crumb={crumb}',
             'lang=en-US',
             'region=US',
@@ -55,7 +58,7 @@ def stock_groups(as_of_date, stx=[]):
         ])
         res = requests.get(req, headers=headers)
         if res.status_code != 200:
-            logging.warn(f'Failed to get profile for {stk}, error code '
+            logging.warn(f'Failed to get profile for {yf_stk}, error code '
                          f'{res.status_code}, error {res.text}')
             continue
         res_json = res.json()
@@ -452,3 +455,28 @@ def merge_value_indice_dfs(val_df, id_df, num_buckets):
         lambda r: bucket_dct.get(r['rank'], -1000), axis=1
     )
     return res_df
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    '''By default, industry groups are retrieved for the previous expiry
+date.  We can also only retrieve the industry groups for a subset of
+stocks, give to the program as a comma-separated list
+
+    '''
+    parser.add_argument(
+        '-d', '--date', type=str, 
+        default=stxcal.prev_expiry(stxcal.current_busdate(hr=9)),
+        help='Date to retrieve industry groups')
+    parser.add_argument(
+        '-s', '--stocks', type=str, default='',
+        help='Comma-separated list of stocks for which to retrieve profiles')
+    args = parser.parse_args()
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
+        '%(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.INFO
+    )
+    stk_list = [] if args.stocks == '' else args.stocks.split(',')
+    stock_groups(args.date, stk_list)
