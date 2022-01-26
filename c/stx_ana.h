@@ -422,7 +422,8 @@ int ana_jl_setups(cJSON *setups, char* stk, char* dt, bool eod) {
     /**
      *  Insert in the database  all the calculated setups
      */
-    stp_insert_setups_in_database(setups, dt, stk);
+    char *setup_time = cal_setup_time(eod);
+    stp_insert_setups_in_database(setups, dt, stk, setup_time);
     cJSON_Delete(setups);
     return 0;
 }
