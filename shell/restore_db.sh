@@ -35,8 +35,8 @@ createdb $DB_NAME
 echo "Rebuilding database $DB_NAME from files in $DB_BACKUP_DIR/$BACKUP_NAME"
 pg_restore -d $DB_NAME /tmp/all
 
-echo "Deleting the backup concatenation file $DB_BACKUP_DIR/all"
-rm -f $DB_BACKUP_DIR/all
+echo "Deleting the backup concatenation file /tmp/all"
+rm -f /tmp/all
 
 echo "Run create_tables.exe to add any missing tables"
 ${HOME}/stx/c/create_tables.exe
