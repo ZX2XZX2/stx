@@ -722,7 +722,7 @@ void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk,
             cJSON *info = cJSON_GetObjectItem(setup, "info");
             char *info_string = (info != NULL)? cJSON_Print(info): "{}";
             char sql_cmd[2048];
-            sprintf(sql_cmd, "insert into setups_time values ('%s','%s','%s',"
+            sprintf(sql_cmd, "insert into time_setups values ('%s','%s','%s',"
                     "%d,'%s',%s,'%s','%s') on conflict do nothing", dt, stk,
                     cJSON_GetObjectItem(setup, "setup")->valuestring,
                     cJSON_GetObjectItem(setup, "factor")->valueint,
