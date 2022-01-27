@@ -19,7 +19,7 @@
 #define MIN_ACT 8
 #define MIN_RCR 15
 #define MAX_OPT_SPREAD 33
-#define MAX_ATM_PRICE 500
+#define MAX_ATM_PRICE 1000
 #define UP 'U'
 #define DOWN 'D'
 #define JL_FACTOR 2.00
@@ -669,7 +669,7 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     if (eod == true) {
         LOGINFO("Calculating the indicators for %d stocks as of %s\n",
                 total, ana_date);
-        /* ana_indicators(leaders, ana_date); */
+        ana_indicators(leaders, ana_date);
     }
     LOGINFO("Freeing the memory\n");
     if (stx == NULL)
