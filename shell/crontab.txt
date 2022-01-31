@@ -3,3 +3,4 @@
 */15 10-15 * * 1-5 ${HOME}/stx/shell/intraday-cron.sh
 44 14 * * 4-5 ${HOME}/stx/shell/intraday-expiry.sh
 30 16 * * 1-5 ${HOME}/stx/shell/eod-cron.sh
+00 18 * * * ${HOME}/stx/shell/datafeed.sh
