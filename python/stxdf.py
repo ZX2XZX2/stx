@@ -10,6 +10,7 @@ import logging
 import numpy as np
 import os
 import pandas as pd
+from psycopg2 import sql
 from psycopg2.extras import execute_values
 import requests
 import shlex
