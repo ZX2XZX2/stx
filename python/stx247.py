@@ -11,15 +11,17 @@ import re
 import smtplib
 import stxcal
 import stxdb
-# import stxetfs
 from stxjl import StxJL
 from stxts import StxTS
 from stxplot import StxPlot
 import sys
 import time
 import traceback as tb
+import warnings
 from weasyprint import HTML
 import zipfile
+
+warnings.filterwarnings("ignore")
 
 class StxAnalyzer:
     def __init__(self):
@@ -80,26 +82,6 @@ img {
         df = pd.read_sql(q, stxdb.db_get_cnx())
         return df
 
-    def get_high_activity(self, dt, df):
-        eight_days_ago = stxcal.move_busdays(dt, -8)
-        df['d_8'] = eight_days_ago
-        def hiactfun(r):
-            qha = sql.Composed(
-                [sql.SQL('select * from jl_setups where dt between '),
-                 sql.Literal(r['d_8']), 
-                 sql.SQL(' and '),
-                 sql.Literal(r['dt']),
-                 sql.SQL(' and stk='),
-                 sql.Literal(r['stk']),
-                 sql.SQL(' and abs(score) > 100 and setup in ('),
-                 sql.SQL(',').join([sql.Literal('Gap'),
-                                    sql.Literal('SC'),
-                                    sql.Literal('RDay')]),
-                 sql.SQL(')')])
-            db_df = pd.read_sql(qha, stxdb.db_get_cnx())
-            return db_df['score'].sum() if len(db_df) > 0 else 0
-        df['hi_act'] = df.apply(hiactfun, axis=1)
-
     def get_opt_spreads(self, crt_date, eod):
         exp_date = stxcal.next_expiry(crt_date, min_days=(1 if eod else 0))
         q = sql.Composed([sql.SQL('select stk, opt_spread from leaders '
@@ -126,8 +108,6 @@ img {
         stk_plot.plot_to_file()
         res.append(f"<h4>{i + 1}. {stk} {isd.get(stk, ['N/A', 'N/A'])}, "
                    f"RS={row['rs']}</h4>")
-        # res.append(f"<h4>{i + 1}. {stk}, RS={row['rs']} "
-        #            f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
         res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.format(stk, stk))
         try:
             jl_res = StxJL.jl_report(stk, jl_s_date, crt_date, 1.5)
@@ -273,27 +253,30 @@ img {
     def do_analysis(self, crt_date, max_spread, eod):
         isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
-        df_1 = self.get_triggered_setups(crt_date)
+        # df_1 = self.get_triggered_setups(crt_date)
         df_3 = self.get_jl_setups(crt_date)
-        if df_1.empty and df_3.empty:
-            logging.error(f'No triggered/JL setups for {crt_date}.  Exiting...')
+        if df_3.empty:
+            logging.error(f'No JL setups for {crt_date}.  Exiting...')
             return None
-        self.get_high_activity(crt_date, df_1)
-        self.get_high_activity(crt_date, df_3)
-        df_1 = self.filter_spreads_hiact(df_1, spreads, max_spread)
-        df_3 = self.filter_spreads_hiact(df_3, spreads, max_spread)
+        # if df_1.empty and df_3.empty:
+        #   logging.error(f'No triggered/JL setups for {crt_date}.  Exiting...')
+        #     return None
+        # self.get_high_activity(crt_date, df_1)
+        # self.get_high_activity(crt_date, df_3)
+        # df_1 = self.filter_spreads_hiact(df_1, spreads, max_spread)
+        # df_3 = self.filter_spreads_hiact(df_3, spreads, max_spread)
         res = ['<html>', self.report_style, '<body>']
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
-        res.extend(self.get_report(crt_date, df_1, isd, True))
-        if eod:
-            df_2 = self.get_setups_for_tomorrow(crt_date)
-            next_date = stxcal.next_busday(crt_date)
-            self.get_high_activity(crt_date, df_2)
-            df_2 = self.filter_spreads_hiact(df_2, spreads, max_spread)
-            res.append('<h3>TOMMORROW - {0:s}</h3>'.format(next_date))
-            res.extend(self.get_report(crt_date, df_2, isd, False))
+        # res.extend(self.get_report(crt_date, df_1, isd, True))
+        # if eod:
+        #     df_2 = self.get_setups_for_tomorrow(crt_date)
+        #     next_date = stxcal.next_busday(crt_date)
+        #     self.get_high_activity(crt_date, df_2)
+        #     df_2 = self.filter_spreads_hiact(df_2, spreads, max_spread)
+        #     res.append('<h3>TOMMORROW - {0:s}</h3>'.format(next_date))
+        #     res.extend(self.get_report(crt_date, df_2, isd, False))
         res.append('<h3>JL - {0:s}</h3>'.format(crt_date))
-        res.extend(self.get_report(crt_date, df_3, isd, False))
+        res.extend(self.get_report(crt_date, df_3, isd, True))
         res.append('</body>')
         res.append('</html>')
         with open('/tmp/x.html', 'w') as html_file:
@@ -325,7 +308,7 @@ img {
         # add the A/D setups table
         res += '<td><table>'
         qad = sql.Composed(
-            [sql.SQL('select * from jl_setups where dt between '),
+            [sql.SQL('select * from time_setups where dt between '),
              sql.Literal(start_date),
              sql.SQL(' and '),
              sql.Literal(end_date),
@@ -333,19 +316,19 @@ img {
              sql.SQL(',').join([sql.Literal('Gap'),
                                 sql.Literal('SC'),
                                 sql.Literal('RDay')]),
-             sql.SQL(') and abs(score) >= 100 and stk='),
+             sql.SQL(') and stk='),
              sql.Literal(stk),
              sql.SQL(' order by dt, direction, setup')])
         df_ad = pd.read_sql(qad, stxdb.db_get_cnx())
         for _, row in df_ad.iterrows():
             res += '<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td>'\
                 '</tr>'.format(row['dt'].strftime('%b %d'), row['setup'],
-                               row['direction'], row['score'])
+                               row['direction'], row['tm'])
         res += '</td></table>'
         # add the JL setups table
         res += '<td><table>'
         qjl = sql.Composed(
-            [sql.SQL('select * from jl_setups where dt between '),
+            [sql.SQL('select * from time_setups where dt between '),
              sql.Literal(jl_start_date),
              sql.SQL(' and '),
              sql.Literal(end_date),
@@ -361,12 +344,12 @@ img {
             res += '<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td>'\
                 '<td>{}</td></tr>'.format(row['dt'].strftime('%b %d'),
                                           row['setup'], row['direction'],
-                                          row['factor'], row['score'])
+                                          row['factor'], row['tm'])
         res += '</table></td>'
         # add the candlesticks setups table
         res += '<td><table>'
         qcs = sql.Composed(
-            [sql.SQL('select * from jl_setups where dt between '),
+            [sql.SQL('select * from time_setups where dt between '),
              sql.Literal(start_date),
              sql.SQL(' and '),
              sql.Literal(end_date),
