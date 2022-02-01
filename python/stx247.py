@@ -286,15 +286,8 @@ img {
         time_now_date = '{0:d}-{1:02d}-{2:02d}'.format(time_now.year, 
                                                        time_now.month, 
                                                        time_now.day)
-        suffix = 'EOD'
-        if time_now_date == crt_date:
-            if time_now.hour >= 10 and time_now.hour < 16:
-                suffix = '{0:02d}{1:02d}'.format(time_now.hour,
-                                                 time_now.minute)
-            else:
-                suffix = 'EOD'
-        else:
-            suffix = 'EOD' if eod else 'ID'
+        '''If this run every 10 minutes, overwrite intraday report'''
+        suffix = 'EOD' if eod else 'ID'
         pdf_fname = '{0:s}_{1:s}.pdf'.format(crt_date, suffix)
         logging.info('PDF report file name: {0:s}'.format(pdf_fname))
         pdf_filename = os.path.join(self.report_dir, pdf_fname)
