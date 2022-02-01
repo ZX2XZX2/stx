@@ -97,8 +97,8 @@ img {
         df.drop_duplicates(['stk', 'direction'], inplace=True)
         df = df[df.spread < max_spread]
 #         df = df[df.hi_act >= 3]
-        df.sort_values(by=['direction', 'hi_act'], ascending=False, 
-                       inplace=True)
+        # df.sort_values(by=['direction', 'hi_act'], ascending=False, 
+        #                inplace=True)
         return df
 
     def rs_report(self, i, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
@@ -146,15 +146,23 @@ img {
             avg_rg = np.average(rgs)
             res.append('<table border="1">')
             res.append('<tr><th>name</th><th>dir</th><th>spread'
-                       '</th><th>avg_volume</th><th>avg_rg</th><th>hi_act'
-                       '</th><th>rs</th><th>rs_rank</th></tr>')
+                       '</th><th>avg_volume</th><th>avg_rg</th></tr>')
             res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>{2:d}</td><td>'
-                       '{3:,d}</td><td>{4:.2f}</td><td>{5:d}</td>'
-                       '<td>{6:d}</td><td>{7:d}</td></tr>'.
+                       '{3:,d}</td><td>{4:.2f}</td></tr>'.
                        format(stk, row['direction'], int(row['spread']),
-                              int(1000 * avg_volume), avg_rg / 100,
-                              row['hi_act'], row['rs'], row['rs_rank']))
+                              int(1000 * avg_volume), avg_rg / 100))
             res.append('</table>')
+            # res.append('<table border="1">')
+            # res.append('<tr><th>name</th><th>dir</th><th>spread'
+            #            '</th><th>avg_volume</th><th>avg_rg</th><th>hi_act'
+            #            '</th><th>rs</th><th>rs_rank</th></tr>')
+            # res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>{2:d}</td><td>'
+            #            '{3:,d}</td><td>{4:.2f}</td><td>{5:d}</td>'
+            #            '<td>{6:d}</td><td>{7:d}</td></tr>'.
+            #            format(stk, row['direction'], int(row['spread']),
+            #                   int(1000 * avg_volume), avg_rg / 100,
+            #                   row['hi_act'], row['rs'], row['rs_rank']))
+            # res.append('</table>')
         except:
             logging.error('Failed analysis for {0:s}'.format(stk))
             tb.print_exc()
@@ -205,11 +213,12 @@ img {
                 except:
                     logging.error('Failed to analyze {0:s}'.format(index))
                     tb.print_exc()
-        setup_df = df.merge(rsdf)
+        # setup_df = df.merge(rsdf)
+        setup_df = df
         up_setup_df = setup_df.query("direction=='U'").copy()
-        up_setup_df.sort_values(by=['rs'], ascending=False, inplace=True)
+        up_setup_df.sort_values(by=['tm'], ascending=True, inplace=True)
         down_setup_df = setup_df.query("direction=='D'").copy()
-        down_setup_df.sort_values(by=['rs'], ascending=True, inplace=True)
+        down_setup_df.sort_values(by=['tm'], ascending=True, inplace=True)
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
             res.extend(self.setup_report(row, s_date, jl_s_date, ana_s_date,
@@ -218,7 +227,8 @@ img {
         for _, row in down_setup_df.iterrows():
             res.extend(self.setup_report(row, s_date, jl_s_date, ana_s_date,
                                          crt_date, isd))
-        if do_analyze:
+        # if do_analyze:
+        if False:
             rsbest = rsdf.query('rs_rank==99').copy()
             rsworst = rsdf.query('rs_rank==0').copy()
             rsworst.sort_values(by=['rs'], ascending=True, inplace=True)
@@ -237,8 +247,8 @@ img {
         q = sql.Composed([
             sql.SQL("SELECT * FROM time_setups WHERE dt="),
             sql.Literal(dt),
+            sql.SQL(" AND (info->>'length')::int >= "), sql.Literal(25),
             sql.SQL(" AND ((setup="), sql.Literal("JL_SR"),
-            sql.SQL(" AND factor="), sql.Literal(100),
             sql.SQL(" AND (info->>'num_sr')::int > "), sql.Literal(1),
             sql.SQL(") OR (setup IN ("),
             sql.SQL(', ').join([
@@ -247,6 +257,7 @@ img {
             ]),
             sql.SQL(')))')
         ])
+        logging.info(f'q = {q.as_string(stxdb.db_get_cnx())}')
         df = pd.read_sql(q, stxdb.db_get_cnx())
         return df
 
@@ -258,13 +269,14 @@ img {
         if df_3.empty:
             logging.error(f'No JL setups for {crt_date}.  Exiting...')
             return None
+        logging.info(f'Found {len(df_3)} JL setups')
         # if df_1.empty and df_3.empty:
         #   logging.error(f'No triggered/JL setups for {crt_date}.  Exiting...')
         #     return None
         # self.get_high_activity(crt_date, df_1)
         # self.get_high_activity(crt_date, df_3)
         # df_1 = self.filter_spreads_hiact(df_1, spreads, max_spread)
-        # df_3 = self.filter_spreads_hiact(df_3, spreads, max_spread)
+        df_3 = self.filter_spreads_hiact(df_3, spreads, max_spread)
         res = ['<html>', self.report_style, '<body>']
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
         # res.extend(self.get_report(crt_date, df_1, isd, True))
@@ -320,18 +332,23 @@ img {
         res += '</td></table>'
         # add the JL setups table
         res += '<td><table>'
-        qjl = sql.Composed(
-            [sql.SQL('select * from time_setups where dt between '),
-             sql.Literal(jl_start_date),
-             sql.SQL(' and '),
-             sql.Literal(end_date),
-             sql.SQL(' and setup in ('),
-             sql.SQL(',').join([sql.Literal('JL_B'),
-                                sql.Literal('JL_P'),
-                                sql.Literal('JL_SR')]),
-             sql.SQL(') and stk='),
-             sql.Literal(stk),
-             sql.SQL(' order by dt, direction, setup, factor')])
+        qjl = sql.Composed([
+            sql.SQL('SELECT * FROM time_setups WHERE dt BETWEEN '),
+            sql.Literal(jl_start_date),
+            sql.SQL(' AND '),
+            sql.Literal(end_date),
+            sql.SQL(" AND (info->>'length')::int >= "), sql.Literal(25),
+            sql.SQL(" AND ((setup="), sql.Literal("JL_SR"),
+            sql.SQL(" AND (info->>'num_sr')::int > "), sql.Literal(1),
+            sql.SQL(") OR (setup IN ("),
+            sql.SQL(', ').join([
+                sql.Literal('JL_P'),
+                sql.Literal('JL_B')
+            ]),
+            sql.SQL('))) AND stk='),
+            sql.Literal(stk),
+            sql.SQL(' ORDER BY dt, direction, setup, factor')
+        ])
         df_jl = pd.read_sql(qjl, stxdb.db_get_cnx())
         for _, row in df_jl.iterrows():
             res += '<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td>'\
