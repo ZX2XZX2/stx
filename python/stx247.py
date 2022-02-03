@@ -221,7 +221,9 @@ img {
         down_setup_df.sort_values(by=['tm'], ascending=True, inplace=True)
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
-            res.extend(self.setup_report(row, s_date, jl_s_date, ana_s_date,
+            setup_len = row.info['length']
+            start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
+            res.extend(self.setup_report(row, start_date, jl_s_date, ana_s_date,
                                          crt_date, isd))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
