@@ -92,13 +92,36 @@ img {
             spread_dict = {x[0]: x[1] for x in crs}
         return spread_dict
 
-    def filter_spreads_hiact(self, df, spreads, max_spread):
+    def filter_spreads(self, df, spreads, max_spread):
         df['spread'] = df.apply(lambda r: spreads.get(r['stk']), axis=1)
         df.drop_duplicates(['stk', 'direction'], inplace=True)
         df = df[df.spread < max_spread]
-#         df = df[df.hi_act >= 3]
-        # df.sort_values(by=['direction', 'hi_act'], ascending=False, 
-        #                inplace=True)
+        return df
+
+    def add_indicators(self, df, dt, indicators):
+        stks = df.stk.unique().tolist()
+        q = sql.Composed([
+            sql.SQL("SELECT * FROM indicators_1 WHERE dt="),
+            sql.Literal(dt),
+            sql.SQL(" AND ticker IN ("),
+            sql.SQL(', ').join([sql.Literal(x) for x in stks]),
+            sql.SQL(") AND name IN ("),
+            sql.SQL(', ').join([sql.Literal(x) for x in indicators]),
+            sql.SQL(')')
+        ])
+        logging.info(f'get indicators: ')        
+        logging.info(f'q = {q.as_string(stxdb.db_get_cnx())}')        
+        indicators_df = pd.read_sql(q, stxdb.db_get_cnx())
+        indicators_df = indicators_df.rename(columns = {'ticker': 'stk'})
+        for indicator in indicators:
+            indicator_df = indicators_df.query("name==@indicator").copy()
+            indicator_df = indicator_df.rename(columns = {
+                'value': f'{indicator}-value',
+                'rank': f'{indicator}-rank',
+                'bucket_rank': f'{indicator}-bucket'
+            })
+            indicator_df.drop(columns=['name', 'dt'], inplace=True)
+            df = df.merge(indicator_df, on='stk')
         return df
 
     def rs_report(self, i, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
@@ -263,7 +286,7 @@ img {
         df = pd.read_sql(q, stxdb.db_get_cnx())
         return df
 
-    def do_analysis(self, crt_date, max_spread, eod):
+    def do_analysis(self, crt_date, max_spread, indicators, eod):
         isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
         # df_1 = self.get_triggered_setups(crt_date)
@@ -277,8 +300,9 @@ img {
         #     return None
         # self.get_high_activity(crt_date, df_1)
         # self.get_high_activity(crt_date, df_3)
-        # df_1 = self.filter_spreads_hiact(df_1, spreads, max_spread)
-        df_3 = self.filter_spreads_hiact(df_3, spreads, max_spread)
+        # df_1 = self.filter_spreads(df_1, spreads, max_spread)
+        df_3 = self.filter_spreads(df_3, spreads, max_spread)
+        df_3 = self.add_indicators(df_3, crt_date, indicators)
         res = ['<html>', self.report_style, '<body>']
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
         # res.extend(self.get_report(crt_date, df_1, isd, True))
@@ -286,7 +310,7 @@ img {
         #     df_2 = self.get_setups_for_tomorrow(crt_date)
         #     next_date = stxcal.next_busday(crt_date)
         #     self.get_high_activity(crt_date, df_2)
-        #     df_2 = self.filter_spreads_hiact(df_2, spreads, max_spread)
+        #     df_2 = self.filter_spreads(df_2, spreads, max_spread)
         #     res.append('<h3>TOMMORROW - {0:s}</h3>'.format(next_date))
         #     res.extend(self.get_report(crt_date, df_2, isd, False))
         res.append('<h3>JL - {0:s}</h3>'.format(crt_date))
@@ -465,6 +489,10 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--date', type=str, 
                         default=stxcal.current_busdate(hr=9),
                         help='Date to retrieve setups')
+    parser.add_argument('-n', '--indicators', type=str, 
+                        default='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,'
+                        'RS_10,RS_252,RS_4,RS_45',
+                        help='Date to retrieve setups')
     parser.add_argument('-e', '--eod', action='store_true',
                         help="Run EOD analysis")
     parser.add_argument('-i', '--intraday', action='store_true',
@@ -497,6 +525,7 @@ if __name__ == '__main__':
         analysis_type = 'Intraday'
     if args.date:
         crt_date = args.date
+    indicator_list = args.indicators.split(',')
     stx_ana = StxAnalyzer()
     if args.startdate and args.enddate:
         logging.info('Running analysis from {args.startdate} to {args.enddate}')
@@ -504,7 +533,8 @@ if __name__ == '__main__':
         num = 0
         while crs_date <=args.enddate:
             logging.info(f'Running analysis for {crs_date}')
-            pdf_report = stx_ana.do_analysis(crs_date, args.max_spread, True)
+            pdf_report = stx_ana.do_analysis(crs_date, args.max_spread,
+                                             indicator_list, True)
             if pdf_report is None:
                 logging.error(f'No report was generated for {crs_date}')
             stx_ana.update_local_directory(crs_date)
@@ -514,7 +544,8 @@ if __name__ == '__main__':
                      f'{args.startdate} and {args.enddate}')
     else:
         logging.info(f'Running analysis for {crt_date}')
-        pdf_report = stx_ana.do_analysis(crt_date, args.max_spread, eod)
+        pdf_report = stx_ana.do_analysis(crt_date, args.max_spread,
+                                         indicator_list, eod)
         if pdf_report is None:
             logging.error(f'No report was generated for {crt_date}')
         stx_ana.update_local_directory(crt_date)
