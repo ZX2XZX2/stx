@@ -216,9 +216,9 @@ img {
         # setup_df = df.merge(rsdf)
         setup_df = df
         up_setup_df = setup_df.query("direction=='U'").copy()
-        up_setup_df.sort_values(by=['tm'], ascending=True, inplace=True)
+        up_setup_df.sort_values(by=['tm'], ascending=False, inplace=True)
         down_setup_df = setup_df.query("direction=='D'").copy()
-        down_setup_df.sort_values(by=['tm'], ascending=True, inplace=True)
+        down_setup_df.sort_values(by=['tm'], ascending=False, inplace=True)
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
             setup_len = row.info['length']
