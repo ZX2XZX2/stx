@@ -182,11 +182,41 @@ img {
         ]
         return indicator_table
 
+    def get_trend_lines(self, row):
+        setup = row.setup
+        """
+        dt  | stk | setup | factor | direction | triggered | tm | info
+        2022-01-26 | CSX | JL_P  |    100 | U         | t         | 20:00:00 | {"pivot": {"obv": 3, "date": "2022-01-25", "price": 3315, "state": "DT"}, "length": 26, "channel": {"p1": {"obv": -21, "date": "2021-12-17", "price": 3494, "state": "NRe"}, "p2": {"obv": 3, "date": "2022-01-24", "price": 3315, "state": "DT"}, "bound": "lower"}}
+        """
+        if setup == 'JL_P':
+            d1 = row.info['channel']['p1']['date']
+            p1 = row.info['channel']['p1']['price'] / 100.0
+            d2 = row.info['channel']['p2']['date']
+            p2 = row.info['channel']['p2']['price'] / 100.0
+            return [(d1, p1), (d2, p2)]
+        """
+        dt | stk | setup | factor | direction | triggered | tm | info
+        2022-01-26 | BJ  | JL_SR |    100 | D         | t         | 20:00:00 | {"sr": 6366, "vr": 155, "length": 49, "num_sr": 2, "sr_pivots": [{"obv": -20, "date": "2021-11-12", "price": 6366, "state": "UT"}, {"obv": -15, "date": "2021-12-01", "price": 6326, "state": "NRe"}, {"obv": -12, "date": "2022-01-24", "price": 6338, "state": "NRa"}]}
+        """
+        if setup == 'JL_SR':
+            sr_pivots = row.info['sr_pivots']
+            d1 = sr_pivots[0]['date']
+            p1 = sr_pivots[0]['price'] / 100.0
+            d2 = sr_pivots[-1]['date']
+            p2 = sr_pivots[-1]['price'] / 100.0
+            return [(d1, p1), (d2, p2)]
+        """
+        dt | stk | setup | factor | direction | triggered | tm | info
+        2022-02-02 | AMD | JL_B  |    100 | U         | t         | 09:48:00 | {"vr": 26, "ipx": 12320, "len": 26, "obv1": -42, "obv2": -25, "slope": -128.91667175292969}
+        """
+        return None
+
     def setup_report(self, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
         res = []
         try:
             stk = row['stk']
-            stk_plot = StxPlot(stk, s_date, crt_date)
+            trend_lines = self.get_trend_lines(row)
+            stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
             stk_plot.plot_to_file()
             res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
             # res.append(f"<h4>{stk} "
