@@ -3,7 +3,7 @@ from stxts import StxTS
 import sys
 
 class StxPlot:
-    def __init__(self, stock, start_date, end_date):
+    def __init__(self, stock, start_date, end_date, trend_lines=None):
         ts = StxTS(stock, start_date, end_date)
         ts.df.index.name='Date'
         ts.df.drop('oi', inplace=True, axis=1)
@@ -23,14 +23,25 @@ class StxPlot:
         # Create new style based on `nightclouds` but w/ my own `marketcolors`:
         self.s  = mpf.make_mpf_style(base_mpf_style='nightclouds',
                                      marketcolors=mc)
+        self.trend_lines = trend_lines
 
     def plot_to_file(self):
-        mpf.plot(self.ts.df, type='candle', style=self.s, title=self.ts.stk, 
-                 volume=True, savefig='/tmp/{0:s}.png'.format(self.ts.stk))
+        if not self.trend_lines:
+            mpf.plot(self.ts.df, type='candle', style=self.s, volume=True,
+                     title=self.ts.stk, savefig=f'/tmp/{self.ts.stk}.png')
+        else:
+            mpf.plot(self.ts.df, type='candle', tlines=self.trend_lines,
+                     style=self.s, volume=True, title=self.ts.stk,
+                     savefig=f'/tmp/{self.ts.stk}.png')
 
     def plot(self):
-        mpf.plot(self.ts.df, type='candle', style=self.s, title=self.ts.stk, 
-                 volume=True)
+        if not self.trend_lines:
+            mpf.plot(self.ts.df, type='candle', style=self.s, volume=True,
+                     title=self.ts.stk)
+        else:
+            mpf.plot(self.ts.df, type='candle', tlines=self.trend_lines,
+                     style=self.s, volume=True, title=self.ts.stk)
+
 
 if __name__ == '__main__':
     # TODO: use argparser and all that stuff
