@@ -98,11 +98,16 @@ img {
         df = df[df.spread < max_spread]
         return df
 
-    def add_indicators(self, df, dt, indicators):
+    def add_indicators(self, df, dt, indicators, eod):
+        """Indicators are only available for the previous day, if this is an
+        intraday run
+
+        """
+        indicators_date = dt if eod else stxcal.prev_busday(dt)
         stks = df.stk.unique().tolist()
         q = sql.Composed([
             sql.SQL("SELECT * FROM indicators_1 WHERE dt="),
-            sql.Literal(dt),
+            sql.Literal(indicators_date),
             sql.SQL(" AND ticker IN ("),
             sql.SQL(', ').join([sql.Literal(x) for x in stks]),
             sql.SQL(") AND name IN ("),
@@ -116,9 +121,9 @@ img {
         for indicator in indicators:
             indicator_df = indicators_df.query("name==@indicator").copy()
             indicator_df = indicator_df.rename(columns = {
-                'value': f'{indicator}-value',
-                'rank': f'{indicator}-rank',
-                'bucket_rank': f'{indicator}-bucket'
+                'value': f'{indicator}--value',
+                'rank': f'{indicator}--rank',
+                'bucket_rank': f'{indicator}--bucket'
             })
             indicator_df.drop(columns=['name', 'dt'], inplace=True)
             df = df.merge(indicator_df, on='stk')
@@ -145,6 +150,37 @@ img {
             logging.error('Failed to analyze {0:s}'.format(stk))
             tb.print_exc()
         return res
+
+    def build_indicators_table(self, row):
+        ind_tbl_dict = {}
+        for k, v in row.items():
+            if '--' in k:
+                indicator_name, val_rank_bucket = k.split('--')
+                ind_col_dict = ind_tbl_dict.get(indicator_name, {})
+                ind_col_dict[val_rank_bucket] = v
+                ind_tbl_dict[indicator_name] = ind_col_dict
+        table_header = ['<tr>']
+        table_value_row = ['<tr>']
+        table_rank_row = ['<tr>']
+        table_bucket_row = ['<tr>']
+        for indicator_name, indicator_data in ind_tbl_dict.items():
+            table_header.append(f'<th>{indicator_name}</th>')
+            table_value_row.append(f"<td>{indicator_data.get('value')}</td>")
+            table_rank_row.append(f"<td>{indicator_data.get('rank')}</td>")
+            table_bucket_row.append(f"<td>{indicator_data.get('bucket')}</td>")
+        table_header.append('</tr>')
+        table_value_row.append('</tr>')
+        table_rank_row.append('</tr>')
+        table_bucket_row.append('</tr>')
+        indicator_table = [
+            '<table border="1">',
+            ''.join(table_header),
+            ''.join(table_value_row),
+            ''.join(table_rank_row),
+            ''.join(table_bucket_row),
+            '</table>'
+        ]
+        return indicator_table
 
     def setup_report(self, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
         res = []
@@ -175,6 +211,7 @@ img {
                        format(stk, row['direction'], int(row['spread']),
                               int(1000 * avg_volume), avg_rg / 100))
             res.append('</table>')
+            res.extend(self.build_indicators_table(row))
             # res.append('<table border="1">')
             # res.append('<tr><th>name</th><th>dir</th><th>spread'
             #            '</th><th>avg_volume</th><th>avg_rg</th><th>hi_act'
@@ -204,12 +241,12 @@ img {
             tb.print_exc()
         return res
 
-    def get_report(self, crt_date, df, isd, do_analyze):
+    def get_report(self, crt_date, setup_df, isd, do_analyze):
         s_date = stxcal.move_busdays(crt_date, -50)
         jl_s_date = stxcal.move_busdays(crt_date, -350)
         ana_s_date = stxcal.move_busdays(crt_date, -20)
         res = []
-        rsdf = self.get_rs_stx(crt_date)
+        # rsdf = self.get_rs_stx(crt_date)
         if do_analyze:
             indexes = ['^GSPC', '^IXIC', '^DJI']
             for index in indexes:
@@ -237,7 +274,8 @@ img {
                     logging.error('Failed to analyze {0:s}'.format(index))
                     tb.print_exc()
         # setup_df = df.merge(rsdf)
-        setup_df = df
+        # setup_df = df
+        logging.info(f'setup_df has {len(setup_df)} rows')
         up_setup_df = setup_df.query("direction=='U'").copy()
         up_setup_df.sort_values(by=['tm'], ascending=False, inplace=True)
         down_setup_df = setup_df.query("direction=='D'").copy()
@@ -302,7 +340,7 @@ img {
         # self.get_high_activity(crt_date, df_3)
         # df_1 = self.filter_spreads(df_1, spreads, max_spread)
         df_3 = self.filter_spreads(df_3, spreads, max_spread)
-        df_3 = self.add_indicators(df_3, crt_date, indicators)
+        df_3 = self.add_indicators(df_3, crt_date, indicators, eod)
         res = ['<html>', self.report_style, '<body>']
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
         # res.extend(self.get_report(crt_date, df_1, isd, True))
