@@ -191,8 +191,8 @@ img {
         if setup == 'JL_P':
             d1 = row.info['channel']['p1']['date']
             p1 = row.info['channel']['p1']['price'] / 100.0
-            d2 = row.info['channel']['p2']['date']
-            p2 = row.info['channel']['p2']['price'] / 100.0
+            d2 = row.info['pivot']['date']
+            p2 = row.info['pivot']['price'] / 100.0
             return [(d1, p1), (d2, p2)]
         """
         dt | stk | setup | factor | direction | triggered | tm | info
