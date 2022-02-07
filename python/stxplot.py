@@ -30,7 +30,7 @@ class StxPlot:
             mpf.plot(self.ts.df, type='candle', style=self.s, volume=True,
                      title=self.ts.stk, savefig=f'/tmp/{self.ts.stk}.png')
         else:
-            mpf.plot(self.ts.df, type='candle', tlines=self.trend_lines,
+            mpf.plot(self.ts.df, type='candle', alines=self.trend_lines,
                      style=self.s, volume=True, title=self.ts.stk,
                      savefig=f'/tmp/{self.ts.stk}.png')
 
@@ -39,7 +39,7 @@ class StxPlot:
             mpf.plot(self.ts.df, type='candle', style=self.s, volume=True,
                      title=self.ts.stk)
         else:
-            mpf.plot(self.ts.df, type='candle', tlines=self.trend_lines,
+            mpf.plot(self.ts.df, type='candle', alines=self.trend_lines,
                      style=self.s, volume=True, title=self.ts.stk)
 
 
