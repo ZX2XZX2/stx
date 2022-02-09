@@ -11,6 +11,7 @@ import re
 import smtplib
 import stxcal
 import stxdb
+import stxgrps
 from stxjl import StxJL
 from stxts import StxTS
 from stxplot import StxPlot
@@ -355,6 +356,12 @@ img {
         return df
 
     def do_analysis(self, crt_date, max_spread, indicators, eod):
+        # stxgrps.populate_sectors()
+        # if eod:
+        #     logging.info(f'indicators = {indicators}')
+        #     for indicator in indicators:
+        #         logging.info(f'indicator = {indicator}, crt_date = {crt_date}')
+        #         stxgrps.calc_group_indicator(indicator, crt_date)
         isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
         # df_1 = self.get_triggered_setups(crt_date)
@@ -560,7 +567,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--indicators', type=str, 
                         default='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,'
                         'RS_10,RS_252,RS_4,RS_45',
-                        help='Date to retrieve setups')
+                        help='Indicators to calculate')
     parser.add_argument('-e', '--eod', action='store_true',
                         help="Run EOD analysis")
     parser.add_argument('-i', '--intraday', action='store_true',
