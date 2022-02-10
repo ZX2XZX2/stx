@@ -356,12 +356,11 @@ img {
         return df
 
     def do_analysis(self, crt_date, max_spread, indicators, eod):
-        # stxgrps.populate_sectors()
-        # if eod:
-        #     logging.info(f'indicators = {indicators}')
-        #     for indicator in indicators:
-        #         logging.info(f'indicator = {indicator}, crt_date = {crt_date}')
-        #         stxgrps.calc_group_indicator(indicator, crt_date)
+        if eod:
+            logging.info(f'indicators = {indicators}')
+            for indicator in indicators:
+                logging.info(f'indicator = {indicator}, crt_date = {crt_date}')
+                stxgrps.calc_group_indicator(indicator, crt_date)
         isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
         # df_1 = self.get_triggered_setups(crt_date)
