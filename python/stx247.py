@@ -186,8 +186,6 @@ img {
 
     def get_trend_lines(self, row):
         setup = row.setup
-        logging.info(f'row = \n{row}')
-        logging.info(f'row.info = \n{json.dumps(row.info, indent=2)}')        
         """
         dt  | stk | setup | factor | direction | triggered | tm | info
         2022-01-26 | CSX | JL_P  |    100 | U         | t         | 20:00:00 | {"pivot": {"obv": 3, "date": "2022-01-25", "price": 3315, "state": "DT"}, "length": 26, "channel": {"p1": {"obv": -21, "date": "2021-12-17", "price": 3494, "state": "NRe"}, "p2": {"obv": 3, "date": "2022-01-24", "price": 3315, "state": "DT"}, "bound": "lower"}}
