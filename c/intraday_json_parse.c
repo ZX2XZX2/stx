@@ -15,14 +15,20 @@ typedef struct id_t {
 } id, *id_ptr;
 
 cJSON* get_sub_array(cJSON *parent, char* sub_array_name) {
+    char err_msg[80];
     cJSON *sub_array = cJSON_GetObjectItemCaseSensitive(parent, sub_array_name);
-    if (sub_array == NULL)
+    if (sub_array == NULL) {
+        sprintf(err_msg, "No '%s' found in \n", sub_array_name);
+        net_print_json_err(parent, err_msg);
         return NULL;
-    if (!cJSON_IsArray(sub_array))
+    }
+    if (!cJSON_IsArray(sub_array)) {
+        sprintf(err_msg, "'%s' not an array \n", sub_array_name);
+        net_print_json_err(sub_array, err_msg);
         return NULL;
+    }
     return sub_array;
 }
-
 
 int main(int argc, char** argv) {
     char *filename = "/tmp/dfs_55.json";
@@ -74,6 +80,9 @@ int main(int argc, char** argv) {
         goto end;
     }
     cJSON *quote = cJSON_GetArrayItem(quote_arr, 0);
+    /* cJSON *lows = get_sub_array(intraday_data, "meta"); */
+    /* if (lows == NULL) */
+    /*     goto end; */
     cJSON *lows = get_sub_array(quote, "low");
     cJSON *opens = get_sub_array(quote, "open");
     cJSON *volumes = get_sub_array(quote, "volume");
