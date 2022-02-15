@@ -18,6 +18,11 @@
 #define Y_4 "&fields=regularMarketPrice,regularMarketVolume,regularMarketDayLow,regularMarketDayHigh,regularMarketOpen,"
 #define Y_5 "&corsDomain=finance.yahoo.com"
 
+#define YID_1 "https://query1.finance.yahoo.com/v8/finance/chart/"
+#define YID_2 "?region=US&lang=en-US&includePrePost=false&interval="
+#define YID_3 "&useYfid=true&range="
+#define YID_4 "&corsDomain=finance.yahoo.com&.tsrc=finance"
+
 typedef struct net_mem_t {
     char *memory;
     size_t size;
@@ -241,6 +246,107 @@ int net_parse_options(FILE* opt_fp, cJSON* options, char* opt_type,
                 exp, und, opt_type[0], strike, dt, bid, ask, volume / 100);
     }
     return res;
+}
+
+
+cJSON* net_get_sub_array(cJSON *parent, char* sub_array_name) {
+    char err_msg[80];
+    cJSON *sub_array = cJSON_GetObjectItemCaseSensitive(parent, sub_array_name);
+    if (sub_array == NULL) {
+        sprintf(err_msg, "No '%s' found in ", sub_array_name);
+        net_print_json_err(parent, err_msg);
+        return NULL;
+    }
+    if (!cJSON_IsArray(sub_array)) {
+        sprintf(err_msg, "'%s' not an array ", sub_array_name);
+        net_print_json_err(sub_array, err_msg);
+        return NULL;
+    }
+    return sub_array;
+}
+
+void net_get_intraday_data(char* stk, char* range, char* interval) {
+    char url[256];
+    sprintf(url, "%s%s%s%s%s%s%s", YID_1, stk, YID_2, interval, YID_3, range,
+            YID_4);
+    net_mem_ptr chunk = net_get_quote(url);
+    if (chunk == NULL) {
+        LOGERROR("%s: net_get_quote() returned null\n", stk);
+        return;
+    }
+    cJSON *json = net_parse_quote(chunk->memory);
+    if (json == NULL) {
+        LOGERROR("%s: net_parse_quote() failed for %s\n", stk, chunk->memory);
+        goto end;
+    }
+    cJSON *chart = NULL, *chart_result = NULL, *intraday_data = NULL,
+        *timestamps = NULL, *opens = NULL, *highs = NULL, *lows = NULL,
+        *closes = NULL, *volumes = NULL, *indicators = NULL, *quote_arr = NULL,
+        *quote = NULL, *crs = NULL;
+    if ((chart = cJSON_GetObjectItemCaseSensitive(json, "chart")) == NULL) {
+        net_print_json_err(json, "No 'chart' found in data");
+        goto end;
+    }
+    if ((chart_result = net_get_sub_array(chart, "result")) == NULL)
+        goto end;
+    if ((intraday_data = cJSON_GetArrayItem(chart_result, 0)) == NULL)
+        goto end;
+    if ((timestamps = net_get_sub_array(intraday_data, "timestamp")) == NULL)
+        goto end;
+    if ((indicators = cJSON_GetObjectItemCaseSensitive(intraday_data,
+                                                       "indicators")) == NULL) {
+        net_print_json_err(intraday_data, "No 'indicators' found in");
+        goto end;
+    }
+    if ((quote_arr = net_get_sub_array(indicators, "quote")) == NULL)
+        goto end;
+    if ((quote = cJSON_GetArrayItem(quote_arr, 0)) == NULL)
+        goto end;
+    lows = net_get_sub_array(quote, "low");
+    opens = net_get_sub_array(quote, "open");
+    volumes = net_get_sub_array(quote, "volume");
+    highs = net_get_sub_array(quote, "high");
+    closes = net_get_sub_array(quote, "close");
+    if (lows == NULL || opens == NULL || volumes == NULL ||
+        highs == NULL || closes == NULL) {
+        net_print_json_err(quote, "Incomplete quote ");
+        goto end;
+    }
+    int total = cJSON_GetArraySize(timestamps), num = 0;
+    id_ptr id_data = (id_ptr) calloc((size_t) total, sizeof(id));
+    cJSON_ArrayForEach(crs, timestamps)
+        id_data[num++].timestamp = (long)(crs->valuedouble);
+    num = 0;
+    cJSON_ArrayForEach(crs, lows)
+        id_data[num++].low = (int)(100 * crs->valuedouble);
+    num = 0;
+    cJSON_ArrayForEach(crs, opens)
+        id_data[num++].open = (int)(100 * crs->valuedouble);
+    num = 0;
+    cJSON_ArrayForEach(crs, highs)
+        id_data[num++].high = (int)(100 * crs->valuedouble);
+    num = 0;
+    cJSON_ArrayForEach(crs, volumes)
+        id_data[num++].volume = (int)(crs->valuedouble);
+    num = 0;
+    cJSON_ArrayForEach(crs, closes)
+        id_data[num++].close = (int)(100 * crs->valuedouble);
+    FILE* fpw = fopen("/tmp/intraday_out.txt", "w");
+    for (num = 0; num < total; num++)
+        fprintf(fpw, "%ld %d %d %d %d %d\n", id_data[num].timestamp,
+                id_data[num].open, id_data[num].high, id_data[num].low,
+                id_data[num].close, id_data[num].volume);
+    fclose(fpw);
+ end:
+    if (chunk->memory != NULL)
+        free(chunk->memory);
+    if (chunk != NULL)
+        free(chunk);
+    if (id_data != NULL) {
+        free(id_data);
+        id_data = NULL;
+    }
+    cJSON_Delete(json);
 }
 
 void net_get_eod_data(FILE *eod_fp, char* stk, char* dt) {
