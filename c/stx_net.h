@@ -265,14 +265,17 @@ cJSON* net_get_sub_array(cJSON *parent, char* sub_array_name) {
     return sub_array;
 }
 
-void net_get_intraday_data(char* stk, char* range, char* interval) {
+id_ptr net_get_intraday_data(char* stk, char* range, char* interval,
+                             int* num_records) {
     char url[256];
+    id_ptr id_data = NULL;
+    *num_records = 0;
     sprintf(url, "%s%s%s%s%s%s%s", YID_1, stk, YID_2, interval, YID_3, range,
             YID_4);
     net_mem_ptr chunk = net_get_quote(url);
     if (chunk == NULL) {
         LOGERROR("%s: net_get_quote() returned null\n", stk);
-        return;
+        return id_data;
     }
     cJSON *json = net_parse_quote(chunk->memory);
     if (json == NULL) {
@@ -313,7 +316,8 @@ void net_get_intraday_data(char* stk, char* range, char* interval) {
         goto end;
     }
     int total = cJSON_GetArraySize(timestamps), num = 0;
-    id_ptr id_data = (id_ptr) calloc((size_t) total, sizeof(id));
+    id_data = (id_ptr) calloc((size_t) total, sizeof(id));
+    *num_records = total;
     cJSON_ArrayForEach(crs, timestamps)
         id_data[num++].timestamp = (long)(crs->valuedouble);
     num = 0;
@@ -342,11 +346,8 @@ void net_get_intraday_data(char* stk, char* range, char* interval) {
         free(chunk->memory);
     if (chunk != NULL)
         free(chunk);
-    if (id_data != NULL) {
-        free(id_data);
-        id_data = NULL;
-    }
     cJSON_Delete(json);
+    return id_data;
 }
 
 void net_get_eod_data(FILE *eod_fp, char* stk, char* dt) {
