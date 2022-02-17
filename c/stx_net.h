@@ -259,7 +259,7 @@ cJSON* net_get_sub_array(cJSON *parent, char* sub_array_name) {
     }
     if (!cJSON_IsArray(sub_array)) {
         sprintf(err_msg, "'%s' not an array ", sub_array_name);
-        net_print_json_err(sub_array, err_msg);
+        net_print_json_err(parent, err_msg);
         return NULL;
     }
     return sub_array;
