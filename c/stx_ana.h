@@ -24,6 +24,10 @@
 #define DOWN 'D'
 #define JL_FACTOR 2.00
 
+#define UP_TREND 1
+#define SIDE_WAYS 0
+#define DOWN_TREND -1
+
 typedef struct ldr_t {
     int activity;
     int range_ratio;
@@ -308,6 +312,15 @@ cJSON* ana_get_leaders_asof(char* dt, int max_atm_price, int max_opt_spread,
     int ana_ix = cal_ix(dt), exp_ix = cal_expiry(ana_ix, &exp_date);
     return ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
                            max_num_ldrs);
+}
+
+/**
+ *  Return the trend for a stock as of date dt, UP_TREND if stk in an
+ *  uptrend, DOWN_TREND if stk in down trend, SIDE_WAYS if stk not in
+ *  trend
+ */
+int ana_trend(char* stk, char* dt) {
+    return SIDE_WAYS;
 }
 
 void ana_pullbacks(FILE* fp, char* stk, char* dt, jl_data_ptr jl_recs) {
