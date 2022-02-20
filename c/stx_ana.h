@@ -364,20 +364,11 @@ void ana_setups_tomorrow(FILE* fp, char* stk, char* dt, char* next_dt,
 }
 
 void ana_setups(FILE* fp, char* stk, char* dt, char* next_dt, bool eod) {
-    ht_item_ptr jl_ht = ht_get(ht_jl(JL_200), stk);
-    jl_data_ptr jl_recs = NULL;
-    if (jl_ht == NULL) {
-        stx_data_ptr data = ts_load_stk(stk);
-        if (data == NULL) {
-            LOGERROR("Could not load %s, skipping...\n", stk);
-            return;
-        }
-        jl_recs = jl_jl(data, dt, JL_FACTOR);
-        jl_ht = ht_new_data(stk, (void*)jl_recs);
-        ht_insert(ht_jl(JL_200), jl_ht);
-    } else {
-        jl_recs = (jl_data_ptr) jl_ht->val.data;
-        jl_advance(jl_recs, dt);
+    jl_data_ptr jl_recs = jl_get_jl(stk, dt, JL_200, JLF_200);
+    if (jl_recs == NULL) {
+        LOGERROR("Failed to get JL(200); skipping ana_setups for %s as of %s",
+                 stk, dt);
+        return;
     }
     ana_pullbacks(fp, stk, dt, jl_recs);
     if (eod == true)
