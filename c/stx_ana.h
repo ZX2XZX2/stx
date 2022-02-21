@@ -320,22 +320,36 @@ cJSON* ana_get_leaders_asof(char* dt, int max_atm_price, int max_opt_spread,
  *  trend
  */
 int ana_trend(char* stk, char* dt) {
+    jl_data_ptr jl_recs = jl_get_jl(stk, dt, JL_200, JLF_200);
+    if (jl_recs == NULL) {
+        LOGERROR("Failed to get JL(200); skipping ana_setups for %s as of %s",
+                 stk, dt);
+        return SIDE_WAYS;
+    }
+    if ((jl_recs->last->prim_state == UPTREND) && 
+        (jl_recs->last->state == UPTREND))
+        return UP_TREND;
+    if ((jl_recs->last->prim_state == DOWNTREND) && 
+        (jl_recs->last->state == DOWNTREND))
+        return DOWN_TREND;
     return SIDE_WAYS;
 }
 
-void ana_pullbacks(FILE* fp, char* stk, char* dt, jl_data_ptr jl_recs) {
-    daily_record_ptr dr = jl_recs->data->data;
-    int ix = jl_recs->data->pos, trigrd = 1;
+void ana_pullbacks(FILE* fp, char* stk, char* dt) {
+    int trend = ana_trend(stk, dt);
+    if (trend == SIDE_WAYS)
+        return;
+    stx_data_ptr ts = ts_get_ts(stk, dt, 0);
+    daily_record_ptr dr = ts->data;
+    int ix = ts->pos, trigrd = 1;
     bool res;
-    if ((jl_recs->last->prim_state == UPTREND) && 
-        (jl_recs->last->state == UPTREND) && (dr[ix].high > dr[ix - 1].high)) {
+    if ((trend == UP_TREND) && (dr[ix].high > dr[ix - 1].high)) {
         if (stp_jc_1234(dr, ix - 1, UP))
             fprintf(fp, "%s\t%s\tJC_1234\t%c\t%d\n", dt, stk, UP, trigrd);
         if (stp_jc_5days(dr, ix - 1, UP))
             fprintf(fp, "%s\t%s\tJC_5DAYS\t%c\t%d\n", dt, stk, UP, trigrd);
-    } else if ((jl_recs->last->prim_state == DOWNTREND) && 
-               (jl_recs->last->state == DOWNTREND) && 
-               (dr[ix].low < dr[ix - 1].low)) {
+    }
+    if ((trend == DOWN_TREND) && (dr[ix].low < dr[ix - 1].low)) {
         if (stp_jc_1234(dr, ix - 1, DOWN))
             fprintf(fp, "%s\t%s\tJC_1234\t%c\t%d\n", dt, stk, DOWN, trigrd);
         if (stp_jc_5days(dr, ix - 1, DOWN))
@@ -343,19 +357,21 @@ void ana_pullbacks(FILE* fp, char* stk, char* dt, jl_data_ptr jl_recs) {
     }
 }
 
-void ana_setups_tomorrow(FILE* fp, char* stk, char* dt, char* next_dt,
-                         jl_data_ptr jl_recs) {
-    daily_record_ptr dr = jl_recs->data->data;
-    int ix = jl_recs->data->pos, trigrd = 0;
+void ana_setups_tomorrow(FILE* fp, char* stk, char* dt, char* next_dt) {
+    int trend = ana_trend(stk, dt);
+    if (trend == SIDE_WAYS)
+        return;
+    stx_data_ptr ts = ts_get_ts(stk, dt, 0);
+    daily_record_ptr dr = ts->data;
+    int ix = ts->pos, trigrd = 0;
     bool res;
-    if ((jl_recs->last->prim_state == UPTREND) && 
-        (jl_recs->last->state == UPTREND)) {
+    if (trend == UP_TREND) {
         if (stp_jc_1234(dr, ix, UP))
             fprintf(fp, "%s\t%s\tJC_1234\t%c\t0\n", next_dt, stk, UP);
         if (stp_jc_5days(dr, ix, UP))
             fprintf(fp, "%s\t%s\tJC_5DAYS\t%c\t0\n", next_dt, stk, UP);
-    } else if ((jl_recs->last->prim_state == DOWNTREND) && 
-               (jl_recs->last->state == DOWNTREND)) {
+    }
+    if (trend == DOWN_TREND) {
         if (stp_jc_1234(dr, ix, DOWN))
             fprintf(fp, "%s\t%s\tJC_1234\t%c\t0\n", next_dt, stk, DOWN);
         if (stp_jc_5days(dr, ix, DOWN))
@@ -364,15 +380,9 @@ void ana_setups_tomorrow(FILE* fp, char* stk, char* dt, char* next_dt,
 }
 
 void ana_setups(FILE* fp, char* stk, char* dt, char* next_dt, bool eod) {
-    jl_data_ptr jl_recs = jl_get_jl(stk, dt, JL_200, JLF_200);
-    if (jl_recs == NULL) {
-        LOGERROR("Failed to get JL(200); skipping ana_setups for %s as of %s",
-                 stk, dt);
-        return;
-    }
-    ana_pullbacks(fp, stk, dt, jl_recs);
+    ana_pullbacks(fp, stk, dt);
     if (eod == true)
-        ana_setups_tomorrow(fp, stk, dt, next_dt, jl_recs);
+        ana_setups_tomorrow(fp, stk, dt, next_dt);
 }
 
 int ana_clip(int value, int lb, int ub) {
