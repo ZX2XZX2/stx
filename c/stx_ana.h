@@ -326,16 +326,16 @@ int ana_trend(char* stk, char* dt) {
                  stk, dt);
         return SIDE_WAYS;
     }
-    if ((jl_recs->last->prim_state == UPTREND) && 
+    if ((jl_recs->last->prim_state == UPTREND) &&
         (jl_recs->last->state == UPTREND))
         return UP_TREND;
-    if ((jl_recs->last->prim_state == DOWNTREND) && 
+    if ((jl_recs->last->prim_state == DOWNTREND) &&
         (jl_recs->last->state == DOWNTREND))
         return DOWN_TREND;
     return SIDE_WAYS;
 }
 
-void ana_pullbacks(FILE* fp, char* stk, char* dt) {
+void ana_pullbacks(cJSON* setups, char* stk, char* dt) {
     int trend = ana_trend(stk, dt);
     if (trend == SIDE_WAYS)
         return;
@@ -345,19 +345,19 @@ void ana_pullbacks(FILE* fp, char* stk, char* dt) {
     bool res;
     if ((trend == UP_TREND) && (dr[ix].high > dr[ix - 1].high)) {
         if (stp_jc_1234(dr, ix - 1, UP))
-            fprintf(fp, "%s\t%s\tJC_1234\t%c\t%d\n", dt, stk, UP, trigrd);
+            stp_add_to_setups(setups, NULL, "JC_1234", UP_TREND, NULL, true);
         if (stp_jc_5days(dr, ix - 1, UP))
-            fprintf(fp, "%s\t%s\tJC_5DAYS\t%c\t%d\n", dt, stk, UP, trigrd);
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", UP_TREND, NULL, true);
     }
     if ((trend == DOWN_TREND) && (dr[ix].low < dr[ix - 1].low)) {
         if (stp_jc_1234(dr, ix - 1, DOWN))
-            fprintf(fp, "%s\t%s\tJC_1234\t%c\t%d\n", dt, stk, DOWN, trigrd);
+            stp_add_to_setups(setups, NULL, "JC_1234", DOWN_TREND, NULL, true);
         if (stp_jc_5days(dr, ix - 1, DOWN))
-            fprintf(fp, "%s\t%s\tJC_5DAYS\t%c\t%d\n", dt, stk, DOWN, trigrd);
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", DOWN_TREND, NULL, true);
     }
 }
 
-void ana_setups_tomorrow(FILE* fp, char* stk, char* dt, char* next_dt) {
+void ana_setups_tomorrow(cJSON* setups, char* stk, char* dt, char* next_dt) {
     int trend = ana_trend(stk, dt);
     if (trend == SIDE_WAYS)
         return;
@@ -367,22 +367,23 @@ void ana_setups_tomorrow(FILE* fp, char* stk, char* dt, char* next_dt) {
     bool res;
     if (trend == UP_TREND) {
         if (stp_jc_1234(dr, ix, UP))
-            fprintf(fp, "%s\t%s\tJC_1234\t%c\t0\n", next_dt, stk, UP);
+            stp_add_to_setups(setups, NULL, "JC_1234", UP_TREND, NULL, false);
         if (stp_jc_5days(dr, ix, UP))
-            fprintf(fp, "%s\t%s\tJC_5DAYS\t%c\t0\n", next_dt, stk, UP);
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", UP_TREND, NULL, false);
     }
     if (trend == DOWN_TREND) {
         if (stp_jc_1234(dr, ix, DOWN))
-            fprintf(fp, "%s\t%s\tJC_1234\t%c\t0\n", next_dt, stk, DOWN);
+            stp_add_to_setups(setups, NULL, "JC_1234", DOWN_TREND, NULL, false);
         if (stp_jc_5days(dr, ix, DOWN))
-            fprintf(fp, "%s\t%s\tJC_5DAYS\t%c\t0\n", next_dt, stk, DOWN);
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", DOWN_TREND, NULL,
+                              false);
     }
 }
 
-void ana_setups(FILE* fp, char* stk, char* dt, char* next_dt, bool eod) {
-    ana_pullbacks(fp, stk, dt);
+void ana_setups(cJSON* setups, char* stk, char* dt, char* next_dt, bool eod) {
+    ana_pullbacks(setups, stk, dt);
     if (eod == true)
-        ana_setups_tomorrow(fp, stk, dt, next_dt);
+        ana_setups_tomorrow(setups, stk, dt, next_dt);
 }
 
 int ana_clip(int value, int lb, int ub) {
@@ -599,15 +600,26 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
     /* char *setup_date = ana_get_setup_date(stk, ana_date); */
     char *setup_date = ana_date;
     /**
-     *  Create the JSON array that will contain all the calculated
-     *  setups
+     *  Create the JSON array that will contain all the
+     *  non-triggerable setups
      */
     cJSON *setups = cJSON_CreateArray();
+    /**
+     *  Create the JSON array that will contain all the triggered
+     *  setups.  We need a separate variable for these because, when a
+     *  setup is triggered, we need to update the triggered flag AND
+     *  the setup time.
+     */
+    cJSON *triggered_setups = cJSON_CreateArray();
     /**
      * Run the setup analysis all the way to ana_date 
      */
     int ana_res = 0;
     while((ana_res == 0) && (strcmp(setup_date, ana_date) <= 0)) {
+        ana_pullbacks(triggered_setups, stk, setup_date);
+        if (eod == true)
+            ana_setups_tomorrow(setups, stk, setup_date, next_dt);
+        /* ana_setups(setups, stk, setup_date, eod); */
         ana_res = ana_jl_setups(setups, stk, setup_date, eod);
         if (ana_res == 0)
             cal_next_bday(cal_ix(setup_date), &setup_date);
