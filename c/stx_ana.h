@@ -335,7 +335,7 @@ int ana_trend(char* stk, char* dt) {
     return SIDE_WAYS;
 }
 
-void ana_pullbacks(cJSON* setups, char* stk, char* dt) {
+void ana_triggered_setups(cJSON* setups, char* stk, char* dt) {
     int trend = ana_trend(stk, dt);
     if (trend == SIDE_WAYS)
         return;
@@ -378,12 +378,6 @@ void ana_setups_tomorrow(cJSON* setups, char* stk, char* dt, char* next_dt) {
             stp_add_to_setups(setups, NULL, "JC_5DAYS", DOWN_TREND, NULL,
                               false);
     }
-}
-
-void ana_setups(cJSON* setups, char* stk, char* dt, char* next_dt, bool eod) {
-    ana_pullbacks(setups, stk, dt);
-    if (eod == true)
-        ana_setups_tomorrow(setups, stk, dt, next_dt);
 }
 
 int ana_clip(int value, int lb, int ub) {
@@ -592,13 +586,8 @@ char* ana_get_setup_date(char *stk, char *ana_date) {
  * ana_date is NULL, setups (and their scores) will be calculated up
  * to the current business date.
  */
-void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
+void ana_setups(char* stk, char* setup_date, char* next_date, bool eod) {
     char sql_cmd[256];
-    /**
-     * setup_date is the date from which we start calculating setups
-     */
-    /* char *setup_date = ana_get_setup_date(stk, ana_date); */
-    char *setup_date = ana_date;
     /**
      *  Create the JSON array that will contain all the
      *  non-triggerable setups
@@ -612,23 +601,12 @@ void ana_scored_setups(char* stk, char* ana_date, char* next_dt, bool eod) {
      */
     cJSON *triggered_setups = cJSON_CreateArray();
     /**
-     * Run the setup analysis all the way to ana_date 
+     *  Run the setup analysis for setup_date 
      */
-    int ana_res = 0;
-    while((ana_res == 0) && (strcmp(setup_date, ana_date) <= 0)) {
-        ana_pullbacks(triggered_setups, stk, setup_date);
-        if (eod == true)
-            ana_setups_tomorrow(setups, stk, setup_date, next_dt);
-        /* ana_setups(setups, stk, setup_date, eod); */
-        ana_res = ana_jl_setups(setups, stk, setup_date, eod);
-        if (ana_res == 0)
-            cal_next_bday(cal_ix(setup_date), &setup_date);
-    }
-    /**
-     *  Undo the last iteration of the while loop that moved
-     *  setup_date one day too far ahead
-     */
-    cal_prev_bday(cal_ix(setup_date), &setup_date);
+    ana_triggered_setups(triggered_setups, stk, setup_date);
+    if (eod == true)
+        ana_setups_tomorrow(setups, stk, setup_date, next_date);
+    ana_jl_setups(setups, stk, setup_date, eod);
     /**
      *  Update the setup_dates table with the last date when the
      *  analysis was run for the given stock
@@ -712,17 +690,18 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     }
     LOGINFO("Running %s analysis for %s\n", eod? "eod": "intraday", ana_date);
     LOGINFO("Calculating setups for %d stocks\n", total);
-    char* next_dt = NULL;
+    /**
+     *  Get the next business date for triggerable setups - these are
+     *  setups that are only triggered next day if either the next
+     *  high is greater than today high, of next low is less than
+     *  today low
+     */
+    char* next_date = NULL;
     if (eod == true)
-        cal_next_bday(cal_ix(ana_date), &next_dt);
+        cal_next_bday(cal_ix(ana_date), &next_date);
     cJSON_ArrayForEach(ldr, leaders) {
-        if (cJSON_IsString(ldr) && (ldr->valuestring != NULL)) {
-            ana_scored_setups(ldr->valuestring, ana_date, next_dt, eod);
-            /** TODO: fix this mess */
-            /* ana_setups(ldr->valuestring, ana_date, next_dt, eod); */
-            /* if (eod) */
-            /*     ana_calc_rs(ldr->valuestring, ana_date, rs + num); */
-        }
+        if (cJSON_IsString(ldr) && (ldr->valuestring != NULL))
+            ana_setups(ldr->valuestring, ana_date, next_date, eod);
         num++;
         if (num % 100 == 0)
             LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
