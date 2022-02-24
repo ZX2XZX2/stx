@@ -335,7 +335,7 @@ int ana_trend(char* stk, char* dt) {
     return SIDE_WAYS;
 }
 
-void ana_triggered_setups(cJSON* setups, char* stk, char* dt) {
+void ana_triggered_setups(cJSON* setups, char* stk, char* dt, bool eod) {
     int trend = ana_trend(stk, dt);
     if (trend == SIDE_WAYS)
         return;
@@ -355,6 +355,9 @@ void ana_triggered_setups(cJSON* setups, char* stk, char* dt) {
         if (stp_jc_5days(dr, ix - 1, DOWN))
             stp_add_to_setups(setups, NULL, "JC_5DAYS", DOWN_TREND, NULL, true);
     }
+    char *setup_time = cal_setup_time(eod, false);
+    stp_update_triggered_setups_in_database(setups, dt, stk, setup_time);
+    cJSON_Delete(setups);
 }
 
 void ana_setups_tomorrow(cJSON* setups, char* stk, char* dt, char* next_dt) {
@@ -378,6 +381,9 @@ void ana_setups_tomorrow(cJSON* setups, char* stk, char* dt, char* next_dt) {
             stp_add_to_setups(setups, NULL, "JC_5DAYS", DOWN_TREND, NULL,
                               false);
     }
+    char *setup_time = cal_setup_time(true, true);
+    stp_insert_setups_in_database(setups, next_dt, stk, setup_time);
+    cJSON_Delete(setups);
 }
 
 int ana_clip(int value, int lb, int ub) {
@@ -429,9 +435,9 @@ int ana_jl_setups(cJSON *setups, char* stk, char* dt, bool eod) {
     /*     stp_daily_setups(setups, jl_050); */
     /* } */
     /**
-     *  Insert in the database  all the calculated setups
+     *  Insert in the database all the calculated setups
      */
-    char *setup_time = cal_setup_time(eod);
+    char *setup_time = cal_setup_time(eod, false);
     stp_insert_setups_in_database(setups, dt, stk, setup_time);
     cJSON_Delete(setups);
     return 0;
@@ -589,23 +595,27 @@ char* ana_get_setup_date(char *stk, char *ana_date) {
 void ana_setups(char* stk, char* setup_date, char* next_date, bool eod) {
     char sql_cmd[256];
     /**
-     *  Create the JSON array that will contain all the
-     *  non-triggerable setups
+     *  JSON array for all non-triggerable setups.
      */
     cJSON *setups = cJSON_CreateArray();
     /**
-     *  Create the JSON array that will contain all the triggered
-     *  setups.  We need a separate variable for these because, when a
-     *  setup is triggered, we need to update the triggered flag AND
-     *  the setup time.
+     *  JSON array for all setups that might be triggered tomorrow.
+     *  Need separate array for these because they need to be inserted
+     *  under next business day.
+     */
+    cJSON *tomorrow_setups = cJSON_CreateArray();
+    /**
+     *  JSON array for all setups that were triggered today.  Need
+     *  separate array for these because, when a setup is triggered,
+     *  need to update the triggered flag AND the setup time.
      */
     cJSON *triggered_setups = cJSON_CreateArray();
     /**
      *  Run the setup analysis for setup_date 
      */
-    ana_triggered_setups(triggered_setups, stk, setup_date);
+    ana_triggered_setups(triggered_setups, stk, setup_date, eod);
     if (eod == true)
-        ana_setups_tomorrow(setups, stk, setup_date, next_date);
+        ana_setups_tomorrow(tomorrow_setups, stk, setup_date, next_date);
     ana_jl_setups(setups, stk, setup_date, eod);
     /**
      *  Update the setup_dates table with the last date when the
