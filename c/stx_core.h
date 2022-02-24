@@ -687,10 +687,13 @@ long cal_long_expiry(char* exp_dt) {
  *  This function returns the current time to be used when inserting
  *  setups in the database
  */
-char* cal_setup_time(bool eod) {
+char* cal_setup_time(bool eod, bool tomorrow) {
     static char _setup_time_retval[8];
     if (eod) {
-        strcpy(_setup_time_retval, "20:00");
+        if (tomorrow)
+            strcpy(_setup_time_retval, "08:00");
+        else
+            strcpy(_setup_time_retval, "20:00");
     } else {
         time_t seconds;
         struct timespec spec;
