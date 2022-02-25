@@ -119,8 +119,8 @@ bool stp_jc_5days(daily_record_ptr data, int ix, char trend) {
 
 /**
  *  Check whether a given day intersects a channel built by connecting
- *  two pivots.  This applies to both breakout detection, and trend
- *  channel break detection.
+ *  two or more pivots.  This applies to both breakout detection, and
+ *  trend channel break detection.
  */
 void stp_jl_breaks(cJSON *setups, jl_data_ptr jl) {
     jl_channel channel;
@@ -732,6 +732,85 @@ void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk,
             db_transaction(sql_cmd);
         }
     }
+}
+
+/**
+ *  Update triggered setups state in DB.  If setup not in DB, insert
+ *  it.  If setup in DB is not triggered, updated triggered flag and
+ *  setup time.  If setup already triggered, do not update.
+ */
+void stp_update_triggered_setups_in_database(cJSON *triggered_setups, char *dt,
+                                             char *stk, char* setup_time) {
+    char sql_cmd[2048];
+    sprintf(sql_cmd, "SELECT setup, direction, triggered FROM time_setups "
+            "WHERE stk='%s' AND dt='%s'", stk, dt);
+    PGresult* res = db_query(sql_cmd);
+    /**
+     *  db_setups has all setups found in DB for stk as of date dt
+     */
+    cJSON *db_setups = cJSON_CreateObject();
+    int rows = PQntuples(res);
+    for (int ix = 0; ix < rows; ix++) {
+        cJSON *db_setup = cJSON_CreateObject();
+        cJSON_AddStringToObject(db_setup, "direction", PQgetvalue(res, ix, 1));
+        cJSON_AddStringToObject(db_setup, "triggered", PQgetvalue(res, ix, 2));
+        cJSON_AddItemToObject(db_setups, PQgetvalue(res, ix, 0), db_setup);
+    }
+    PQclear(res);
+    int num_inserted_setups = 0, num_updated_setups = 0;
+    cJSON* setup;
+    cJSON_ArrayForEach(setup, triggered_setups) {
+        bool need_to_insert = false;
+        char *setup_name = cJSON_GetObjectItem(setup, "setup")->valuestring;
+        char *setup_dir = cJSON_GetObjectItem(setup, "direction")->valuestring;
+        /**
+         *  Check if setup already in the database
+         */
+        cJSON *db_setup = cJSON_GetObjectItem(db_setups, setup_name);
+        if (db_setup == NULL) {
+            /**
+             *  Setup not found in database, need to insert
+             */
+            need_to_insert = true;
+        } else {
+            /**
+             *  Even if found, need to check if direction is the same
+             */
+            char *db_dir = cJSON_GetObjectItem(db_setup,
+                                               "direction")->valuestring;
+            char *db_triggered = cJSON_GetObjectItem(db_setup,
+                                                     "triggered")->valuestring;
+            if (!strcmp(setup_dir, db_dir)) {
+                /**
+                 *  If same direction, check if triggered already
+                 *  (nothing to do then) or not (need to update then)
+                 */
+                if (!strcmp(db_triggered, "f")) {
+                    sprintf(sql_cmd, "UPDATE time_setups SET triggered='t' "
+                            "AND tm='%s' WHERE stk='%s' AND dt='%s' AND "
+                            "setup='%s' AND direction='%s'", setup_time,
+                            stk, dt, setup_name, setup_dir);
+                    db_transaction(sql_cmd);
+                    num_updated_setups++;
+                }
+            } else
+                need_to_insert = true;
+        }
+        if (need_to_insert) {
+            sprintf(sql_cmd, "insert into time_setups values ('%s','%s','%s',"
+                    "%d,'%s',%s,'%s','%s') on conflict do nothing", dt, stk,
+                    cJSON_GetObjectItem(setup, "setup")->valuestring,
+                    cJSON_GetObjectItem(setup, "factor")->valueint,
+                    cJSON_GetObjectItem(setup, "direction")->valuestring,
+                    cJSON_GetObjectItem(setup, "triggered")->valuestring,
+                    setup_time, "{}");
+            db_transaction(sql_cmd);
+            num_inserted_setups++;
+        }
+    }
+    LOGINFO("%s %s inserted %d setups, updated %d setups\n", stk, dt,
+            num_inserted_setups, num_updated_setups);
+    cJSON_Delete(db_setups);
 }
 
 #endif
