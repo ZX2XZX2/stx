@@ -187,15 +187,17 @@ class StxDatafeed:
             tb.print_exc()
 
 
-    def upload_splits(self, splits_file):
-        print('Uploading stocks from file {0:s}'.format(splits_file))
+    def upload_splits(self, splits_date):
+        splits_dt = splits_date.replace('-', '')
+        splits_file = f"{os.getenv('DOWNLOAD_DIR')}/splits_{splits_dt}_ana.txt"
+        print(f'Uploading stocks from file {splits_file}')
         with open(splits_file, 'r') as f:
             lines = f.readlines()
         num = 0
         for line in lines:
             tokens = line.split()
             if len(tokens) < 3:
-                print('Skipping line {0:s}'.format(line))
+                print(f'Skipping line {line}')
                 continue
             stk = tokens[0].strip()
             dt = stxcal.prev_busday(tokens[1].strip())
@@ -207,10 +209,8 @@ class StxDatafeed:
                 stxdb.db_write_cmd(db_cmd)
                 num += 1
             except Exception as ex:
-                print('Failed to upload split {0:s}, {1:s}, '
-                      'error {2:s}'.format(stk, dt, str(ex)))
-        print('Successfully uploaded {0:d} out of {1:d} stock splits'.
-              format(num, len(lines)))
+                print(f'Failed to upload split {stk}, {dt}, error {str(ex)}')
+        print(f'Uploaded {num} out of {len(lines)} stock splits')
 
     def get_available_dates(self, file_pattern, last_date):
         file_list = glob.glob(os.path.join(self.in_dir, file_pattern))
