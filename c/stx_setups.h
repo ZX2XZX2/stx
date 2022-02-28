@@ -743,7 +743,7 @@ void stp_update_triggered_setups_in_database(cJSON *triggered_setups, char *dt,
                                              char *stk, char* setup_time) {
     char sql_cmd[2048];
     sprintf(sql_cmd, "SELECT setup, direction, triggered FROM time_setups "
-            "WHERE stk='%s' AND dt='%s'", stk, dt);
+            "WHERE stk='%s' AND dt='%s' AND setup NOT LIKE 'JL_%%'", stk, dt);
     PGresult* res = db_query(sql_cmd);
     /**
      *  db_setups has all setups found in DB for stk as of date dt
@@ -786,10 +786,10 @@ void stp_update_triggered_setups_in_database(cJSON *triggered_setups, char *dt,
                  *  (nothing to do then) or not (need to update then)
                  */
                 if (!strcmp(db_triggered, "f")) {
-                    sprintf(sql_cmd, "UPDATE time_setups SET triggered='t' "
-                            "AND tm='%s' WHERE stk='%s' AND dt='%s' AND "
-                            "setup='%s' AND direction='%s'", setup_time,
-                            stk, dt, setup_name, setup_dir);
+                    sprintf(sql_cmd, "UPDATE time_setups SET triggered='t', "
+                            "tm='%s' WHERE stk='%s' AND dt='%s' AND "
+                            "setup='%s' AND direction='%s'", setup_time, stk,
+                            dt, setup_name, setup_dir);
                     db_transaction(sql_cmd);
                     num_updated_setups++;
                 }
