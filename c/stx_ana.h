@@ -24,9 +24,11 @@
 #define DOWN 'D'
 #define JL_FACTOR 2.00
 
+#define UP_TREND_2 2
 #define UP_TREND 1
 #define SIDE_WAYS 0
 #define DOWN_TREND -1
+#define DOWN_TREND_2 -2
 
 typedef struct ldr_t {
     int activity;
@@ -317,23 +319,39 @@ cJSON* ana_get_leaders_asof(char* dt, int max_atm_price, int max_opt_spread,
 /**
  *  Return the trend for a stock as of date dt, UP_TREND if stk in an
  *  uptrend, DOWN_TREND if stk in down trend, SIDE_WAYS if stk not in
- *  trend
+ *  trend. Stock is in UP_TREND if either JL_200 was last in an
+ *  uptrend, or JL_200 was last in natural rally, and JL_100 was in an
+ *  uptrend.  Stock is in DOWN_TREND if either JL_200 was last in a
+ *  downtrend, or JL_200 was last in a natural reaction and JL_100 was
+ *  in a downtrend.
  */
 int ana_trend(char* stk, char* dt) {
-    jl_data_ptr jl_recs = jl_get_jl(stk, dt, JL_200, JLF_200);
-    if (jl_recs == NULL) {
-        LOGERROR("Failed to get JL(200); skipping ana_setups for %s as of %s",
-                 stk, dt);
+    jl_data_ptr jl_recs_200 = jl_get_jl(stk, dt, JL_200, JLF_200);
+    jl_data_ptr jl_recs_100 = jl_get_jl(stk, dt, JL_100, JLF_100);
+    if ((jl_recs_200 == NULL) || (jl_recs_100 == NULL)) {
+        if (jl_recs_200 == NULL)
+            LOGERROR("Failed to get JL(200) for %s as of %s", stk, dt);
+        if (jl_recs_100 == NULL)
+            LOGERROR("Failed to get JL(100) for %s as of %s", stk, dt);
+        LOGERROR("Skipping ana_setups for %s as of %s", stk, dt);
         return SIDE_WAYS;
     }
-    if ((jl_recs->last->prim_state == UPTREND) &&
-        (jl_recs->last->state == UPTREND))
+    if ((jl_recs_200->last->prim_state == UPTREND) &&
+        (jl_recs_200->last->state == UPTREND))
+        return UP_TREND_2;
+    if ((jl_recs_200->last->prim_state == RALLY) &&
+        (jl_recs_100->last->prim_state == UPTREND))
         return UP_TREND;
-    if ((jl_recs->last->prim_state == DOWNTREND) &&
-        (jl_recs->last->state == DOWNTREND))
+    if ((jl_recs_200->last->prim_state == DOWNTREND) &&
+        (jl_recs_200->last->state == DOWNTREND))
+        return DOWN_TREND_2;
+    if ((jl_recs_200->last->prim_state == REACTION) &&
+        (jl_recs_100->last->prim_state == DOWNTREND))
         return DOWN_TREND;
     return SIDE_WAYS;
 }
+
+
 
 void ana_triggered_setups(cJSON* setups, char* stk, char* dt, bool eod) {
     int trend = ana_trend(stk, dt);
