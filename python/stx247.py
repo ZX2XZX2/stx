@@ -273,6 +273,13 @@ img {
             tb.print_exc()
         return res
 
+"""
+SELECT time_setups.dt, time_setups.stk, ind_groups.industry, ind_groups.sector, time_setups.direction, time_setups.setup, time_setups.tm, indicators_1.name, indicators_1.value, indicators_1.bucket_rank FROM time_setups, indicators_1, ind_groups WHERE time_setups.dt='2022-03-02' AND setup LIKE 'JC_%' AND triggered='t' AND indicators_1.dt='2022-03-01' AND time_setups.stk=indicators_1.ticker AND indicators_1.name='CS_45' AND ind_groups.dt = '2022-02-18' AND ind_groups.stk=time_setups.stk ORDER BY time_setups.direction, indicators_1.value;
+
+SELECT time_setups.dt, time_setups.stk, time_setups.direction, time_setups.setup, indicators_1.name, indicators_1.value, indicators_1.bucket_rank FROM time_setups, indicators_1 WHERE time_setups.dt='2022-03-02' AND setup LIKE 'JC_%' AND triggered='t' AND indicators_1.dt='2022-03-01' AND time_setups.stk=indicators_1.ticker AND indicators_1.name='CS_20' ORDER BY time_setups.direction, indicators_1.value;
+
+"""
+
     def get_report(self, crt_date, setup_df, isd, do_analyze):
         s_date = stxcal.move_busdays(crt_date, -50)
         jl_s_date = stxcal.move_busdays(crt_date, -350)
