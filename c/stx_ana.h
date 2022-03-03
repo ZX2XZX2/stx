@@ -24,11 +24,11 @@
 #define DOWN 'D'
 #define JL_FACTOR 2.00
 
-#define UP_TREND_2 2
-#define UP_TREND 1
-#define SIDE_WAYS 0
-#define DOWN_TREND -1
-#define DOWN_TREND_2 -2
+#define UT2 2
+#define UT1 1
+#define SIDEWAYS 0
+#define DT1 -1
+#define DT2 -2
 
 typedef struct ldr_t {
     int activity;
@@ -317,13 +317,12 @@ cJSON* ana_get_leaders_asof(char* dt, int max_atm_price, int max_opt_spread,
 }
 
 /**
- *  Return the trend for a stock as of date dt, UP_TREND if stk in an
- *  uptrend, DOWN_TREND if stk in down trend, SIDE_WAYS if stk not in
- *  trend. Stock is in UP_TREND if either JL_200 was last in an
- *  uptrend, or JL_200 was last in natural rally, and JL_100 was in an
- *  uptrend.  Stock is in DOWN_TREND if either JL_200 was last in a
- *  downtrend, or JL_200 was last in a natural reaction and JL_100 was
- *  in a downtrend.
+ *  Return the trend for a stock as of date dt, UT1 or UT2 if stk in
+ *  an uptrend, DT1 or DT2 if stk in down trend, SIDEWAYS if stk not
+ *  in trend. Stock is in UT2 if JL_200 was last in uptrend, in UT1 if
+ *  JL_200 was last in natural rally, and JL_100 was in uptrend.
+ *  Stock is in DT2 if JL_200 was last in downtrend, in DT1 if JL_200
+ *  was last in natural reaction and JL_100 was in downtrend.
  */
 int ana_trend(char* stk, char* dt) {
     jl_data_ptr jl_recs_200 = jl_get_jl(stk, dt, JL_200, JLF_200);
@@ -334,44 +333,76 @@ int ana_trend(char* stk, char* dt) {
         if (jl_recs_100 == NULL)
             LOGERROR("Failed to get JL(100) for %s as of %s", stk, dt);
         LOGERROR("Skipping ana_setups for %s as of %s", stk, dt);
-        return SIDE_WAYS;
+        return SIDEWAYS;
     }
     if ((jl_recs_200->last->prim_state == UPTREND) &&
         (jl_recs_200->last->state == UPTREND))
-        return UP_TREND_2;
+        return UT2;
     if ((jl_recs_200->last->prim_state == RALLY) &&
         (jl_recs_100->last->prim_state == UPTREND))
-        return UP_TREND;
+        return UT1;
     if ((jl_recs_200->last->prim_state == DOWNTREND) &&
         (jl_recs_200->last->state == DOWNTREND))
-        return DOWN_TREND_2;
+        return DT2;
     if ((jl_recs_200->last->prim_state == REACTION) &&
         (jl_recs_100->last->prim_state == DOWNTREND))
-        return DOWN_TREND;
-    return SIDE_WAYS;
+        return DT1;
+    return SIDEWAYS;
 }
 
+char* trend_to_string(int trend) {
+    static char _retval[4];
+    switch(trend) {
+    case UT2:
+        strcpy(_retval, "UT2");
+        break;
+    case UT1:
+        strcpy(_retval, "UT1");
+        break;
+    case DT1:
+        strcpy(_retval, "DT1");
+        break;
+    case DT2:
+        strcpy(_retval, "DT2");
+        break;
+    default:
+        strcpy(_retval, "NIL");
+        break;
+    }
+    return _retval;
+}
 
+cJSON* trend_info(int trend) {
+    if (trend == SIDEWAYS)
+        return NULL;
+    cJSON *info = cJSON_CreateObject();
+    cJSON_AddStringToObject(info, "trend", trend_to_string(trend));
+    return info;
+}
 
 void ana_triggered_setups(cJSON* setups, char* stk, char* dt, bool eod) {
     int trend = ana_trend(stk, dt);
-    if (trend == SIDE_WAYS)
+    if (trend == SIDEWAYS)
         return;
     stx_data_ptr ts = ts_get_ts(stk, dt, 0);
     daily_record_ptr dr = ts->data;
     int ix = ts->pos, trigrd = 1;
     bool res;
-    if ((trend == UP_TREND) && (dr[ix].high > dr[ix - 1].high)) {
+    if ((trend == UT1 || trend == UT2) && (dr[ix].high > dr[ix - 1].high)) {
         if (stp_jc_1234(dr, ix - 1, UP))
-            stp_add_to_setups(setups, NULL, "JC_1234", UP_TREND, NULL, true);
+            stp_add_to_setups(setups, NULL, "JC_1234", 1, trend_info(trend),
+                              true);
         if (stp_jc_5days(dr, ix - 1, UP))
-            stp_add_to_setups(setups, NULL, "JC_5DAYS", UP_TREND, NULL, true);
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", 1, trend_info(trend),
+                              true);
     }
-    if ((trend == DOWN_TREND) && (dr[ix].low < dr[ix - 1].low)) {
+    if ((trend == DT1 || trend == DT2) && (dr[ix].low < dr[ix - 1].low)) {
         if (stp_jc_1234(dr, ix - 1, DOWN))
-            stp_add_to_setups(setups, NULL, "JC_1234", DOWN_TREND, NULL, true);
+            stp_add_to_setups(setups, NULL, "JC_1234", -1, trend_info(trend),
+                              true);
         if (stp_jc_5days(dr, ix - 1, DOWN))
-            stp_add_to_setups(setups, NULL, "JC_5DAYS", DOWN_TREND, NULL, true);
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", -1, trend_info(trend),
+                              true);
     }
     char *setup_time = cal_setup_time(eod, false);
     stp_update_triggered_setups_in_database(setups, dt, stk, setup_time);
@@ -380,23 +411,26 @@ void ana_triggered_setups(cJSON* setups, char* stk, char* dt, bool eod) {
 
 void ana_setups_tomorrow(cJSON* setups, char* stk, char* dt, char* next_dt) {
     int trend = ana_trend(stk, dt);
-    if (trend == SIDE_WAYS)
+    if (trend == SIDEWAYS)
         return;
     stx_data_ptr ts = ts_get_ts(stk, dt, 0);
     daily_record_ptr dr = ts->data;
     int ix = ts->pos, trigrd = 0;
     bool res;
-    if (trend == UP_TREND) {
+    if (trend == UT1 || trend == UT2) {
         if (stp_jc_1234(dr, ix, UP))
-            stp_add_to_setups(setups, NULL, "JC_1234", UP_TREND, NULL, false);
+            stp_add_to_setups(setups, NULL, "JC_1234", 1, trend_info(trend),
+                              false);
         if (stp_jc_5days(dr, ix, UP))
-            stp_add_to_setups(setups, NULL, "JC_5DAYS", UP_TREND, NULL, false);
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", 1, trend_info(trend),
+                              false);
     }
-    if (trend == DOWN_TREND) {
+    if (trend == DT1 || trend == DT2) {
         if (stp_jc_1234(dr, ix, DOWN))
-            stp_add_to_setups(setups, NULL, "JC_1234", DOWN_TREND, NULL, false);
+            stp_add_to_setups(setups, NULL, "JC_1234", -1, trend_info(trend),
+                              false);
         if (stp_jc_5days(dr, ix, DOWN))
-            stp_add_to_setups(setups, NULL, "JC_5DAYS", DOWN_TREND, NULL,
+            stp_add_to_setups(setups, NULL, "JC_5DAYS", -1, trend_info(trend),
                               false);
     }
     char *setup_time = cal_setup_time(true, true);
