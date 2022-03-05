@@ -808,8 +808,9 @@ void stp_update_triggered_setups_in_database(cJSON *triggered_setups, char *dt,
             num_inserted_setups++;
         }
     }
-    LOGINFO("%s %s inserted %d setups, updated %d setups\n", stk, dt,
-            num_inserted_setups, num_updated_setups);
+    if (num_inserted_setups > 0 || num_updated_setups > 0)
+        LOGINFO("%s %s insert %d, update %d setups\n", stk, dt,
+                num_inserted_setups, num_updated_setups);
     cJSON_Delete(db_setups);
 }
 
