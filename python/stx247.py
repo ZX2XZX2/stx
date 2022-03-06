@@ -70,23 +70,33 @@ img {
         rsdf.sort_values(by=['rs'], ascending=False, inplace=True)
         return rsdf
 
-    def get_triggered_setups(self, dt):
+    def get_triggered_setups(self, dt, triggered=False):
         q = sql.Composed([
-                sql.SQL('select * from setups where dt='), sql.Literal(dt), 
-                sql.SQL(' and setup in ('), sql.SQL(', ').join(
-                    [sql.Literal('JC_5DAYS'), sql.Literal('JC_1234')]), 
-                sql.SQL(') and triggered='), sql.Literal(True)])
-        df = pd.read_sql(q, stxdb.db_get_cnx())
-        return df
-
-    def get_setups_for_tomorrow(self, dt):
-        next_dt = stxcal.next_busday(dt)
-        q = sql.Composed([
-                sql.SQL('select * from setups where dt='), 
-                sql.Literal(next_dt), sql.SQL(' and setup in ('), 
-                sql.SQL(', ').join(
-                    [sql.Literal('JC_5DAYS'), sql.Literal('JC_1234')]), 
-                sql.SQL(')')])
+            sql.SQL("SELECT time_setups.dt, time_setups.stk, "
+                    "ind_groups.industry, ind_groups.sector, "
+                    "time_setups.direction, time_setups.setup, "
+                    "time_setups.tm, indicators_1.name, "
+                    "indicators_1.value, indicators_1.bucket_rank "
+                    "FROM time_setups, indicators_1, ind_groups "
+                    "WHERE time_setups.dt="),
+            sql.Literal(dt),
+            sql.SQL(' AND setup IN ('),
+            sql.SQL(', ').join([
+                sql.Literal('JC_5DAYS'),
+                sql.Literal('JC_1234')
+            ]),
+            sql.SQL(") AND triggered="),
+            sql.Literal('t' if triggered else 'f'),
+            sql.SQL(" AND indicators_1.dt="),
+            sql.Literal(stxcal.prev_busday(dt)),
+            sql.SQL(" AND time_setups.stk=indicators_1.ticker "
+                    "AND indicators_1.name="),
+            sql.Literal('CS_45'),
+            sql.SQL(" AND ind_groups.dt = "),
+            sql.Literal(stxcal.prev_expiry(dt)),
+            sql.SQL( " AND ind_groups.stk=time_setups.stk "
+                     "ORDER BY time_setups.direction, indicators_1.value")
+        ])
         df = pd.read_sql(q, stxdb.db_get_cnx())
         return df
 
@@ -280,7 +290,122 @@ img {
             tb.print_exc()
         return res
 
+    """ Display the triggered setups in chronological order """
+    def add_timeline_report(self, setup_df):
+        res = []
+        time_setups = setup_df.sort_values(
+            by=['tm'],
+            ascending=False,
+            inplace=False
+        )
+        res.append("<h3> Time Setups</h3>")
+        res.append('<table>')
+        res.append(
+            "<tr>"
+            "<th>Stock</th>"
+            "<th>Industry</th>"
+            "<th>Sector</th>"
+            "<th>Direction</th>"
+            "<th>Setup</th>"
+            "<th>CS_45</td>"
+            "<th>Bucket_Rank</th>"
+            "<th>Time</th>"
+            "</tr>"
+        )
+        for _, row in time_setups.iterrows():
+            res.append(
+                f"<tr>"
+                f"<td>{row['stk']}</td>"
+                f"<td>{row['industry']}</td>"
+                f"<td>{row['sector']}</td>"
+                f"<td>{row['direction']}</td>"
+                f"<td>{row['setup']}</td>"
+                f"<td>{row['value']}</td>"
+                f"<td>{row['bucket_rank']}</td>"
+                f"<td>{row['tm']}</td>"
+                f"</tr>"
+            )
+            res.append('</table>')
+        return res
 
+
+    def trigger_setup_report(self, row, s_date, crt_date):
+        res = []
+        try:
+            stk = row['stk']
+            trend_lines = None # self.get_trend_lines(row)
+            stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
+            stk_plot.plot_to_file()
+            res.append(f"<h4>{stk} {row['value']}</h4>")
+            # res.append(f"<h4>{stk} "
+            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
+            res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
+                       format(stk, stk))
+            ts = StxTS(stk, s_date, crt_date)
+            day_ix = ts.set_day(crt_date)
+            if day_ix == -1:
+                return []
+            avg_volume = np.average(ts.df['v'].values[-20:])
+            rgs = [max(h, c_1) - min(l, c_1)
+                   for h, l, c_1 in zip(ts.df['hi'].values[-20:],
+                                        ts.df['lo'].values[-20:],
+                                        ts.df['c'].values[-21:-1])]
+            avg_rg = np.average(rgs)
+            res.append('<table border="1">')
+            res.append('<tr><th>name</th><th>dir</th><th>avg_volume</th>'
+                       '<th>avg_rg</th></tr>')
+            res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>'
+                       '{2:,d}</td><td>{3:.2f}</td></tr>'.
+                       format(stk, row['direction'],
+                              int(1000 * avg_volume), avg_rg / 100))
+            res.append('</table>')
+            res.extend(self.build_indicators_table(row))
+        except:
+            logging.error('Failed analysis for {0:s}'.format(stk))
+            tb.print_exc()
+            return []
+        # try:
+        #     jl_res = StxJL.jl_report(stk, jl_s_date, crt_date, 1.5)
+        #     res.append(jl_res)
+        # except:
+        #     logging.error('{0:s} JL(1.5) calc failed'.format(stk))
+        #     tb.print_exc()
+        # try:
+        #     ana_res = self.ana_report(stk, ana_s_date, crt_date)
+        #     res.append(ana_res)
+        # except:
+        #     logging.error('Failed to analyze {0:s}'.format(stk))
+        #     tb.print_exc()
+        return res
+  
+
+    
+    """ Assume here that setup_df has the following columns: industry
+    group, sector, cs_45, tm, and setup_df is already sorted following
+    direction and cs_45. If triggered is True, then this is a
+    real-time intraday report, and we need to also provide a table
+    sorted by tm.  Otherwise, only provide setup charts sorted by
+    CS_45.  TODO: retrieve JL setups for last 20 days and plot the
+    channels for those setups on chart """
+    def get_triggered_report(self, crt_date, setup_df, triggered=False):
+        start_date = stxcal.move_busdays(crt_date, -90)
+        logging.info(f'setup_df has {len(setup_df)} rows')
+        res = []
+        if triggered:
+            res.extend(self.add_timeline_report(setup_df))
+        up_setup_df = setup_df.query("direction=='U'").copy()
+        down_setup_df = setup_df.query("direction=='D'").copy()
+        res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
+        for _, row in up_setup_df.iterrows():
+            res.extend(self.trigger_setup_report(row, start_date,
+                                                 crt_date))
+        res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
+        for _, row in down_setup_df.iterrows():
+            res.extend(self.trigger_setup_report(row, start_date,
+                                                 crt_date))
+        return res
+
+    
     def get_report(self, crt_date, setup_df, isd, do_analyze):
         s_date = stxcal.move_busdays(crt_date, -50)
         jl_s_date = stxcal.move_busdays(crt_date, -350)
@@ -374,23 +499,20 @@ img {
                 stxgrps.calc_group_indicator(indicator, crt_date)
         isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
-        # df_1 = self.get_triggered_setups(crt_date)
-        df_3 = self.get_jl_setups(crt_date)
-        if df_3.empty:
-            logging.error(f'No JL setups for {crt_date}.  Exiting...')
+        df_trigger_today = self.get_triggered_setups(crt_date, triggered=True)
+        df_jl = self.get_jl_setups(crt_date)
+        logging.info(f'Found {len(df_trigger_today)} triggered setups and '
+                     '{len(df_jl)} JL setups')
+        if df_trigger_today.empty and df_jl.empty:
+            logging.error(f'No triggered/JL setups for {crt_date}.  '
+                          'Exiting...')
             return None
-        logging.info(f'Found {len(df_3)} JL setups')
-        # if df_1.empty and df_3.empty:
-        #   logging.error(f'No triggered/JL setups for {crt_date}.  Exiting...')
-        #     return None
-        # self.get_high_activity(crt_date, df_1)
-        # self.get_high_activity(crt_date, df_3)
         # df_1 = self.filter_spreads(df_1, spreads, max_spread)
-        df_3 = self.filter_spreads(df_3, spreads, max_spread)
-        df_3 = self.add_indicators(df_3, crt_date, indicators, eod)
+        # df_3 = self.filter_spreads(df_3, spreads, max_spread)
+        df_jl = self.add_indicators(df_jl, crt_date, indicators, eod)
         res = ['<html>', self.report_style, '<body>']
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
-        # res.extend(self.get_report(crt_date, df_1, isd, True))
+        res.extend(self.get_triggered_report(crt_date, df_trigger_today))
         # if eod:
         #     df_2 = self.get_setups_for_tomorrow(crt_date)
         #     next_date = stxcal.next_busday(crt_date)
@@ -399,7 +521,7 @@ img {
         #     res.append('<h3>TOMMORROW - {0:s}</h3>'.format(next_date))
         #     res.extend(self.get_report(crt_date, df_2, isd, False))
         res.append('<h3>JL - {0:s}</h3>'.format(crt_date))
-        res.extend(self.get_report(crt_date, df_3, isd, True))
+        res.extend(self.get_report(crt_date, df_jl, isd, True))
         res.append('</body>')
         res.append('</html>')
         with open('/tmp/x.html', 'w') as html_file:
