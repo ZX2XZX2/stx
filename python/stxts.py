@@ -149,10 +149,10 @@ class StxTS:
         splts = {k: v for k, v in self.splits.items() if sdd < k <= edd}
         for k, v in splts.items():
             r = v[0] if inv == 0 else 1 / v[0]
-            self.adjust(bdd, stxcal.prev_busday(k), r, ['o', 'hi', 
-                                                        'lo', 'c'])
+            self.adjust(bdd, stxcal.prev_busday(str(k.date())),
+                        r, ['o', 'hi', 'lo', 'c'])
             if v[1] in [0, 1, 3, 6]:
-                self.adjust(bdd, stxcal.prev_busday(k), 1 / r, ['v'])
+                self.adjust(bdd, stxcal.prev_busday(str(k.date())), 1 / r, ['v'])
             self.adj_splits.append(k)
 
     def adjust(self, s_idx, e_idx, ratio, col_names):
