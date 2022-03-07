@@ -255,9 +255,9 @@ img {
             res.append('<table border="1">')
             res.append('<tr><th>name</th><th>dir</th><th>spread'
                        '</th><th>avg_volume</th><th>avg_rg</th></tr>')
-            res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>{2:d}</td><td>'
-                       '{3:,d}</td><td>{4:.2f}</td></tr>'.
-                       format(stk, row['direction'], int(row['spread']),
+            res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>{2:,d}</td>'
+                       '<td>{3:.2f}</td></tr>'.
+                       format(stk, row['direction'],
                               int(1000 * avg_volume), avg_rg / 100))
             res.append('</table>')
             res.extend(self.build_indicators_table(row))
@@ -336,7 +336,7 @@ img {
             trend_lines = None # self.get_trend_lines(row)
             stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
             stk_plot.plot_to_file()
-            res.append(f"<h4>{stk} {row['value']}</h4>")
+            res.append(f"<h4>{stk} {row['bucket_rank']}</h4>")
             # res.append(f"<h4>{stk} "
             #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
             res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
