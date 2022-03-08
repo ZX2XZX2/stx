@@ -255,10 +255,9 @@ img {
             res.append('<table border="1">')
             res.append('<tr><th>name</th><th>dir</th><th>spread'
                        '</th><th>avg_volume</th><th>avg_rg</th></tr>')
-            res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>{2:,d}</td>'
-                       '<td>{3:.2f}</td></tr>'.
-                       format(stk, row['direction'],
-                              int(1000 * avg_volume), avg_rg / 100))
+            res.append(f"<tr><td>{stk}</td><td>{row['direction']}</td>"
+                       f"<td>{int(1000 * avg_volume):,d}</td>"
+                       "<td>{avg_rg / 100:.2f}</td></tr>")
             res.append('</table>')
             res.extend(self.build_indicators_table(row))
             # res.append('<table border="1">')
@@ -405,41 +404,35 @@ img {
                                                  crt_date))
         return res
 
-    
-    def get_report(self, crt_date, setup_df, isd, do_analyze):
-        s_date = stxcal.move_busdays(crt_date, -50)
+    def index_report(self, crt_date):
+        s_date = stxcal.move_busdays(crt_date, -90)
         jl_s_date = stxcal.move_busdays(crt_date, -350)
-        ana_s_date = stxcal.move_busdays(crt_date, -20)
         res = []
-        # rsdf = self.get_rs_stx(crt_date)
-        if do_analyze:
-            indexes = ['^GSPC', '^IXIC', '^DJI']
-            for index in indexes:
-                stk_plot = StxPlot(index, s_date, crt_date)
-                stk_plot.plot_to_file()
-                res.append('<h4>{0:s}</h4>'.format(index))
-                res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
-                           format(index, index))
-                try:
-                    jl_res = StxJL.jl_report(index, jl_s_date, crt_date, 1.0)
-                    res.append(jl_res)
-                except:
-                    logging.error('{0:s} JL(1.0) calc failed'.format(index))
-                    tb.print_exc()
+        res.append('<h3>Index report</h3>')
+        for index in ['^GSPC', '^IXIC', '^DJI']:
+            stk_plot = StxPlot(index, s_date, crt_date)
+            stk_plot.plot_to_file()
+            res.append(f'<h4>{index}</h4>')
+            res.append(f'<img src="/tmp/{index}.png" alt="{index}">')
+            try:
+                jl_res = StxJL.jl_report(index, jl_s_date, crt_date, 1.0)
+                res.append(jl_res)
+            except:
+                logging.error(f'{index} JL(1.0) calc failed')
+                tb.print_exc()
                 try:
                     jl_res = StxJL.jl_report(index, jl_s_date, crt_date, 2.0)
                     res.append(jl_res)
                 except:
-                    logging.error('{0:s} JL(2.0) calc failed'.format(index))
+                    logging.error(f'{index} JL(2.0) calc failed')
                     tb.print_exc()
-                try:
-                    ana_res = self.ana_report(index, ana_s_date, crt_date)
-                    res.append(ana_res)
-                except:
-                    logging.error('Failed to analyze {0:s}'.format(index))
-                    tb.print_exc()
-        # setup_df = df.merge(rsdf)
-        # setup_df = df
+        return res
+
+    def get_report(self, crt_date, setup_df, isd):
+        s_date = stxcal.move_busdays(crt_date, -50)
+        jl_s_date = stxcal.move_busdays(crt_date, -350)
+        ana_s_date = stxcal.move_busdays(crt_date, -20)
+        res = []
         logging.info(f'setup_df has {len(setup_df)} rows')
         up_setup_df = setup_df.query("direction=='U'").copy()
         up_setup_df.sort_values(by=['tm'], ascending=False, inplace=True)
@@ -457,20 +450,6 @@ img {
             start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
             res.extend(self.setup_report(row, start_date, jl_s_date, ana_s_date,
                                          crt_date, isd))
-        # if do_analyze:
-        if False:
-            rsbest = rsdf.query('rs_rank==99').copy()
-            rsworst = rsdf.query('rs_rank==0').copy()
-            rsworst.sort_values(by=['rs'], ascending=True, inplace=True)
-            res.append('<h3>RS Leaders</h3>')
-            for i, (_, row) in enumerate(rsbest.iterrows()):
-                res.extend(self.rs_report(i, row, s_date, jl_s_date,
-                                          ana_s_date, crt_date, isd))
-            res.append('<h3>RS Laggards</h3>')
-            for i, (_, row) in enumerate(rsworst.iterrows()):
-                res.extend(self.rs_report(i, row, s_date, jl_s_date,
-                                          ana_s_date, crt_date, isd))
-
         return res
 
     def get_jl_setups(self, dt):
@@ -502,7 +481,7 @@ img {
         df_trigger_today = self.get_triggered_setups(crt_date, triggered=True)
         df_jl = self.get_jl_setups(crt_date)
         logging.info(f'Found {len(df_trigger_today)} triggered setups and '
-                     '{len(df_jl)} JL setups')
+                     f'{len(df_jl)} JL setups')
         if df_trigger_today.empty and df_jl.empty:
             logging.error(f'No triggered/JL setups for {crt_date}.  '
                           'Exiting...')
@@ -511,6 +490,7 @@ img {
         # df_3 = self.filter_spreads(df_3, spreads, max_spread)
         df_jl = self.add_indicators(df_jl, crt_date, indicators, eod)
         res = ['<html>', self.report_style, '<body>']
+        res.extend(self.index_report(crt_date))
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
         res.extend(self.get_triggered_report(crt_date, df_trigger_today))
         # if eod:
@@ -519,9 +499,9 @@ img {
         #     self.get_high_activity(crt_date, df_2)
         #     df_2 = self.filter_spreads(df_2, spreads, max_spread)
         #     res.append('<h3>TOMMORROW - {0:s}</h3>'.format(next_date))
-        #     res.extend(self.get_report(crt_date, df_2, isd, False))
+        #     res.extend(self.get_report(crt_date, df_2, isd))
         res.append('<h3>JL - {0:s}</h3>'.format(crt_date))
-        res.extend(self.get_report(crt_date, df_jl, isd, True))
+        res.extend(self.get_report(crt_date, df_jl, isd))
         res.append('</body>')
         res.append('</html>')
         with open('/tmp/x.html', 'w') as html_file:
