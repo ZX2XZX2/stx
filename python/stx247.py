@@ -253,24 +253,13 @@ img {
                                         ts.df['c'].values[-21:-1])]
             avg_rg = np.average(rgs)
             res.append('<table border="1">')
-            res.append('<tr><th>name</th><th>dir</th><th>spread'
+            res.append('<tr><th>name</th><th>dir'
                        '</th><th>avg_volume</th><th>avg_rg</th></tr>')
             res.append(f"<tr><td>{stk}</td><td>{row['direction']}</td>"
                        f"<td>{int(1000 * avg_volume):,d}</td>"
-                       "<td>{avg_rg / 100:.2f}</td></tr>")
+                       f"<td>{avg_rg / 100:.2f}</td></tr>")
             res.append('</table>')
             res.extend(self.build_indicators_table(row))
-            # res.append('<table border="1">')
-            # res.append('<tr><th>name</th><th>dir</th><th>spread'
-            #            '</th><th>avg_volume</th><th>avg_rg</th><th>hi_act'
-            #            '</th><th>rs</th><th>rs_rank</th></tr>')
-            # res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>{2:d}</td><td>'
-            #            '{3:,d}</td><td>{4:.2f}</td><td>{5:d}</td>'
-            #            '<td>{6:d}</td><td>{7:d}</td></tr>'.
-            #            format(stk, row['direction'], int(row['spread']),
-            #                   int(1000 * avg_volume), avg_rg / 100,
-            #                   row['hi_act'], row['rs'], row['rs_rank']))
-            # res.append('</table>')
         except:
             logging.error('Failed analysis for {0:s}'.format(stk))
             tb.print_exc()
@@ -376,9 +365,8 @@ img {
         #     logging.error('Failed to analyze {0:s}'.format(stk))
         #     tb.print_exc()
         return res
-  
 
-    
+
     """ Assume here that setup_df has the following columns: industry
     group, sector, cs_45, tm, and setup_df is already sorted following
     direction and cs_45. If triggered is True, then this is a
@@ -393,6 +381,7 @@ img {
         if triggered:
             res.extend(self.add_timeline_report(setup_df))
         up_setup_df = setup_df.query("direction=='U'").copy()
+        up_setup_df.sort_values(by=['value'], ascending=False, inplace=True)
         down_setup_df = setup_df.query("direction=='D'").copy()
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
