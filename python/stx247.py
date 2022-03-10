@@ -324,7 +324,8 @@ img {
             trend_lines = None # self.get_trend_lines(row)
             stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
             stk_plot.plot_to_file()
-            res.append(f"<h4>{stk} {row['bucket_rank']}</h4>")
+            res.append(f"<h4>{stk} {row['bucket_rank']} [{row['industry']}, "
+                       f"{row['sector']}]</h4>")
             # res.append(f"<h4>{stk} "
             #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
             res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
