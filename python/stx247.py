@@ -483,13 +483,13 @@ img {
         res.extend(self.index_report(crt_date))
         res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
         res.extend(self.get_triggered_report(crt_date, df_trigger_today))
-        # if eod:
-        #     df_2 = self.get_setups_for_tomorrow(crt_date)
-        #     next_date = stxcal.next_busday(crt_date)
-        #     self.get_high_activity(crt_date, df_2)
-        #     df_2 = self.filter_spreads(df_2, spreads, max_spread)
-        #     res.append('<h3>TOMMORROW - {0:s}</h3>'.format(next_date))
-        #     res.extend(self.get_report(crt_date, df_2, isd))
+        if eod:
+            df_trigger_tomorrow = self.get_triggered_setups(
+                crt_date, triggered=False)
+            next_date = stxcal.next_busday(crt_date)
+            res.append(f'<h3>TOMMORROW - {next_date}</h3>')
+            res.extend(self.get_triggered_report(
+                crt_date, df_trigger_tomorrow))
         res.append('<h3>JL - {0:s}</h3>'.format(crt_date))
         res.extend(self.get_report(crt_date, df_jl, isd))
         res.append('</body>')
