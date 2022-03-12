@@ -481,33 +481,29 @@ img {
         df_jl = self.add_indicators(df_jl, crt_date, indicators, eod)
         res = ['<html>', self.report_style, '<body>']
         res.extend(self.index_report(crt_date))
-        res.append('<h3>TODAY - {0:s}</h3>'.format(crt_date))
+        res.append('<h2>TODAY - {crt_date}</h2>')
         res.extend(self.get_triggered_report(crt_date, df_trigger_today))
         if eod:
             df_trigger_tomorrow = self.get_triggered_setups(
                 crt_date, triggered=False)
             next_date = stxcal.next_busday(crt_date)
-            res.append(f'<h3>TOMMORROW - {next_date}</h3>')
+            res.append(f'<h2>TOMMORROW - {next_date}</h2>')
             res.extend(self.get_triggered_report(
                 crt_date, df_trigger_tomorrow))
-        res.append('<h3>JL - {0:s}</h3>'.format(crt_date))
+        res.append(f'<h2>JL - {crt_date}</h2>')
         res.extend(self.get_report(crt_date, df_jl, isd))
         res.append('</body>')
         res.append('</html>')
         with open('/tmp/x.html', 'w') as html_file:
             html_file.write('\n'.join(res))
         logging.info('Generated HTML report')
-        time_now = datetime.datetime.now()
-        time_now_date = '{0:d}-{1:02d}-{2:02d}'.format(time_now.year, 
-                                                       time_now.month, 
-                                                       time_now.day)
         '''If this run every 10 minutes, overwrite intraday report'''
         suffix = 'EOD' if eod else 'ID'
-        pdf_fname = '{0:s}_{1:s}.pdf'.format(crt_date, suffix)
-        logging.info('PDF report file name: {0:s}'.format(pdf_fname))
+        pdf_fname = f'{crt_date}_{suffix}.pdf'
+        logging.info(f'PDF report file name: {pdf_fname}')
         pdf_filename = os.path.join(self.report_dir, pdf_fname)
         HTML(filename='/tmp/x.html').write_pdf(pdf_filename)
-        logging.info('Saved report locally in {0:s}'.format(pdf_filename))
+        logging.info(f'Saved report locally in {pdf_filename}')
         return pdf_filename
 
     def ana_report(self, stk, start_date, end_date):
