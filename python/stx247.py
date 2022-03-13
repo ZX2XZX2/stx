@@ -235,6 +235,10 @@ img {
         try:
             stk = row['stk']
             trend_lines = self.get_trend_lines(row)
+            if trend_lines:
+                trend_start_date = trend_lines[0][0]
+                if trend_start_date < s_date:
+                    s_date = trend_start_date
             stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
             stk_plot.plot_to_file()
             res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
