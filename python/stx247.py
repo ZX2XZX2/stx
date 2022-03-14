@@ -295,8 +295,8 @@ img {
         res.append(
             "<tr>"
             "<th>Stock</th>"
-            "<th>Industry</th>"
-            "<th>Sector</th>"
+            # "<th>Industry</th>"
+            # "<th>Sector</th>"
             "<th>Direction</th>"
             "<th>Setup</th>"
             "<th>CS_45</td>"
@@ -308,8 +308,8 @@ img {
             res.append(
                 f"<tr>"
                 f"<td>{row['stk']}</td>"
-                f"<td>{row['industry']}</td>"
-                f"<td>{row['sector']}</td>"
+                # f"<td>{row['industry']}</td>"
+                # f"<td>{row['sector']}</td>"
                 f"<td>{row['direction']}</td>"
                 f"<td>{row['setup']}</td>"
                 f"<td>{row['value']}</td>"
@@ -317,7 +317,7 @@ img {
                 f"<td>{row['tm']}</td>"
                 f"</tr>"
             )
-            res.append('</table>')
+        res.append('</table>')
         return res
 
 
@@ -485,8 +485,9 @@ img {
         df_jl = self.add_indicators(df_jl, crt_date, indicators, eod)
         res = ['<html>', self.report_style, '<body>']
         res.extend(self.index_report(crt_date))
-        res.append('<h2>TODAY - {crt_date}</h2>')
-        res.extend(self.get_triggered_report(crt_date, df_trigger_today))
+        res.append(f'<h2>TODAY - {crt_date}</h2>')
+        res.extend(self.get_triggered_report(crt_date, df_trigger_today,
+                                             triggered=True))
         if eod:
             df_trigger_tomorrow = self.get_triggered_setups(
                 crt_date, triggered=False)
