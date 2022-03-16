@@ -97,6 +97,8 @@ img {
             sql.SQL( " AND ind_groups.stk=time_setups.stk "
                      "ORDER BY time_setups.direction, indicators_1.value")
         ])
+        logging.info(f'triggered_indicators SQL = '
+                     f'{q.as_string(stxdb.db_get_cnx())}')
         df = pd.read_sql(q, stxdb.db_get_cnx())
         return df
 
@@ -134,7 +136,7 @@ img {
             sql.SQL(')')
         ])
         logging.info(f'get indicators: ')        
-        logging.info(f'q = {q.as_string(stxdb.db_get_cnx())}')        
+        logging.info(f'q = {q.as_string(stxdb.db_get_cnx())}')
         indicators_df = pd.read_sql(q, stxdb.db_get_cnx())
         indicators_df = indicators_df.rename(columns = {'ticker': 'stk'})
         for indicator in indicators:
@@ -346,11 +348,10 @@ img {
             avg_rg = np.average(rgs)
             res.append('<table border="1">')
             res.append('<tr><th>name</th><th>dir</th><th>avg_volume</th>'
-                       '<th>avg_rg</th></tr>')
-            res.append('<tr><td>{0:s}</td><td>{1:s}</td><td>'
-                       '{2:,d}</td><td>{3:.2f}</td></tr>'.
-                       format(stk, row['direction'],
-                              int(1000 * avg_volume), avg_rg / 100))
+                       '<th>avg_rg</th><th>time</th></tr>')
+            res.append(f"<tr><td>{stk}</td><td>{row['direction']}</td>"
+                       f"<td>{int(1000 * avg_volume):,d}</td>"
+                       f"<td>{avg_rg / 100:.2f}</td><td>{row['tm']}</td></tr>")
             res.append('</table>')
             res.extend(self.build_indicators_table(row))
         except:
