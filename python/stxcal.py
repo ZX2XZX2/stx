@@ -537,7 +537,7 @@ def next_expiry(dt, min_days=1):
 def prev_expiry(dt, min_days=0):
     ym = np.datetime64(str(dt)[:-3])
     last_exp = move_busdays(expiry(ym), 0)
-    while num_busdays(last_exp, dt) < min_days:
+    while num_busdays(last_exp, dt) <= min_days:
         ym -= np.timedelta64(1, 'M')
         last_exp = move_busdays(expiry(ym), 0)
     return expiry(ym)
