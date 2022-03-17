@@ -302,7 +302,7 @@ img {
             "<th>Direction</th>"
             "<th>Setup</th>"
             "<th>CS_45</td>"
-            "<th>Bucket_Rank</th>"
+            # "<th>Bucket_Rank</th>"
             "<th>Time</th>"
             "</tr>"
         )
@@ -314,8 +314,8 @@ img {
                 # f"<td>{row['sector']}</td>"
                 f"<td>{row['direction']}</td>"
                 f"<td>{row['setup']}</td>"
-                f"<td>{row['value']}</td>"
-                f"<td>{row['bucket_rank']}</td>"
+                f"<td>{row['value']} / {row['bucket_rank']}</td>"
+                # f"<td>{row['bucket_rank']}</td>"
                 f"<td>{row['tm']}</td>"
                 f"</tr>"
             )
