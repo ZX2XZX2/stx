@@ -17,6 +17,8 @@
 
 #define AVG_DAYS 50
 #define MIN_ACT 8
+#define MIN_LDR_ACT 20
+#define MAX_SETUP_PRICE 15000
 #define MIN_RCR 15
 #define MAX_OPT_SPREAD 33
 #define MAX_ATM_PRICE 1000
@@ -53,6 +55,13 @@ typedef struct ldr_t {
  * than a max price.
  */
 void ana_option_analysis(ldr_ptr leader, PGresult* sql_res, int spot) {
+    /**
+     *  This will bypass the option analysis in the decision whether
+     *  stock is a leader or not.  But we stil analyze the options
+     */
+    leader->is_ldr = true;
+    leader->opt_spread = -1;
+    leader->atm_price = -1;
     int itm_calls = 0, otm_calls = 0, itm_puts = 0, otm_puts = 0;
     int avg_spread = 0, bid, ask, strike, num_calls = 0, num_puts = 0;
     char* cp;
@@ -120,6 +129,8 @@ ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp,
      *  A stock is a leader at a given date if:
      *  1. Its average activity is above a threshold.
      *  2. Its average range is above a threshold.
+     *
+     *  Disable option analysis in the leader analysis
      *  3. It has call and put options for that date, expiring in one month,
      *  4. For both calls and puts, it has at least 2 strikes >= spot, and
      *     2 strikes <= spot
