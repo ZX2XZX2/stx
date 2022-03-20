@@ -569,7 +569,7 @@ if __name__ == '__main__':
     res = stxdb.db_read_cmd("SELECT MAX(dt) FROM dividends")
     splits_start_date = str(res[0][0]) if res else '2000-01-01'
     sdf.parse_stooq_new(start_date)
-    last_expiry = stxcal.prev_expiry(index_end_date)
+    last_expiry = stxcal.prev_expiry(str(datetime.now().date()))
     profile_count = sdf.get_profile_count(last_expiry)
     if profile_count < 5000:
         logging.info(f'Not sufficient data available for {last_expiry}, '
