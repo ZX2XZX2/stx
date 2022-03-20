@@ -17,8 +17,9 @@
 
 #define AVG_DAYS 50
 #define MIN_ACT 8
-#define MIN_LDR_ACT 20
-#define MAX_SETUP_PRICE 15000
+#define MIN_LDR_IND_ACT 100
+#define MIN_LDR_STP_ACT 500
+#define MAX_LDR_STP_PRICE 15000
 #define MIN_RCR 15
 #define MAX_OPT_SPREAD 33
 #define MAX_ATM_PRICE 1000
@@ -55,11 +56,6 @@ typedef struct ldr_t {
  * than a max price.
  */
 void ana_option_analysis(ldr_ptr leader, PGresult* sql_res, int spot) {
-    /**
-     *  This will bypass the option analysis in the decision whether
-     *  stock is a leader or not.  But we stil analyze the options
-     */
-    leader->is_ldr = true;
     leader->opt_spread = -1;
     leader->atm_price = -1;
     int itm_calls = 0, otm_calls = 0, itm_puts = 0, otm_puts = 0;
@@ -186,6 +182,12 @@ ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp,
             db_upload_file("options", "/tmp/options.csv");
         }
     }
+    /**
+     *  This will bypass the option analysis in the decision whether
+     *  stock is a leader or not.  But we stil analyze the options
+     */
+    leader->is_ldr = true;
+
     sprintf(sql_cmd, "select cp, strike, bid, ask from options where "
             "und='%s' and dt='%s' and expiry='%s' order by cp, strike",
             und, as_of_date, exp);
