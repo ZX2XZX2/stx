@@ -277,9 +277,8 @@ class StxDatafeed:
                     raise
             # launch the subprocesses that back up the database
             try:
-                cmd1 = 'sudo -u postgres pg_dump -Fc {0:s}'.format(db_name)
-                cmd2 = 'split -b 1000m - {0:s}/{1:s}'.format(db_bkp_dir,
-                                                             db_name)
+                cmd1 = f'sudo -u postgres /usr/bin/pg_dump -Fc {db_name}'
+                cmd2 = f'split -b 1000m - {db_bkp_dir}/{db_name}'
                 p1 = subprocess.Popen(shlex.split(cmd1),
                                       stdout=subprocess.PIPE,
                                       cwd=db_bkp_dir)
