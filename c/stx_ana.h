@@ -274,33 +274,39 @@ int ana_expiry_analysis(char* dt, bool realtime_analysis, bool download_spots,
 }
 
 cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
-                       int max_num_ldrs) {
+                       int min_act, int max_price, int max_num_ldrs) {
     cJSON *leader_list = cJSON_CreateArray();
     if (leader_list == NULL) {
         LOGERROR("Failed to create leader_list cJSON Array.\n");
         return NULL;
     }
     char sql_0[64], sql_atm_px[64], sql_spread[64], sql_exclude[64],
-        sql_limit[64], sql_cmd[512];
+        sql_activity[64], sql_price[64], sql_limit[64], sql_cmd[512];
     memset(sql_0, 0, 64);
     memset(sql_atm_px, 0, 64);
     memset(sql_spread, 0, 64);
+    memset(sql_activity, 0, 64);
+    memset(sql_price, 0, 64);
     memset(sql_exclude, 0, 64);
     memset(sql_limit, 0, 64);
     memset(sql_cmd, 0, 512);
-    sprintf(sql_0, "select stk from leaders where expiry='%s'", exp);
+    sprintf(sql_0, "select stk from leaders, eods where expiry='%s'", exp);
     if (max_atm_price > 0)
-        sprintf(sql_atm_px, "and atm_price <= %u",
+        sprintf(sql_atm_px, " and atm_price <= %u",
                 (unsigned short) max_atm_price);
     if (max_opt_spread > 0)
-        sprintf(sql_spread, "and opt_spread <= %u",
+        sprintf(sql_spread, " and opt_spread <= %u",
                 (unsigned short) max_opt_spread);
     sprintf(sql_exclude, "and stk not in (select * from excludes)");
+    if (min_act > 0)
+        sprintf(sql_activity, " and activity >= %u", (unsigned short) min_act);
+    if (max_price > 0)
+        sprintf(sql_price, " and c <= %u", (unsigned short) max_price);
     if (max_num_ldrs > 0)
-        sprintf(sql_limit, "order by opt_spread limit %u",
+        sprintf(sql_limit, " order by opt_spread limit %u",
                 (unsigned short) max_num_ldrs);
-    sprintf(sql_cmd, "%s%s%s%s%s", sql_0, sql_atm_px, sql_spread, sql_exclude,
-            sql_limit);
+    sprintf(sql_cmd, "%s%s%s%s%s%s%s", sql_0, sql_atm_px, sql_spread,
+            sql_exclude, sql_activity, sql_price, sql_limit);
     LOGINFO("ana_get_leaders():\n  sql_cmd %s\n", sql_cmd);
     PGresult *res = db_query(sql_cmd);
     int rows = PQntuples(res);
@@ -322,11 +328,11 @@ cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
 }
 
 cJSON* ana_get_leaders_asof(char* dt, int max_atm_price, int max_opt_spread,
-                            int max_num_ldrs) {
+                            int min_act, int max_price, int max_num_ldrs) {
     char *exp_date;
     int ana_ix = cal_ix(dt), exp_ix = cal_expiry(ana_ix, &exp_date);
-    return ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
-                           max_num_ldrs);
+    return ana_get_leaders(exp_date, max_atm_price, max_opt_spread, min_act,
+                           max_price, max_num_ldrs);
 }
 
 /**
@@ -711,7 +717,8 @@ void ana_intraday_expiry(char *ana_date, int max_atm_price,
     LOGINFO("%s is an expiry. Downloading options for expiries %s and %s\n",
             ana_date, exp_date, exp_date2);
     bool download_options = true;
-    cJSON *ldrs = ana_get_leaders(exp_date, max_atm_price, max_opt_spread, 0);
+    cJSON *ldrs = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
+                                  -1, -1, 0);
     get_quotes(ldrs, ana_date, exp_date, exp_date2, download_options);
     LOGINFO("Downloaded options for expiries %s, %s\n", exp_date, exp_date2);
 }
@@ -733,8 +740,9 @@ void ana_indicators(cJSON *leaders, char *ana_date) {
  * Main daily analysis method
  */
 void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
-                      int max_opt_spread, bool download_spots,
-                      bool download_options, bool eod) {
+                      int max_opt_spread, int min_ind_activity,
+                      int min_stp_activity,  int max_stp_price,
+                      bool download_spots, bool download_options, bool eod) {
     /**
      *  Get the next two expiries
      */
@@ -743,11 +751,21 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     int exp_ix = cal_expiry(ana_ix + (eod? 1: 0), &exp_date);
     cal_expiry(exp_ix + 1, &exp_date2);
     /**
-     *  Get the list of stocks that will be analyzed
+     *  Get the list of stocks that will be analyzed.  Four lists of
+     *  stocks: options (will retrieve option data at EOD), indicators
+     *  (for indicator analysis at EOD), indicators no options (need
+     *  to get spots at EOD but not options), and setups (get spots
+     *  intraday).  The union of options leaders and indicators no
+     *  options is the indicators.  Setups is a subset of indicators.
      */
-    cJSON *ldr = NULL, *leaders = stx;
-    if (leaders == NULL)
-        leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread, 0);
+    cJSON *ldr = NULL, *leaders = stx, *stp_leaders = stx, *ind_leaders = stx,
+        *opt_leaders = stx, *ind_no_opt_leaders = stx;
+    if (ind_leaders == NULL)
+        ind_leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
+                                      min_ind_activity, -1, 0);
+    if (stp_leaders == NULL)
+        stp_leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
+                                      min_stp_activity,  max_stp_price, 0);
     int num = 0, total = cJSON_GetArraySize(leaders);
     LOGINFO("ana_stx_analysis() will analyze %d leaders as of %s\n", total,
             ana_date);
@@ -760,7 +778,7 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     if (download_spots) {
         LOGINFO("For real-time runs, update setup table.\n");
         LOGINFO("Downloading spots%s quotes\n",
-                download_options? " and options": ""); 
+                download_options? " and options": "");
         get_quotes(leaders, ana_date, exp_date, exp_date2, download_options);
     }
     LOGINFO("Running %s analysis for %s\n", eod? "eod": "intraday", ana_date);

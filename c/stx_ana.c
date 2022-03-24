@@ -48,6 +48,8 @@ int main(int argc, char** argv) {
     char ana_name[32], *ana_type = NULL, *start_date = cal_current_busdate(5),
         *end_date = cal_current_busdate(5);
     int max_atm_price = MAX_ATM_PRICE, max_opt_spread = MAX_OPT_SPREAD;
+    int min_ind_activity = MIN_LDR_IND_ACT, min_stp_activity = MIN_LDR_STP_ACT;
+    int max_stp_price = MAX_LDR_STP_PRICE;
     cJSON *stx = NULL;
     strcpy(ana_name, "JL_Analysis");
     for (int ix = 1; ix < argc; ix++) {
@@ -61,6 +63,12 @@ int main(int argc, char** argv) {
             max_atm_price = atoi(argv[ix]);
         else if (!strcmp(argv[ix], "--max-opt-spread") && (ix++ < argc - 1))
             max_opt_spread = atoi(argv[ix]);
+        else if (!strcmp(argv[ix], "--min-ind-activity") && (ix++ < argc - 1))
+            min_ind_activity = atoi(argv[ix]);
+        else if (!strcmp(argv[ix], "--min-stp-activity") && (ix++ < argc - 1))
+            min_stp_activity = atoi(argv[ix]);
+        else if (!strcmp(argv[ix], "--max-stp-price") && (ix++ < argc - 1))
+             max_stp_price = atoi(argv[ix]);
         else if (!strcmp(argv[ix], "--stx") && (ix++ < argc - 1)) {
             stx = cJSON_CreateArray();
             if (stx == NULL) {
@@ -136,6 +144,7 @@ int main(int argc, char** argv) {
                                     download_options);
         }
         ana_stx_analysis(crt_busdate, stx, max_atm_price, max_opt_spread,
+                         min_ind_activity, min_stp_activity,  max_stp_price,
                          download_spots, download_options, eod);
         curl_global_cleanup();
         if (stx != NULL)
@@ -165,6 +174,7 @@ int main(int argc, char** argv) {
                                 download_options);
         }
         ana_stx_analysis(crs_date, stx, max_atm_price, max_opt_spread,
+                         min_ind_activity, min_stp_activity,  max_stp_price,
                          download_spots, download_options, eod);
         ix = cal_next_bday(ix, &crs_date);
     }
