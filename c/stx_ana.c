@@ -166,16 +166,24 @@ int main(int argc, char** argv) {
     int ix = cal_ix(crs_date), end_ix = cal_ix(end_date);
     int exp_ix = cal_expiry(ix, &exp_date);
     int exp_bix = cal_exp_bday(exp_ix, &exp_bdate);
+    char tmp[16];
     while(ix <= end_ix) {
         if (!strcmp(crs_date, exp_bdate)) {
             exp_ix = cal_expiry(ix + 1, &exp_date);
             exp_bix = cal_exp_bday(exp_ix, &exp_bdate);
-            ana_expiry_analysis(crs_date, rt_ana, download_spots,
-                                download_options);
+            strncpy(tmp, crs_date, 4);
+            tmp[4] = '\0';
+            int crs_year = atoi(tmp);
+            strncpy(tmp, crt_busdate, 4);
+            tmp[4] = '\0';
+            int crt_year = atoi(tmp);
+            ana_expiry_analysis(crs_date, (rt_ana || (crs_year == crt_year)),
+                                download_spots, download_options);
         }
-        ana_stx_analysis(crs_date, stx, max_atm_price, max_opt_spread,
-                         min_ind_activity, min_stp_activity,  max_stp_price,
-                         download_spots, download_options, eod);
+        if (false)
+            ana_stx_analysis(crs_date, stx, max_atm_price, max_opt_spread,
+                             min_ind_activity, min_stp_activity,  max_stp_price,
+                             download_spots, download_options, eod);
         ix = cal_next_bday(ix, &crs_date);
     }
     if (stx != NULL)
