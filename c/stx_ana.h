@@ -120,7 +120,7 @@ void ana_option_analysis(ldr_ptr leader, PGresult* sql_res, int spot) {
  *  are leaders, or -1, if the stock is not a leader.
  */
 ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp, 
-                   bool realtime_analysis, bool download_options) {
+                   bool use_eod_spots, bool download_options) {
     /**
      *  A stock is a leader at a given date if:
      *  1. Its average activity is above a threshold.
@@ -157,7 +157,7 @@ ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp,
     }
     char sql_cmd[256];
     bool current_analysis = !strcmp(as_of_date, cal_current_busdate(5));
-    if (realtime_analysis) 
+    if (use_eod_spots)
         sprintf(sql_cmd, "select c from eods where stk='%s' and dt='%s' "
                 "and oi in (0, 2)", und, as_of_date);
     else
@@ -202,7 +202,7 @@ ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp,
     return leader;
 }
 
-int ana_expiry_analysis(char* dt, bool realtime_analysis, bool download_spots,
+int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
                         bool download_options) {
     /**
      * special case when the date is an option expiry date
@@ -249,7 +249,7 @@ int ana_expiry_analysis(char* dt, bool realtime_analysis, bool download_spots,
             ht_insert(ht_data(), data_ht);
         } else
             data = (stx_data_ptr) data_ht->val.data;
-        ldr_ptr leader = ana_leader(data, dt, exp, realtime_analysis,
+        ldr_ptr leader = ana_leader(data, dt, exp, use_eod_spots,
                                     download_options);
         if (leader->is_ldr)
             fprintf(fp, "%s\t%s\t%d\t%d\t%d\t%d\n", exp, stk, leader->activity,
