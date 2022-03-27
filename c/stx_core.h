@@ -136,6 +136,32 @@ bool db_transaction(char* sql_cmd) {
     return success;
 }
 
+bool db_upsert_from_file(char *sql_create_tmp_table, char *copy_csv,
+                         char *sql_upsert) {
+    bool success = true;
+    db_connect();
+    /**
+     *  Create temporary table; load file data into temp table
+     */
+    PGresult *res = PQexec(conn, sql_create_tmp_table);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        printf("%s failed: %s\n", sql_create_tmp_table,
+               PQresStatus(PQresultStatus(res)));
+        success = false;
+    }
+    PQclear(res);
+    if (success) {
+        res = PQexec(conn, copy_csv);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            printf("%s failed: %s\n", copy_csv,
+                   PQresStatus(PQresultStatus(res)));
+            success = false;
+        } else
+            success = db_transaction(sql_upsert);
+    }
+    return success;
+}
+
 /** HASHTABLE 
 This is based on : https://github.com/jamesroutley/write-a-hash-table/
 
