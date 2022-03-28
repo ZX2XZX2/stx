@@ -262,8 +262,26 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
     fclose(fp);
     LOGINFO("%s: analyzed %5d/%5d stocks\n", dt, rows, rows);
     PQclear(res);
-    db_upload_file("leaders", filename);
-    LOGINFO("%s: uploaded leaders in the database as of date %s\n", exp, dt);
+
+    char* create_tmp_ldrs = "CREATE TEMPORARY TABLE tmp_leaders( " \
+        "expiry DATE NOT NULL,"                                    \
+        "stk VARCHAR(16) NOT NULL, "                               \
+        "activity INTEGER, "                                       \
+        "range_ratio INTEGER, "                                    \
+        "opt_spread INTEGER, "                                     \
+        "atm_price INTEGER, "                                      \
+        "PRIMARY KEY(expiry, stk))";
+    char* copy_csv_ldrs = "COPY tmp_leaders("                       \
+        "expiry, stk, activity, range_ratio, opt_spread, atm_price" \
+        ") FROM '/tmp/leaders.csv' DELIMITER ',' CSV HEADER";
+    char* upsert_sql = "INSERT INTO leaders ("                      \
+        "expiry, stk, activity, range_ratio, opt_spread, atm_price" \
+        ") SELECT * FROM tmp_leaders ON CONFLICT (expiry, stk) "    \
+        "DO NOTHING";
+    bool result = db_upsert_from_file(create_tmp_ldrs, copy_csv_ldrs,
+                                      upsert_sql);
+    LOGINFO("%s uploading %d leaders in the DB for expiry %s\n",
+            result? "Success": "Failed", rows, exp);
     if (rows > 0) {
         memset(sql_cmd, 0, 256 * sizeof(char));
         sprintf(sql_cmd, "INSERT INTO analyses VALUES ('%s', 'leaders')", dt);
