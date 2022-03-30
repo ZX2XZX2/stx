@@ -123,7 +123,7 @@ bool db_transaction(char* sql_cmd) {
     PQclear(res);
     res = PQexec(conn, sql_cmd);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        printf("%s failed: %s\n", sql_cmd, PQresStatus(PQresultStatus(res)));
+        printf("%s failed: %s\n", sql_cmd, PQresultErrorMessage(res));
         success = false;
     }
     PQclear(res);
@@ -154,7 +154,7 @@ bool db_upsert_from_file(char *sql_create_tmp_table, char *copy_csv,
         res = PQexec(conn, copy_csv);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
             printf("%s failed: %s\n", copy_csv,
-                   PQresStatus(PQresultStatus(res)));
+                   PQresultErrorMessage(res));
             success = false;
         } else
             success = db_transaction(sql_upsert);
