@@ -217,7 +217,8 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
     PGresult *res = db_query(sql_cmd);
     int rows = PQntuples(res);
     PQclear(res);
-    if (rows >= 1) {
+    if (false) {
+    /* if (rows >= 1) { */
         LOGINFO("Found %d leaders analyses for %s (expiry %s)\n", 
                 rows, dt, exp);
         LOGINFO("Will skip leaders analyses for %s (expiry %s)\n", dt, exp);
@@ -273,11 +274,11 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
         "PRIMARY KEY(expiry, stk))";
     char* copy_csv_ldrs = "COPY tmp_leaders("                       \
         "expiry, stk, activity, range_ratio, opt_spread, atm_price" \
-        ") FROM '/tmp/leaders.csv' DELIMITER ',' CSV HEADER";
-    char* upsert_sql = "INSERT INTO leaders ("                      \
-        "expiry, stk, activity, range_ratio, opt_spread, atm_price" \
-        ") SELECT * FROM tmp_leaders ON CONFLICT (expiry, stk) "    \
-        "DO NOTHING";
+        ") FROM '/tmp/leaders.csv'";
+    char* upsert_sql = "INSERT INTO leaders1 ("                      \
+        "expiry, stk, activity, range_ratio, opt_spread, atm_price"  \
+        ") SELECT * FROM tmp_leaders ON CONFLICT ON CONSTRAINT "     \
+        "leaders1_pkey DO NOTHING";
     bool result = db_upsert_from_file(create_tmp_ldrs, copy_csv_ldrs,
                                       upsert_sql);
     LOGINFO("%s uploading %d leaders in the DB for expiry %s\n",
