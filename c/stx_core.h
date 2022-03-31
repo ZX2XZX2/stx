@@ -92,19 +92,19 @@ bool db_upload_file(char* table_name, char* file_name) {
     bool success = true;
     res = PQexec(conn, "BEGIN");
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        printf("BEGIN failed: %s\n", PQresStatus(PQresultStatus(res)));
+        printf("BEGIN failed: %s\n", PQresultErrorMessage(res));
         success = false;
     }
     PQclear(res);
     res = PQexec(conn, sql_cmd);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        printf("%s failed: %s\n", sql_cmd, PQresStatus(PQresultStatus(res)));
+        printf("%s failed: %s\n", sql_cmd, PQresultErrorMessage(res));
         success = false;
     }
     PQclear(res);
     res = PQexec(conn, "COMMIT");
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        printf("COMMIT failed: %s\n", PQresStatus(PQresultStatus(res)));
+        printf("COMMIT failed: %s\n", PQresultErrorMessage(res));
         success = false;
     }
     PQclear(res);
@@ -117,7 +117,7 @@ bool db_transaction(char* sql_cmd) {
     bool success = true;
     res = PQexec(conn, "BEGIN");
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        printf("BEGIN failed: %s\n", PQresStatus(PQresultStatus(res)));
+        printf("BEGIN failed: %s\n", PQresultErrorMessage(res));
         success = false;
     }
     PQclear(res);
@@ -129,7 +129,7 @@ bool db_transaction(char* sql_cmd) {
     PQclear(res);
     res = PQexec(conn, "COMMIT");
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        printf("COMMIT failed: %s\n", PQresStatus(PQresultStatus(res)));
+        printf("COMMIT failed: %s\n", PQresultErrorMessage(res));
         success = false;
     }
     PQclear(res);
@@ -146,7 +146,7 @@ bool db_upsert_from_file(char *sql_create_tmp_table, char *copy_csv,
     PGresult *res = PQexec(conn, sql_create_tmp_table);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         printf("%s failed: %s\n", sql_create_tmp_table,
-               PQresStatus(PQresultStatus(res)));
+               PQresultErrorMessage(res));
         success = false;
     }
     PQclear(res);
