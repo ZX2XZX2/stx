@@ -150,7 +150,7 @@ int main() {
         "expiry DATE NOT NULL, "                         \
         "stk VARCHAR(16) NOT NULL, "                     \
         "activity INTEGER, "                             \
-        "range_ratio INTEGER, "                          \
+        "range INTEGER, "                                \
         "opt_spread INTEGER, "                           \
         "atm_price INTEGER, "                            \
         "PRIMARY KEY(expiry, stk))";
