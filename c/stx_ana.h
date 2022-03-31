@@ -35,7 +35,7 @@
 
 typedef struct ldr_t {
     int activity;
-    int range_ratio;
+    int avg_range;
     int opt_spread;
     int atm_price;
     bool is_ldr;
@@ -140,12 +140,12 @@ ldr_ptr ana_leader(stx_data_ptr data, char* as_of_date, char* exp,
     for(int ix = data->pos - AVG_DAYS + 1; ix < data->pos; ix++) {
         avg_act += ((data->data[ix].close / 100) * 
                     (data->data[ix].volume / 100));
-        avg_rg += (1000 * ts_true_range(data, ix) / data->data[ix].close);
+        avg_rg += ts_true_range(data, ix);
     }
     avg_act /= AVG_DAYS;
     avg_rg /= AVG_DAYS;
     leader->activity = avg_act;
-    leader->range_ratio = avg_rg;
+    leader->avg_range = avg_rg;
     if ((avg_act < MIN_ACT) || (avg_rg < MIN_RCR))
         return leader;
     char und[16];
@@ -254,7 +254,7 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
                                     download_options);
         if (leader->is_ldr)
             fprintf(fp, "%s\t%s\t%d\t%d\t%d\t%d\n", exp, stk, leader->activity,
-                    leader->range_ratio, leader->opt_spread, 
+                    leader->avg_range, leader->opt_spread,
                     leader->atm_price);
         free(leader);
         if (ix % 100 == 0)
@@ -268,17 +268,17 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
         "expiry DATE NOT NULL,"                                    \
         "stk VARCHAR(16) NOT NULL, "                               \
         "activity INTEGER, "                                       \
-        "range_ratio INTEGER, "                                    \
+        "range INTEGER, "                                          \
         "opt_spread INTEGER, "                                     \
         "atm_price INTEGER, "                                      \
         "PRIMARY KEY(expiry, stk))";
     char* copy_csv_ldrs = "COPY tmp_leaders("                       \
-        "expiry, stk, activity, range_ratio, opt_spread, atm_price" \
+        "expiry, stk, activity, range, opt_spread, atm_price"       \
         ") FROM '/tmp/leaders.csv'";
     char* upsert_sql = "INSERT INTO leaders1 ("                      \
-        "expiry, stk, activity, range_ratio, opt_spread, atm_price"  \
+        "expiry, stk, activity, range, opt_spread, atm_price"        \
         ") SELECT * FROM tmp_leaders ON CONFLICT ON CONSTRAINT "     \
-        "leaders1_pkey DO NOTHING";
+        "leaders1_pkey DO UPDATE SET range=EXCLUDED.range";
     bool result = db_upsert_from_file(create_tmp_ldrs, copy_csv_ldrs,
                                       upsert_sql);
     LOGINFO("%s uploading %d leaders in the DB for expiry %s\n",
