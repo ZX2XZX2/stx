@@ -293,23 +293,23 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
 }
 
 cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
-                       int min_act, int max_price, int max_num_ldrs) {
+                       int min_act, int max_range, int max_num_ldrs) {
     cJSON *leader_list = cJSON_CreateArray();
     if (leader_list == NULL) {
         LOGERROR("Failed to create leader_list cJSON Array.\n");
         return NULL;
     }
     char sql_0[64], sql_atm_px[64], sql_spread[64], sql_exclude[64],
-        sql_activity[64], sql_price[64], sql_limit[64], sql_cmd[512];
+        sql_activity[64], sql_range[64], sql_limit[64], sql_cmd[512];
     memset(sql_0, 0, 64);
     memset(sql_atm_px, 0, 64);
     memset(sql_spread, 0, 64);
     memset(sql_activity, 0, 64);
-    memset(sql_price, 0, 64);
+    memset(sql_range, 0, 64);
     memset(sql_exclude, 0, 64);
     memset(sql_limit, 0, 64);
     memset(sql_cmd, 0, 512);
-    sprintf(sql_0, "select stk from leaders, eods where expiry='%s'", exp);
+    sprintf(sql_0, "select stk from leaders1 where expiry='%s'", exp);
     if (max_atm_price > 0)
         sprintf(sql_atm_px, " and atm_price <= %u",
                 (unsigned short) max_atm_price);
@@ -319,13 +319,13 @@ cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
     sprintf(sql_exclude, "and stk not in (select * from excludes)");
     if (min_act > 0)
         sprintf(sql_activity, " and activity >= %u", (unsigned short) min_act);
-    if (max_price > 0)
-        sprintf(sql_price, " and c <= %u", (unsigned short) max_price);
+    if (max_range > 0)
+        sprintf(sql_range, " and range <= %u", (unsigned short) max_range);
     if (max_num_ldrs > 0)
         sprintf(sql_limit, " order by opt_spread limit %u",
                 (unsigned short) max_num_ldrs);
     sprintf(sql_cmd, "%s%s%s%s%s%s%s", sql_0, sql_atm_px, sql_spread,
-            sql_exclude, sql_activity, sql_price, sql_limit);
+            sql_exclude, sql_activity, sql_range, sql_limit);
     LOGINFO("ana_get_leaders():\n  sql_cmd %s\n", sql_cmd);
     PGresult *res = db_query(sql_cmd);
     int rows = PQntuples(res);
@@ -343,15 +343,15 @@ cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
     }
     PQclear(res);
     LOGINFO("Generated JSON Array with leaders\n");
-    return leader_list;    
+    return leader_list;
 }
 
 cJSON* ana_get_leaders_asof(char* dt, int max_atm_price, int max_opt_spread,
-                            int min_act, int max_price, int max_num_ldrs) {
+                            int min_act, int max_range, int max_num_ldrs) {
     char *exp_date;
     int ana_ix = cal_ix(dt), exp_ix = cal_expiry(ana_ix, &exp_date);
     return ana_get_leaders(exp_date, max_atm_price, max_opt_spread, min_act,
-                           max_price, max_num_ldrs);
+                           max_range, max_num_ldrs);
 }
 
 /**
