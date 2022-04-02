@@ -311,10 +311,10 @@ cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
     memset(sql_cmd, 0, 512);
     sprintf(sql_0, "select stk from leaders1 where expiry='%s'", exp);
     if (max_atm_price > 0)
-        sprintf(sql_atm_px, " and atm_price <= %u",
+        sprintf(sql_atm_px, " and atm_price <= %u and atm_price > 0",
                 (unsigned short) max_atm_price);
     if (max_opt_spread > 0)
-        sprintf(sql_spread, " and opt_spread <= %u",
+        sprintf(sql_spread, " and opt_spread <= %u and opt_spread > 0",
                 (unsigned short) max_opt_spread);
     sprintf(sql_exclude, "and stk not in (select * from excludes)");
     if (min_act > 0)
