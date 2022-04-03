@@ -533,54 +533,45 @@ int ana_jl_setups(cJSON *setups, char* stk, char* dt, bool eod) {
     return 0;
 }
 
-void get_quotes(cJSON *leaders, char *dt, char *exp_date, char *exp_date2,
-                bool eod) {
-    char *filename = "/tmp/intraday.csv", *opt_filename = "/tmp/options.csv";
+/**
+ *  Get ohlc quotes for spot leaders, and option quotes for option
+ *  leaders.  If opt_leaders is NULL, this will only retrieve OHLC
+ *  quotes for ohlc_leaders.
+*/
+void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
+                char *exp_date, char *exp_date2, bool eod) {
+    /**
+     *  First get the OHLC quotes
+     */
+    char *ohlc_filename = "/tmp/ohlc.csv";
     cJSON *ldr;
-    int num = 0, total = cJSON_GetArraySize(leaders);
+    int num = 0, total = cJSON_GetArraySize(ohlc_leaders);
     FILE *fp = NULL;
-    if ((fp = fopen(filename, "w")) == NULL) {
-        LOGERROR("Failed to open file %s for writing\n", filename);
+    if ((fp = fopen(ohlc_filename, "w")) == NULL) {
+        LOGERROR("Failed to open file %s for writing\n", ohlc_filename);
         return;
     }
     curl_global_init(CURL_GLOBAL_ALL);
-    cJSON_ArrayForEach(ldr, leaders) {
-        if (cJSON_IsString(ldr) && (ldr->valuestring != NULL)) {
+    cJSON_ArrayForEach(ldr, ohlc_leaders) {
+        if (cJSON_IsString(ldr) && (ldr->valuestring != NULL))
             net_get_eod_data(fp, ldr->valuestring, dt);
-            if (eod == true) {
-                FILE *opt_fp = fopen(opt_filename, "w");
-                if (opt_fp == NULL)
-                    LOGERROR("Failed to open %s file", opt_filename);
-                else {
-                    net_get_option_data(NULL, opt_fp, ldr->valuestring, dt, 
-                                        exp_date, cal_long_expiry(exp_date));
-                    fclose(opt_fp);
-                    db_upload_file("options", opt_filename);
-                }
-                opt_fp = fopen(opt_filename, "w");
-                if (opt_fp == NULL)
-                    LOGERROR("Failed to open %s file", opt_filename);
-                else {
-                    net_get_option_data(NULL, opt_fp, ldr->valuestring, dt, 
-                                        exp_date2, cal_long_expiry(exp_date2));
-                    fclose(opt_fp);
-                    db_upload_file("options", opt_filename);
-                }
-            }
-        }
         num++;
         if (num % 100 == 0)
-            LOGINFO("%s: got quote for %4d / %4d leaders\n", dt, num, total);
+            LOGINFO("%s: got OHLC quote for %4d / %4d leaders\n", dt, num,
+                    total);
     }
-    LOGINFO("%s: got quote for %4d / %4d leaders\n", dt, num, total);
+    LOGINFO("%s: got OHLC quote for %4d / %4d leaders\n", dt, num, total);
     fclose(fp);
     fp = NULL;
     char sql_cmd[256];
     sprintf(sql_cmd, "DELETE FROM eods WHERE dt='%s' AND oi=1 AND stk NOT IN "
             "('^GSPC', '^IXIC', '^DJI')", dt);
     db_transaction(sql_cmd);
-    db_upload_file("eods", filename);
-
+    db_upload_file("eods", ohlc_filename);
+    /**
+     *  Get the index OHLC quotes.  Mark them as final if this is an
+     *  EOD run.
+     */
     LOGINFO("%s: Getting the quotes for the indexes: \n", dt);
     net_get_eod_data(NULL, "^GSPC", dt);
     LOGINFO("S&P500 \n");
@@ -589,12 +580,50 @@ void get_quotes(cJSON *leaders, char *dt, char *exp_date, char *exp_date2,
     net_get_eod_data(NULL, "^DJI", dt);
     LOGINFO("Dow Jones\n");
     LOGINFO("%s: Got the quotes for the indexes\n", dt);
-    
     if (eod == true) {
         sprintf(sql_cmd, "UPDATE eods SET oi=0 WHERE stk IN "
                 "('^GSPC', '^IXIC', '^DJI') AND dt='%s'", dt);
         db_transaction(sql_cmd);
     }
+    /**
+     *  If opt_leaders is null, not retrieving option quotes.  Return
+     */
+    if (opt_leaders == NULL)
+        return;
+    /**
+     *  Get the options quotes for opt_leaders for the next two
+     *  expiries
+     */
+    char *opt_filename = "/tmp/options.csv";
+    num = 0, total = cJSON_GetArraySize(opt_leaders);
+    cJSON_ArrayForEach(ldr, opt_leaders) {
+        if (cJSON_IsString(ldr) && (ldr->valuestring != NULL)) {
+            FILE *opt_fp = fopen(opt_filename, "w");
+            if (opt_fp == NULL)
+                LOGERROR("Failed to open %s file", opt_filename);
+            else {
+                net_get_option_data(NULL, opt_fp, ldr->valuestring, dt, 
+                                    exp_date, cal_long_expiry(exp_date));
+                fclose(opt_fp);
+                db_upload_file("options", opt_filename);
+            }
+            opt_fp = fopen(opt_filename, "w");
+            if (opt_fp == NULL)
+                LOGERROR("Failed to open %s file", opt_filename);
+            else {
+                net_get_option_data(NULL, opt_fp, ldr->valuestring, dt, 
+                                    exp_date2, cal_long_expiry(exp_date2));
+                fclose(opt_fp);
+                db_upload_file("options", opt_filename);
+            }
+        }
+        num++;
+        if (num % 100 == 0)
+            LOGINFO("%s: got option quote for %4d / %4d leaders\n", dt, num,
+                    total);
+    }
+    LOGINFO("%s: got option quote for %4d / %4d leaders\n", dt, num, total);
+
     curl_global_cleanup();
 }
 
@@ -738,7 +767,7 @@ void ana_intraday_expiry(char *ana_date, int max_atm_price,
     bool download_options = true;
     cJSON *ldrs = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
                                   -1, -1, 0);
-    get_quotes(ldrs, ana_date, exp_date, exp_date2, download_options);
+    get_quotes(ldrs, ldrs, ana_date, exp_date, exp_date2, download_options);
     LOGINFO("Downloaded options for expiries %s, %s\n", exp_date, exp_date2);
 }
 
@@ -760,7 +789,7 @@ void ana_indicators(cJSON *leaders, char *ana_date) {
  */
 void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
                       int max_opt_spread, int min_ind_activity,
-                      int min_stp_activity,  int max_stp_price,
+                      int min_stp_activity,  int max_stp_range,
                       bool download_spots, bool download_options, bool eod) {
     /**
      *  Get the next two expiries
@@ -770,24 +799,31 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     int exp_ix = cal_expiry(ana_ix + (eod? 1: 0), &exp_date);
     cal_expiry(exp_ix + 1, &exp_date2);
     /**
-     *  Get the list of stocks that will be analyzed.  Four lists of
+     *  Get the list of stocks that will be analyzed.  Three lists of
      *  stocks: options (will retrieve option data at EOD), indicators
-     *  (for indicator analysis at EOD), indicators no options (need
-     *  to get spots at EOD but not options), and setups (get spots
-     *  intraday).  The union of options leaders and indicators no
-     *  options is the indicators.  Setups is a subset of indicators.
+     *  (for indicator analysis at EOD), and setups (get spots
+     *  intraday).  Setups is a subset of indicators.
      */
-    cJSON *ldr = NULL, *leaders = stx, *stp_leaders = stx, *ind_leaders = stx,
-        *opt_leaders = stx, *ind_no_opt_leaders = stx;
+    cJSON *ldr = NULL, *stp_leaders = stx, *ind_leaders = stx,
+        *opt_leaders = stx;
     if (ind_leaders == NULL)
-        ind_leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
-                                      min_ind_activity, -1, 0);
+        ind_leaders = ana_get_leaders(exp_date, -1, -1, min_ind_activity,
+                                      -1, 0);
     if (stp_leaders == NULL)
-        stp_leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
-                                      min_stp_activity,  max_stp_price, 0);
-    int num = 0, total = cJSON_GetArraySize(leaders);
-    LOGINFO("ana_stx_analysis() will analyze %d leaders as of %s\n", total,
-            ana_date);
+        stp_leaders = ana_get_leaders(exp_date, -1, -1, min_stp_activity,
+                                      max_stp_range, 0);
+    if (stp_leaders == NULL)
+        stp_leaders = ana_get_leaders(exp_date, -1, -1, min_stp_activity,
+                                      max_stp_range, 0);
+    if (eod && opt_leaders == NULL)
+        opt_leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
+                                      -1, -1, 0);
+    int num = 0, ind_total = cJSON_GetArraySize(ind_leaders),
+        stp_total = cJSON_GetArraySize(stp_leaders),
+        opt_total = (opt_leaders == NULL)? 0: cJSON_GetArraySize(opt_leaders);
+    LOGINFO("ana_stx_analysis() will analyze %d indicator leaders, "
+            "%d setup leaders, %d option leaders as of %s\n",
+            ind_total, stp_total, opt_total, ana_date);
     LOGINFO("Upcoming expiries: %s and %s\n", exp_date, exp_date2);
     char sql_cmd[256];
     /**
@@ -798,10 +834,15 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
         LOGINFO("For real-time runs, update setup table.\n");
         LOGINFO("Downloading spots%s quotes\n",
                 download_options? " and options": "");
-        get_quotes(leaders, ana_date, exp_date, exp_date2, download_options);
+        if (download_options)
+            get_quotes(ind_leaders, opt_leaders, ana_date, exp_date,
+                       exp_date2, download_options);
+        else
+            get_quotes(stp_leaders, NULL, ana_date, exp_date, exp_date2,
+                       download_options);
     }
     LOGINFO("Running %s analysis for %s\n", eod? "eod": "intraday", ana_date);
-    LOGINFO("Calculating setups for %d stocks\n", total);
+    LOGINFO("Calculating setups for %d stocks\n", stp_total);
     /**
      *  Get the next business date for triggerable setups - these are
      *  setups that are only triggered next day if either the next
@@ -811,22 +852,26 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     char* next_date = NULL;
     if (eod == true)
         cal_next_bday(cal_ix(ana_date), &next_date);
-    cJSON_ArrayForEach(ldr, leaders) {
+    cJSON_ArrayForEach(ldr, stp_leaders) {
         if (cJSON_IsString(ldr) && (ldr->valuestring != NULL))
             ana_setups(ldr->valuestring, ana_date, next_date, eod);
         num++;
         if (num % 100 == 0)
-            LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
+            LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num,
+                    stp_total);
     }
-    LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, total);
+    LOGINFO("%s: analyzed %4d / %4d stocks\n", ana_date, num, stp_total);
     if (eod == true) {
         LOGINFO("Calculating the indicators for %d stocks as of %s\n",
-                total, ana_date);
-        ana_indicators(leaders, ana_date);
+                ind_total, ana_date);
+        ana_indicators(ind_leaders, ana_date);
     }
     LOGINFO("Freeing the memory\n");
-    if (stx == NULL)
-       cJSON_Delete(leaders);
+    if (stx == NULL) {
+       cJSON_Delete(ind_leaders);
+       cJSON_Delete(stp_leaders);
+       cJSON_Delete(opt_leaders);
+    }
     LOGINFO("ana_stx_analysis(): done\n");
 }
 
