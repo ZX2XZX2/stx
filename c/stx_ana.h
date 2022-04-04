@@ -19,7 +19,7 @@
 #define MIN_ACT 8
 #define MIN_LDR_IND_ACT 100
 #define MIN_LDR_STP_ACT 500
-#define MAX_LDR_STP_PRICE 15000
+#define MAX_LDR_STP_RANGE 1000
 #define MIN_RCR 15
 #define MAX_OPT_SPREAD 33
 #define MAX_ATM_PRICE 1000
