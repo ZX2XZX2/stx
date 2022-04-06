@@ -423,6 +423,10 @@ void ana_triggered_setups(cJSON* setups, char* stk, char* dt, bool eod) {
     if (trend == SIDEWAYS)
         return;
     stx_data_ptr ts = ts_get_ts(stk, dt, 0);
+    if ((ts == NULL) || (ts->pos == -1)) {
+        LOGERROR("No data for %s as of %s, skipping\n", stk, dt);
+        return;
+    }
     daily_record_ptr dr = ts->data;
     int ix = ts->pos, trigrd = 1;
     bool res;
@@ -452,6 +456,10 @@ void ana_setups_tomorrow(cJSON* setups, char* stk, char* dt, char* next_dt) {
     if (trend == SIDEWAYS)
         return;
     stx_data_ptr ts = ts_get_ts(stk, dt, 0);
+    if ((ts == NULL) || (ts->pos == -1)) {
+        LOGERROR("No data for %s as of %s, skipping\n", stk, dt);
+        return;
+    }
     daily_record_ptr dr = ts->data;
     int ix = ts->pos, trigrd = 0;
     bool res;
