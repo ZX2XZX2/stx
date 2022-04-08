@@ -589,6 +589,7 @@ def current_time():
 def current_date_and_time():
     return datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
 
+
 def gen_cal(start_date='1984-12-31', end_date='2025-12-31'):
     busday_cal = get_cal(start_date, end_date)
     s_date = np.datetime64(start_date)
