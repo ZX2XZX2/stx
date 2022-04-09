@@ -485,6 +485,8 @@ img {
         # df_3 = self.filter_spreads(df_3, spreads, max_spread)
         df_jl = self.add_indicators(df_jl, crt_date, indicators, eod)
         res = ['<html>', self.report_style, '<body>']
+        res.append(f"Report created on "
+                   f"{datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')}")
         res.extend(self.index_report(crt_date))
         res.append(f'<h2>TODAY - {crt_date}</h2>')
         res.extend(self.get_triggered_report(crt_date, df_trigger_today,
