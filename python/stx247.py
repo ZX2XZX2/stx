@@ -1,5 +1,5 @@
 import argparse
-import datetime
+from datetime import datetime
 import glob
 import json
 import logging
@@ -100,6 +100,13 @@ img {
         logging.info(f'triggered_indicators SQL = '
                      f'{q.as_string(stxdb.db_get_cnx())}')
         df = pd.read_sql(q, stxdb.db_get_cnx())
+        # Concatenate the setup strings
+        groupby_cols = [x for x in df.columns if x != 'setup']
+        df['setup'] = df.groupby(groupby_cols)['setup'].transform(
+            lambda x: ', '.join(x))
+        # drop duplicate data and reset the setup datafrane index
+        df.drop_duplicates(inplace=True)
+        df.reset_index(drop=True, inplace=True)
         return df
 
     def get_opt_spreads(self, crt_date, eod):
