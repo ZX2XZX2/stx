@@ -275,10 +275,10 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
     char* copy_csv_ldrs = "COPY tmp_leaders("                       \
         "expiry, stk, activity, range, opt_spread, atm_price"       \
         ") FROM '/tmp/leaders.csv'";
-    char* upsert_sql = "INSERT INTO leaders1 ("                      \
+    char* upsert_sql = "INSERT INTO leaders ("                      \
         "expiry, stk, activity, range, opt_spread, atm_price"        \
         ") SELECT * FROM tmp_leaders ON CONFLICT ON CONSTRAINT "     \
-        "leaders1_pkey DO UPDATE SET range=EXCLUDED.range";
+        "leaders_pkey DO UPDATE SET range=EXCLUDED.range";
     bool result = db_upsert_from_file(create_tmp_ldrs, copy_csv_ldrs,
                                       upsert_sql);
     LOGINFO("%s uploading %d leaders in the DB for expiry %s\n",
@@ -309,7 +309,7 @@ cJSON* ana_get_leaders(char* exp, int max_atm_price, int max_opt_spread,
     memset(sql_exclude, 0, 64);
     memset(sql_limit, 0, 64);
     memset(sql_cmd, 0, 512);
-    sprintf(sql_0, "select stk from leaders1 where expiry='%s'", exp);
+    sprintf(sql_0, "select stk from leaders where expiry='%s'", exp);
     if (max_atm_price > 0)
         sprintf(sql_atm_px, " and atm_price <= %u and atm_price > 0",
                 (unsigned short) max_atm_price);
