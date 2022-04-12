@@ -217,8 +217,7 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
     PGresult *res = db_query(sql_cmd);
     int rows = PQntuples(res);
     PQclear(res);
-    if (false) {
-    /* if (rows >= 1) { */
+    if (rows >= 1) {
         LOGINFO("Found %d leaders analyses for %s (expiry %s)\n", 
                 rows, dt, exp);
         LOGINFO("Will skip leaders analyses for %s (expiry %s)\n", dt, exp);
