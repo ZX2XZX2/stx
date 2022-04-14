@@ -29,7 +29,7 @@
 #define MAX(a, b) (a > b)? a: b
 #define MIN(a, b) (a < b)? a: b
 
-#define JL_MIN_CHANNEL_LEN 25
+#define JL_MIN_CHANNEL_LEN 5
 
 /**
  *  Utility function to add a setup to an array that will be later
