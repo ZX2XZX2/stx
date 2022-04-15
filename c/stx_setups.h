@@ -171,13 +171,29 @@ void stp_jl_breaks(cJSON *setups, jl_data_ptr jl) {
         }
     }
     if (cb != NULL) {
+        char *bound = (abs(dir) > 1)? "upper": "lower";
+        cJSON *p1 = cJSON_CreateObject();
+        cJSON_AddStringToObject(p1, "date",
+                                jl->data->data[jl->pos - cb->d1].date);
+        cJSON_AddStringToObject(p1, "state", jl_state_to_string(cb->s1));
+        cJSON_AddNumberToObject(p1, "price", cb->px1);
+        cJSON_AddNumberToObject(p1, "obv", cb->obv1);
+        cJSON *p2 = cJSON_CreateObject();
+        cJSON_AddStringToObject(p2, "date",
+                                jl->data->data[jl->pos - cb->d2].date);
+        cJSON_AddStringToObject(p2, "state", jl_state_to_string(cb->s2));
+        cJSON_AddNumberToObject(p2, "price", cb->px2);
+        cJSON_AddNumberToObject(p2, "obv", cb->obv2);
+        cJSON *chan = cJSON_CreateObject();
+        cJSON_AddStringToObject(chan, "bound", bound);
+        cJSON_AddItemToObject(chan, "p1", p1);
+        cJSON_AddItemToObject(chan, "p2", p2);
         cJSON *info = cJSON_CreateObject();
+        cJSON_AddNumberToObject(info, "length", cb->d1);
+        cJSON_AddItemToObject(info, "channel", chan);
         cJSON_AddNumberToObject(info, "ipx", cb->ipx);
-        cJSON_AddNumberToObject(info, "len", cb->d1);
         cJSON_AddNumberToObject(info, "vr", 100 * r->volume / v_pos_2);
         cJSON_AddNumberToObject(info, "slope", cb->slope);
-        cJSON_AddNumberToObject(info, "obv1", cb->obv1);
-        cJSON_AddNumberToObject(info, "obv2", cb->obv2);
         stp_add_to_setups(setups, jl, "JL_B", dir, info, true);
     }
 }
