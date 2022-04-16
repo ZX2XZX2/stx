@@ -70,11 +70,11 @@ void indicators_rank(eq_value_ptr records, char* dt, char* indicator_name,
         processed = 0;
 
     for(int ix = 0; ix < num_buckets; ix++) {
-        printf("%d: (", ix);
+        /* printf("%d: (", ix); */
         current_bucket_size = (ix < unbucketed)? bucket_size + 1: bucket_size;
         for(int ixx = 0; ixx < current_bucket_size; ixx++) {
             eq_value_ptr rec = &(records[ixx + processed]);
-            printf("%s ", rec->ticker);
+            /* printf("%s ", rec->ticker); */
             rec->rank = ixx + processed;
             rec->bucket_rank = ix;
             char sql_cmd[1024];
@@ -88,7 +88,7 @@ void indicators_rank(eq_value_ptr records, char* dt, char* indicator_name,
             db_transaction(sql_cmd);
         }
         processed += current_bucket_size;
-        printf(")\n");
+        /* printf(")\n"); */
     }
 }
 
