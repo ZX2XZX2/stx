@@ -223,6 +223,16 @@ img {
             p2 = row.info['pivot']['price'] / 100.0
             return [(d1, p1), (d2, p2)]
         """
+        dt  | stk | setup | factor | direction | triggered | tm | info
+        yyyy-mm-dd | AEP  | JL_B  |     50 | U         | t         | 09:49:00 | {"vr": 10, "ipx": 9953, "slope": -66.333335876464844, "length": 6, "channel": {"p1": {"obv": -16, "date": "2022-nn-ee", "price": 10351, "state": "NRa"}, "p2": {"obv": -3, "date": "2022-mm-dd", "price": 10152, "state": "NRa"}, "bound": "lower"}}
+        """
+        if setup == 'JL_B':
+            d1 = str(row['dt'])
+            p1 = row.info['ipx'] / 100.0
+            d2 = row.info['channel']['p1']['date']
+            p2 = row.info['channel']['p1']['price'] / 100.0
+            return [(d1, p1), (d2, p2)]
+        """
         dt | stk | setup | factor | direction | triggered | tm | info
         2022-01-26 | BJ  | JL_SR |    100 | D         | t         | 20:00:00 | {"sr": 6366, "vr": 155, "length": 49, "num_sr": 2, "sr_pivots": [{"obv": -20, "date": "2021-11-12", "price": 6366, "state": "UT"}, {"obv": -15, "date": "2021-12-01", "price": 6326, "state": "NRe"}, {"obv": -12, "date": "2022-01-24", "price": 6338, "state": "NRa"}]}
         """
