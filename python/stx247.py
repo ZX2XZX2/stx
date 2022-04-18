@@ -364,11 +364,10 @@ img {
                                         ts.df['c'].values[-21:-1])]
             avg_rg = np.average(rgs)
             res.append('<table border="1">')
-            res.append('<tr><th>name</th><th>dir</th><th>avg_volume</th>'
-                       '<th>avg_rg</th><th>time</th></tr>')
-            res.append(f"<tr><td>{stk}</td><td>{row['direction']}</td>"
-                       f"<td>{int(1000 * avg_volume):,d}</td>"
-                       f"<td>{avg_rg / 100:.2f}</td><td>{row['tm']}</td></tr>")
+            res.append(f"<tr><th>{stk}</th><th>{row['direction']}</th>"
+                       f"<th>V: {int(1000 * avg_volume):,d}</th>"
+                       f"<th>R: {avg_rg / 100:.2f}</th><th>{row['tm']}</th>"
+                       f"<th>{row['setup']}</th></tr>")
             res.append('</table>')
             res.extend(self.build_indicators_table(row))
         except:
@@ -493,7 +492,7 @@ img {
         df_trigger_today = self.get_triggered_setups(crt_date, triggered=True)
         df_jl = self.get_jl_setups(crt_date)
         logging.info(f'Found {len(df_trigger_today)} triggered setups and '
-                     f'{len(df_jl)} JL setups')
+                     f'{len(df_jl)} JL setups for {crt_date}')
         if df_trigger_today.empty and df_jl.empty:
             logging.error(f'No triggered/JL setups for {crt_date}.  '
                           'Exiting...')
@@ -726,22 +725,22 @@ if __name__ == '__main__':
     indicator_list = args.indicators.split(',')
     stx_ana = StxAnalyzer()
     if args.startdate and args.enddate:
-        logging.info('Running analysis from {args.startdate} to {args.enddate}')
+        logging.info(f'Run analysis from {args.startdate} to {args.enddate}')
         crs_date = args.startdate
         num = 0
         while crs_date <=args.enddate:
-            logging.info(f'Running analysis for {crs_date}')
+            logging.info(f'Run analysis for {crs_date}')
             pdf_report = stx_ana.do_analysis(crs_date, args.max_spread,
                                              indicator_list, True)
             if pdf_report is None:
-                logging.error(f'No report was generated for {crs_date}')
+                logging.error(f'No report generated for {crs_date}')
             stx_ana.update_local_directory(crs_date)
             crs_date = stxcal.next_busday(crs_date)
             num += 1
         logging.info(f'Ran EOD analysis for {num} days between '
                      f'{args.startdate} and {args.enddate}')
     else:
-        logging.info(f'Running analysis for {crt_date}')
+        logging.info(f'Run analysis for {crt_date}')
         pdf_report = stx_ana.do_analysis(crt_date, args.max_spread,
                                          indicator_list, eod)
         if pdf_report is None:
