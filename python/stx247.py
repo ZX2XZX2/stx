@@ -499,6 +499,8 @@ img {
             return None
         # df_1 = self.filter_spreads(df_1, spreads, max_spread)
         # df_3 = self.filter_spreads(df_3, spreads, max_spread)
+        df_trigger_today = self.add_indicators(df_trigger_today, crt_date,
+                                               indicators, eod)
         df_jl = self.add_indicators(df_jl, crt_date, indicators, eod)
         res = ['<html>', self.report_style, '<body>']
         res.append(f"Report created on "
@@ -510,6 +512,8 @@ img {
         if eod:
             df_trigger_tomorrow = self.get_triggered_setups(
                 crt_date, triggered=False)
+            df_trigger_tomorrow = self.add_indicators(
+                df_trigger_tomorrow, crt_date, indicators, eod)
             next_date = stxcal.next_busday(crt_date)
             res.append(f'<h2>TOMMORROW - {next_date}</h2>')
             res.extend(self.get_triggered_report(
