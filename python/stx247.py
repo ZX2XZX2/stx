@@ -32,10 +32,12 @@ SELECT time_setups.dt, time_setups.stk, time_setups.direction, time_setups.setup
 """
 
 class StxAnalyzer:
-    def __init__(self):
+    def __init__(self, indicator_names, indicator_tenors):
         self.report_dir = os.path.join(os.getenv('HOME'), 'market')
         logging.info('PDF reports are stored locally in {0:s}'.
                      format(self.report_dir))
+        self.indicator_names = indicator_names
+        self.indicator_tenors = indicator_tenors
         self.report_style = '''
 <style>
 body {
@@ -727,7 +729,14 @@ if __name__ == '__main__':
     if args.date:
         crt_date = args.date
     indicator_list = args.indicators.split(',')
-    stx_ana = StxAnalyzer()
+    indicator_tenor_list = [x.split('_') for x in indicator_list]
+    indicators_df = pd.DataFrame(indicator_tenor_list,
+                                 columns=['indicator', 'tenor'])
+    indicators_df['tenor'] = indicators_df['tenor'].astype('int')
+    indicators_df.sort_values(by=['indicator', 'tenor'], inplace=True)
+    indicator_names = sorted(indicators_df['indicator'].unique())
+    indicator_tenors = sorted(indicators_df['tenor'].unique())
+    stx_ana = StxAnalyzer(indicator_names, indicator_tenors)
     if args.startdate and args.enddate:
         logging.info(f'Run analysis from {args.startdate} to {args.enddate}')
         crs_date = args.startdate
