@@ -183,33 +183,52 @@ img {
 
     def build_indicators_table(self, row):
         ind_tbl_dict = {}
-        for k, v in row.items():
-            if '--' in k:
-                indicator_name, val_rank_bucket = k.split('--')
-                ind_col_dict = ind_tbl_dict.get(indicator_name, {})
-                ind_col_dict[val_rank_bucket] = v
-                ind_tbl_dict[indicator_name] = ind_col_dict
-        table_header = ['<tr>']
-        table_value_row = ['<tr>']
-        table_rank_row = ['<tr>']
-        table_bucket_row = ['<tr>']
-        for indicator_name, indicator_data in ind_tbl_dict.items():
-            table_header.append(f'<th>{indicator_name}</th>')
-            table_value_row.append(f"<td>{indicator_data.get('value')}</td>")
-            table_rank_row.append(f"<td>{indicator_data.get('rank')}</td>")
-            table_bucket_row.append(f"<td>{indicator_data.get('bucket')}</td>")
+
+        table_header = ['<tr><th></th>']
+        for ind_name in self.indicator_names:
+            table_header.append(f'<th>{ind_name}</th>')
         table_header.append('</tr>')
-        table_value_row.append('</tr>')
-        table_rank_row.append('</tr>')
-        table_bucket_row.append('</tr>')
-        indicator_table = [
-            '<table border="1">',
-            ''.join(table_header),
-            ''.join(table_value_row),
-            ''.join(table_rank_row),
-            ''.join(table_bucket_row),
-            '</table>'
-        ]
+        indicator_table = ['<table border="1">', ''.join(table_header)]
+        for ten in self.indicator_tenors:
+            t_row = [f'<tr><th>{ten}</th>']
+            for ind_name in self.indicator_names:
+                ind_value = f'{ind_name}_{ten}--value'
+                ind_bucket = f'{ind_name}_{ten}--bucket'
+                if ind_value in row and ind_bucket in row:
+                    t_row.append(f"<td>{row[ind_value]}/{row[ind_bucket]}</td>")
+                else:
+                    t_row.append(f"<td></td>")
+            t_row.append('</tr>')
+            indicator_table.append(''.join(t_row))
+        indicator_table.append('</table>')
+                    
+        # for k, v in row.items():
+        #     if '--' in k:
+        #         indicator_name, val_rank_bucket = k.split('--')
+        #         ind_col_dict = ind_tbl_dict.get(indicator_name, {})
+        #         ind_col_dict[val_rank_bucket] = v
+        #         ind_tbl_dict[indicator_name] = ind_col_dict
+        # table_header = ['<tr>']
+        # table_value_row = ['<tr>']
+        # table_rank_row = ['<tr>']
+        # table_bucket_row = ['<tr>']
+        # for indicator_name, indicator_data in ind_tbl_dict.items():
+        #     table_header.append(f'<th>{indicator_name}</th>')
+        #     table_value_row.append(f"<td>{indicator_data.get('value')}</td>")
+        #     table_rank_row.append(f"<td>{indicator_data.get('rank')}</td>")
+        #     table_bucket_row.append(f"<td>{indicator_data.get('bucket')}</td>")
+        # table_header.append('</tr>')
+        # table_value_row.append('</tr>')
+        # table_rank_row.append('</tr>')
+        # table_bucket_row.append('</tr>')
+        # indicator_table = [
+        #     '<table border="1">',
+        #     ''.join(table_header),
+        #     ''.join(table_value_row),
+        #     ''.join(table_rank_row),
+        #     ''.join(table_bucket_row),
+        #     '</table>'
+        # ]
         return indicator_table
 
     def get_trend_lines(self, row):
