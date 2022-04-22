@@ -195,7 +195,7 @@ img {
                 ind_value = f'{ind_name}_{ten}--value'
                 ind_bucket = f'{ind_name}_{ten}--bucket'
                 if ind_value in row and ind_bucket in row:
-                    t_row.append(f"<td>{row[ind_value]}/{row[ind_bucket]}</td>")
+                    t_row.append(f"<td>{row[ind_bucket]}/{row[ind_value]}</td>")
                 else:
                     t_row.append(f"<td></td>")
             t_row.append('</tr>')
