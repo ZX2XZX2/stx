@@ -209,11 +209,20 @@ img {
         2022-01-26 | CSX | JL_P  |    100 | U         | t         | 20:00:00 | {"pivot": {"obv": 3, "date": "2022-01-25", "price": 3315, "state": "DT"}, "length": 26, "channel": {"p1": {"obv": -21, "date": "2021-12-17", "price": 3494, "state": "NRe"}, "p2": {"obv": 3, "date": "2022-01-24", "price": 3315, "state": "DT"}, "bound": "lower"}}
         """
         if setup == 'JL_P':
-            d1 = row.info['channel']['p1']['date']
-            p1 = row.info['channel']['p1']['price'] / 100.0
-            d2 = row.info['pivot']['date']
-            p2 = row.info['pivot']['price'] / 100.0
-            return [(d1, p1), (d2, p2)]
+            y1 = row.info.get('channel', {}).get('p1', {}).get('price')
+            y2 = row.info.get('channel', {}).get('p2', {}).get('price')
+            d1 = row.info.get('channel', {}).get('p1', {}).get('date')
+            d2 = row.info.get('channel', {}).get('p2', {}).get('date')
+            if (not y1) or (not y2) or (not d1) or (not d2):
+                logging.warn(f'Setup info in wrong format, no pivot prices and/or dates')
+                return None
+            d1 = str(d1)
+            d2 = str(d2)
+            x1 = 0
+            x2 = stxcal.num_busdays(d1, d2)
+            slope = (y2 - y1) / float(x2 - x1)
+            y3 = y2 + slope * stxcal.num_busdays(d2, crt_dt)
+            return [(d1, y1 / 100.0), (crt_dt, y3 / 100.0)]
         """
         dt  | stk | setup | factor | direction | triggered | tm | info
         yyyy-mm-dd | AEP  | JL_B  |     50 | U         | t         | 09:49:00 | {"vr": 10, "ipx": 9953, "slope": -66.333335876464844, "length": 6, "channel": {"p1": {"obv": -16, "date": "2022-nn-ee", "price": 10351, "state": "NRa"}, "p2": {"obv": -3, "date": "2022-mm-dd", "price": 10152, "state": "NRa"}, "bound": "lower"}}
