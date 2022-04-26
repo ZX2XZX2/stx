@@ -202,9 +202,8 @@ img {
         indicator_table.append('</table>')
         return indicator_table
 
-    def get_trend_lines(self, row):
+    def get_trend_lines(self, row, crt_dt):
         setup = row.setup
-        crt_dt = str(row['dt'])
         """
         dt  | stk | setup | factor | direction | triggered | tm | info
         2022-01-26 | CSX | JL_P  |    100 | U         | t         | 20:00:00 | {"pivot": {"obv": 3, "date": "2022-01-25", "price": 3315, "state": "DT"}, "length": 26, "channel": {"p1": {"obv": -21, "date": "2021-12-17", "price": 3494, "state": "NRe"}, "p2": {"obv": 3, "date": "2022-01-24", "price": 3315, "state": "DT"}, "bound": "lower"}}
@@ -215,7 +214,8 @@ img {
             d1 = row.info.get('channel', {}).get('p1', {}).get('date')
             d2 = row.info.get('channel', {}).get('p2', {}).get('date')
             if (not y1) or (not y2) or (not d1) or (not d2):
-                logging.warn(f'Setup info in wrong format, no pivot prices and/or dates')
+                logging.warn(f'Setup info in wrong format, no pivot prices '
+                             f'and/or dates')
                 return None
             d1 = str(d1)
             d2 = str(d2)
@@ -255,7 +255,7 @@ img {
         res = []
         try:
             stk = row['stk']
-            trend_lines = self.get_trend_lines(row)
+            trend_lines = self.get_trend_lines(row, crt_date)
             if trend_lines:
                 trend_start_date = trend_lines[0][0]
                 if trend_start_date < s_date:
