@@ -5,6 +5,7 @@ import sys
 class StxPlot:
     def __init__(self, stock, start_date, end_date, trend_lines=None):
         ts = StxTS(stock, start_date, end_date)
+        ts.set_day(end_date)
         ts.df.index.name='Date'
         ts.df.drop('oi', inplace=True, axis=1)
         ts.df['o'] /= 100
