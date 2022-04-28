@@ -60,17 +60,6 @@ img {
 }
 </style>
 '''
-    def get_rs_stx(self, dt):
-        q = sql.Composed([
-                sql.SQL("select stk, indicators->>'rs' as rs, "
-                        "indicators->>'rs_rank' as rs_rank from indicators"),
-                sql.SQL(' where dt='),
-                sql.Literal(dt),
-                sql.SQL(' and stk not in (select * from excludes)')])
-        rsdf = pd.read_sql(q, stxdb.db_get_cnx()) 
-        rsdf[["rs", "rs_rank"]] = rsdf[["rs", "rs_rank"]].apply(pd.to_numeric)
-        rsdf.sort_values(by=['rs'], ascending=False, inplace=True)
-        return rsdf
 
     def get_triggered_setups(self, dt, triggered=False):
         q = sql.Composed([
