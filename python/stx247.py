@@ -148,28 +148,6 @@ img {
             df = df.merge(indicator_df, on='stk')
         return df
 
-    def rs_report(self, i, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
-        res = []
-        stk = row['stk']
-        stk_plot = StxPlot(stk, s_date, crt_date)
-        stk_plot.plot_to_file()
-        res.append(f"<h4>{i + 1}. {stk} {isd.get(stk, ['N/A', 'N/A'])}, "
-                   f"RS={row['rs']}</h4>")
-        res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.format(stk, stk))
-        try:
-            jl_res = StxJL.jl_report(stk, jl_s_date, crt_date, 1.5)
-            res.append(jl_res)
-        except:
-            logging.error('JL(1.5) calc failed for {0:s}'.format(stk))
-            tb.print_exc()
-        try:
-            ana_res = self.ana_report(stk, ana_s_date, crt_date)
-            res.append(ana_res)
-        except:
-            logging.error('Failed to analyze {0:s}'.format(stk))
-            tb.print_exc()
-        return res
-
     def build_indicators_table(self, row):
         ind_tbl_dict = {}
         table_header = ['<tr><th></th>']
