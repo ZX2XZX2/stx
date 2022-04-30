@@ -171,6 +171,7 @@ img {
 
     def get_trend_lines(self, row, crt_dt):
         setup = row.setup
+        setup_color = 'g' if row.direction == 'U' else 'r'
         """
         dt  | stk | setup | factor | direction | triggered | tm | info
         2022-01-26 | CSX | JL_P  |    100 | U         | t         | 20:00:00 | {"pivot": {"obv": 3, "date": "2022-01-25", "price": 3315, "state": "DT"}, "length": 26, "channel": {"p1": {"obv": -21, "date": "2021-12-17", "price": 3494, "state": "NRe"}, "p2": {"obv": 3, "date": "2022-01-24", "price": 3315, "state": "DT"}, "bound": "lower"}}
@@ -190,7 +191,8 @@ img {
             x2 = stxcal.num_busdays(d1, d2)
             slope = (y2 - y1) / float(x2 - x1)
             y3 = y2 + slope * stxcal.num_busdays(d2, crt_dt)
-            return [(d1, y1 / 100.0), (crt_dt, y3 / 100.0)]
+            return dict(alines=[(d1, y1 / 100.0), (crt_dt, y3 / 100.0)],
+                        colors=[setup_color])
         """
         dt  | stk | setup | factor | direction | triggered | tm | info
         yyyy-mm-dd | AEP  | JL_B  |     50 | U         | t         | 09:49:00 | {"vr": 10, "ipx": 9953, "slope": -66.333335876464844, "length": 6, "channel": {"p1": {"obv": -16, "date": "2022-nn-ee", "price": 10351, "state": "NRa"}, "p2": {"obv": -3, "date": "2022-mm-dd", "price": 10152, "state": "NRa"}, "bound": "lower"}}
@@ -200,7 +202,7 @@ img {
             p1 = row.info['ipx'] / 100.0
             d2 = row.info['channel']['p1']['date']
             p2 = row.info['channel']['p1']['price'] / 100.0
-            return [(d1, p1), (d2, p2)]
+            return dict(alines=[(d1, p1), (d2, p2)], colors=[setup_color])
         """
         dt | stk | setup | factor | direction | triggered | tm | info
         2022-01-26 | BJ  | JL_SR |    100 | D         | t         | 20:00:00 | {"sr": 6366, "vr": 155, "length": 49, "num_sr": 2, "sr_pivots": [{"obv": -20, "date": "2021-11-12", "price": 6366, "state": "UT"}, {"obv": -15, "date": "2021-12-01", "price": 6326, "state": "NRe"}, {"obv": -12, "date": "2022-01-24", "price": 6338, "state": "NRa"}]}
@@ -215,7 +217,7 @@ img {
             x2 = stxcal.num_busdays(d1, d2)
             slope = (y2 - y1) / float(x2 - x1)
             y3 = y2 + slope * stxcal.num_busdays(d2, crt_dt)
-            return [(d1, y1), (crt_dt, y3)]
+            return dict(alines=[(d1, y1), (crt_dt, y3)], colors=[setup_color])
         return None
 
     def setup_report(self, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
@@ -224,7 +226,7 @@ img {
             stk = row['stk']
             trend_lines = self.get_trend_lines(row, crt_date)
             if trend_lines:
-                trend_start_date = trend_lines[0][0]
+                trend_start_date = trend_lines.get('alines')[0][0]
                 if trend_start_date < s_date:
                     s_date = trend_start_date
             stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
