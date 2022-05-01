@@ -38,6 +38,7 @@ class StxAnalyzer:
                      format(self.report_dir))
         self.indicator_names = indicator_names
         self.indicator_tenors = indicator_tenors
+        self.trend_dict = {}
         self.report_style = '''
 <style>
 body {
@@ -229,7 +230,11 @@ img {
                 trend_start_date = trend_lines.get('alines')[0][0]
                 if trend_start_date < s_date:
                     s_date = trend_start_date
-            stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
+                stk_sr = self.trend_dict.get(stk, {})
+                stk_lines = stk_sr.get('alines', []) + trend_lines['alines']
+                stk_colors = stk_sr.get('colors', []) + trend_lines['colors']
+                self.trend_dict[stk] = dict(alines=stk_lines, colors=stk_colors)
+            stk_plot = StxPlot(stk, s_date, crt_date, self.trend_dict.get(stk))
             stk_plot.plot_to_file()
             res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
             # res.append(f"<h4>{stk} "
