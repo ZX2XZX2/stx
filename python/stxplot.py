@@ -29,19 +29,18 @@ class StxPlot:
     def plot_to_file(self):
         if not self.trend_lines:
             mpf.plot(self.ts.df, type='candle', style=self.s, volume=True,
-                     title=self.ts.stk, savefig=f'/tmp/{self.ts.stk}.png')
+                     figsize=[12, 5], savefig=f'/tmp/{self.ts.stk}.png')
         else:
             mpf.plot(self.ts.df, type='candle', alines=self.trend_lines,
-                     style=self.s, volume=True, title=self.ts.stk,
+                     style=self.s, volume=True, figsize=[12, 5],
                      savefig=f'/tmp/{self.ts.stk}.png')
 
     def plot(self):
         if not self.trend_lines:
-            mpf.plot(self.ts.df, type='candle', style=self.s, volume=True,
-                     title=self.ts.stk)
+            mpf.plot(self.ts.df, type='candle', style=self.s, volume=True)
         else:
             mpf.plot(self.ts.df, type='candle', alines=self.trend_lines,
-                     style=self.s, volume=True, title=self.ts.stk)
+                     style=self.s, volume=True)
 
 
 if __name__ == '__main__':
