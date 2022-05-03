@@ -225,22 +225,6 @@ img {
         res = []
         try:
             stk = row['stk']
-            trend_lines = self.get_trend_lines(row, crt_date)
-            if trend_lines:
-                trend_start_date = trend_lines.get('alines')[0][0]
-                if trend_start_date < s_date:
-                    s_date = trend_start_date
-                stk_sr = self.trend_dict.get(stk, {})
-                stk_lines = stk_sr.get('alines', []) + trend_lines['alines']
-                stk_colors = stk_sr.get('colors', []) + trend_lines['colors']
-                self.trend_dict[stk] = dict(alines=stk_lines, colors=stk_colors)
-            stk_plot = StxPlot(stk, s_date, crt_date, self.trend_dict.get(stk))
-            stk_plot.plot_to_file()
-            res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
-            # res.append(f"<h4>{stk} "
-            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
-            res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
-                       format(stk, stk))
             ts = StxTS(stk, s_date, crt_date)
             day_ix = ts.set_day(crt_date)
             if day_ix == -1:
@@ -251,13 +235,37 @@ img {
                                         ts.df['lo'].values[-20:],
                                         ts.df['c'].values[-21:-1])]
             avg_rg = np.average(rgs)
-            res.append('<table border="1">')
-            res.append('<tr><th>name</th><th>dir'
-                       '</th><th>avg_volume</th><th>avg_rg</th></tr>')
-            res.append(f"<tr><td>{stk}</td><td>{row['direction']}</td>"
-                       f"<td>{int(1000 * avg_volume):,d}</td>"
-                       f"<td>{avg_rg / 100:.2f}</td></tr>")
-            res.append('</table>')
+            title = ''.join([
+                f"{stk}  "
+                f"D: {row['direction']}  ",
+                f"V: {int(1000 * avg_volume):,d}  ",
+                f"R: {avg_rg / 100:.2f}  ",
+                f"T: {row['tm']}  ",
+                f"S: {row['setup']}"
+            ])
+            # res.append('<table border="1">')
+            # res.append('<tr><th>name</th><th>dir'
+            #            '</th><th>avg_volume</th><th>avg_rg</th></tr>')
+            # res.append(f"<tr><td>{stk}</td><td>{row['direction']}</td>"
+            #            f"<td>{int(1000 * avg_volume):,d}</td>"
+            #            f"<td>{avg_rg / 100:.2f}</td></tr>")
+            # res.append('</table>')
+            trend_lines = self.get_trend_lines(row, crt_date)
+            if trend_lines:
+                trend_start_date = trend_lines.get('alines')[0][0]
+                if trend_start_date < s_date:
+                    s_date = trend_start_date
+                stk_sr = self.trend_dict.get(stk, {})
+                stk_lines = stk_sr.get('alines', []) + trend_lines['alines']
+                stk_colors = stk_sr.get('colors', []) + trend_lines['colors']
+                self.trend_dict[stk] = dict(alines=stk_lines, colors=stk_colors)
+            stk_plot = StxPlot(stk, title, s_date, crt_date, self.trend_dict.get(stk))
+            stk_plot.plot_to_file()
+            res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
+            # res.append(f"<h4>{stk} "
+            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
+            res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
+                       format(stk, stk))
             res.extend(self.build_indicators_table(row))
         except:
             logging.error('Failed analysis for {0:s}'.format(stk))
@@ -320,15 +328,6 @@ img {
         res = []
         try:
             stk = row['stk']
-            trend_lines = None # self.get_trend_lines(row)
-            stk_plot = StxPlot(stk, s_date, crt_date, trend_lines)
-            stk_plot.plot_to_file()
-            res.append(f"<h4>{stk} {row['bucket_rank']} [{row['industry']}, "
-                       f"{row['sector']}]</h4>")
-            # res.append(f"<h4>{stk} "
-            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
-            res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
-                       format(stk, stk))
             ts = StxTS(stk, s_date, crt_date)
             day_ix = ts.set_day(crt_date)
             if day_ix == -1:
@@ -339,12 +338,29 @@ img {
                                         ts.df['lo'].values[-20:],
                                         ts.df['c'].values[-21:-1])]
             avg_rg = np.average(rgs)
-            res.append('<table border="1">')
-            res.append(f"<tr><th>{stk}</th><th>{row['direction']}</th>"
-                       f"<th>V: {int(1000 * avg_volume):,d}</th>"
-                       f"<th>R: {avg_rg / 100:.2f}</th><th>{row['tm']}</th>"
-                       f"<th>{row['setup']}</th></tr>")
-            res.append('</table>')
+            title = ''.join([
+                f"{stk}  "
+                f"D: {row['direction']}  ",
+                f"V: {int(1000 * avg_volume):,d}  ",
+                f"R: {avg_rg / 100:.2f}  ",
+                f"T: {row['tm']}  ",
+                f"S: {row['setup']}"
+            ])
+            # res.append('<table border="1">')
+            # res.append(f"<tr><th>{stk}</th><th>{row['direction']}</th>"
+            #            f"<th>V: {int(1000 * avg_volume):,d}</th>"
+            #            f"<th>R: {avg_rg / 100:.2f}</th><th>{row['tm']}</th>"
+            #            f"<th>{row['setup']}</th></tr>")
+            # res.append('</table>')
+            trend_lines = None # self.get_trend_lines(row)
+            stk_plot = StxPlot(stk, title, s_date, crt_date, trend_lines)
+            stk_plot.plot_to_file()
+            res.append(f"<h4>{stk} {row['bucket_rank']} [{row['industry']}, "
+                       f"{row['sector']}]</h4>")
+            # res.append(f"<h4>{stk} "
+            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
+            res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
+                       format(stk, stk))
             res.extend(self.build_indicators_table(row))
         except:
             logging.error('Failed analysis for {0:s}'.format(stk))
@@ -397,7 +413,7 @@ img {
         res = []
         res.append('<h3>Index report</h3>')
         for index in ['^GSPC', '^IXIC', '^DJI']:
-            stk_plot = StxPlot(index, s_date, crt_date)
+            stk_plot = StxPlot(index, index, s_date, crt_date)
             stk_plot.plot_to_file()
             res.append(f'<h4>{index}</h4>')
             res.append(f'<img src="/tmp/{index}.png" alt="{index}">')
