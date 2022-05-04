@@ -243,13 +243,6 @@ img {
                 f"T: {row['tm']}  ",
                 f"S: {row['setup']}"
             ])
-            # res.append('<table border="1">')
-            # res.append('<tr><th>name</th><th>dir'
-            #            '</th><th>avg_volume</th><th>avg_rg</th></tr>')
-            # res.append(f"<tr><td>{stk}</td><td>{row['direction']}</td>"
-            #            f"<td>{int(1000 * avg_volume):,d}</td>"
-            #            f"<td>{avg_rg / 100:.2f}</td></tr>")
-            # res.append('</table>')
             trend_lines = self.get_trend_lines(row, crt_date)
             if trend_lines:
                 trend_start_date = trend_lines.get('alines')[0][0]
@@ -259,7 +252,8 @@ img {
                 stk_lines = stk_sr.get('alines', []) + trend_lines['alines']
                 stk_colors = stk_sr.get('colors', []) + trend_lines['colors']
                 self.trend_dict[stk] = dict(alines=stk_lines, colors=stk_colors)
-            stk_plot = StxPlot(stk, title, s_date, crt_date, self.trend_dict.get(stk))
+            stk_plot = StxPlot(stk, title, s_date, crt_date,
+                               self.trend_dict.get(stk))
             stk_plot.plot_to_file()
             res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
             # res.append(f"<h4>{stk} "
@@ -346,12 +340,6 @@ img {
                 f"T: {row['tm']}  ",
                 f"S: {row['setup']}"
             ])
-            # res.append('<table border="1">')
-            # res.append(f"<tr><th>{stk}</th><th>{row['direction']}</th>"
-            #            f"<th>V: {int(1000 * avg_volume):,d}</th>"
-            #            f"<th>R: {avg_rg / 100:.2f}</th><th>{row['tm']}</th>"
-            #            f"<th>{row['setup']}</th></tr>")
-            # res.append('</table>')
             trend_lines = None # self.get_trend_lines(row)
             stk_plot = StxPlot(stk, title, s_date, crt_date, trend_lines)
             stk_plot.plot_to_file()
