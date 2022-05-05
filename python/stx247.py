@@ -221,28 +221,46 @@ img {
             return dict(alines=[(d1, y1), (crt_dt, y3)], colors=[setup_color])
         return None
 
+    def get_ts_and_title(self, ticker, s_date, crt_date, direction=None,
+                         tm=None, setups=None):
+        ts, title = None, None
+        ts = StxTS(ticker, s_date, crt_date)
+        day_ix = ts.set_day(crt_date)
+        if day_ix == -1:
+            return None, None
+        avg_volume = np.average(ts.df['v'].values[-20:])
+        rgs = [max(h, c_1) - min(l, c_1)
+               for h, l, c_1 in zip(ts.df['hi'].values[-20:],
+                                    ts.df['lo'].values[-20:],
+                                    ts.df['c'].values[-21:-1])]
+        avg_rg = np.average(rgs)
+        title = ''.join([
+            f"{ticker}  "
+            f"D: {direction if direction else ''}  ",
+            f"V: {int(1000 * avg_volume):,d}  ",
+            f"R: {avg_rg / 100:.2f}  ",
+            f"T: {tm if tm else ''}  ",
+            f"S: {setups if setups else ''}"
+        ])
+        ts.df.index.name='Date'
+        ts.df.drop('oi', inplace=True, axis=1)
+        ts.df['o'] /= 100
+        ts.df['hi'] /= 100
+        ts.df['lo'] /= 100
+        ts.df['c'] /= 100
+        ts.df.rename(columns={'o': 'Open',
+                              'hi': 'High',
+                              'lo': 'Low',
+                              'c': 'Close',
+                              'v': 'Volume'},
+                     inplace=True)
+
+        return ts, title
+
     def setup_report(self, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
         res = []
         try:
             stk = row['stk']
-            ts = StxTS(stk, s_date, crt_date)
-            day_ix = ts.set_day(crt_date)
-            if day_ix == -1:
-                return []
-            avg_volume = np.average(ts.df['v'].values[-20:])
-            rgs = [max(h, c_1) - min(l, c_1)
-                   for h, l, c_1 in zip(ts.df['hi'].values[-20:],
-                                        ts.df['lo'].values[-20:],
-                                        ts.df['c'].values[-21:-1])]
-            avg_rg = np.average(rgs)
-            title = ''.join([
-                f"{stk}  "
-                f"D: {row['direction']}  ",
-                f"V: {int(1000 * avg_volume):,d}  ",
-                f"R: {avg_rg / 100:.2f}  ",
-                f"T: {row['tm']}  ",
-                f"S: {row['setup']}"
-            ])
             trend_lines = self.get_trend_lines(row, crt_date)
             if trend_lines:
                 trend_start_date = trend_lines.get('alines')[0][0]
@@ -252,7 +270,10 @@ img {
                 stk_lines = stk_sr.get('alines', []) + trend_lines['alines']
                 stk_colors = stk_sr.get('colors', []) + trend_lines['colors']
                 self.trend_dict[stk] = dict(alines=stk_lines, colors=stk_colors)
-            stk_plot = StxPlot(stk, title, s_date, crt_date,
+            ts, title = self.get_ts_and_title(stk, s_date, crt_date,
+                                              row['direction'], row['tm'],
+                                              row['setup'])
+            stk_plot = StxPlot(ts, title, s_date, crt_date,
                                self.trend_dict.get(stk))
             stk_plot.plot_to_file()
             res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
@@ -322,26 +343,11 @@ img {
         res = []
         try:
             stk = row['stk']
-            ts = StxTS(stk, s_date, crt_date)
-            day_ix = ts.set_day(crt_date)
-            if day_ix == -1:
-                return []
-            avg_volume = np.average(ts.df['v'].values[-20:])
-            rgs = [max(h, c_1) - min(l, c_1)
-                   for h, l, c_1 in zip(ts.df['hi'].values[-20:],
-                                        ts.df['lo'].values[-20:],
-                                        ts.df['c'].values[-21:-1])]
-            avg_rg = np.average(rgs)
-            title = ''.join([
-                f"{stk}  "
-                f"D: {row['direction']}  ",
-                f"V: {int(1000 * avg_volume):,d}  ",
-                f"R: {avg_rg / 100:.2f}  ",
-                f"T: {row['tm']}  ",
-                f"S: {row['setup']}"
-            ])
             trend_lines = None # self.get_trend_lines(row)
-            stk_plot = StxPlot(stk, title, s_date, crt_date, trend_lines)
+            ts, title = self.get_ts_and_title(stk, s_date, crt_date,
+                                              row['direction'], row['tm'],
+                                              row['setup'])
+            stk_plot = StxPlot(ts, title, s_date, crt_date, trend_lines)
             stk_plot.plot_to_file()
             res.append(f"<h4>{stk} {row['bucket_rank']} [{row['industry']}, "
                        f"{row['sector']}]</h4>")
@@ -401,7 +407,8 @@ img {
         res = []
         res.append('<h3>Index report</h3>')
         for index in ['^GSPC', '^IXIC', '^DJI']:
-            stk_plot = StxPlot(index, index, s_date, crt_date)
+            ts, title = self.get_ts_and_title(index, s_date, crt_date)
+            stk_plot = StxPlot(ts, title, s_date, crt_date)
             stk_plot.plot_to_file()
             res.append(f'<h4>{index}</h4>')
             res.append(f'<img src="/tmp/{index}.png" alt="{index}">')
