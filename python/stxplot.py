@@ -3,21 +3,7 @@ from stxts import StxTS
 import sys
 
 class StxPlot:
-    def __init__(self, stock, title, start_date, end_date, trend_lines=None):
-        ts = StxTS(stock, start_date, end_date)
-        ts.set_day(end_date)
-        ts.df.index.name='Date'
-        ts.df.drop('oi', inplace=True, axis=1)
-        ts.df['o'] /= 100
-        ts.df['hi'] /= 100
-        ts.df['lo'] /= 100
-        ts.df['c'] /= 100
-        ts.df.rename(columns={'o': 'Open', 
-                              'hi': 'High', 
-                              'lo': 'Low', 
-                              'c': 'Close', 
-                              'v': 'Volume'}, 
-                     inplace=True)
+    def __init__(self, ts, title, start_date, end_date, trend_lines=None):
         self.ts = ts
         self.title = title
         # Create my own `marketcolors` to use with the `nightclouds` style:
