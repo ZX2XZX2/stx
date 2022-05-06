@@ -152,13 +152,13 @@ img {
     def build_indicators_table(self, row):
         ind_tbl_dict = {}
         table_header = ['<tr><th></th>']
-        for ind_name in self.indicator_names:
-            table_header.append(f'<th>{ind_name}</th>')
+        for ten in self.indicator_tenors:
+            table_header.append(f'<th>{ten}</th>')
         table_header.append('</tr>')
         indicator_table = ['<table border="1">', ''.join(table_header)]
-        for ten in self.indicator_tenors:
-            t_row = [f'<tr><th>{ten}</th>']
-            for ind_name in self.indicator_names:
+        for ind_name in self.indicator_names:
+            t_row = [f'<tr><th>{ind_name}</th>']
+            for ten in self.indicator_tenors:
                 ind_value = f'{ind_name}_{ten}--value'
                 ind_bucket = f'{ind_name}_{ten}--bucket'
                 if ind_value in row and ind_bucket in row:
