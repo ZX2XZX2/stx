@@ -257,7 +257,7 @@ img {
 
         return ts, title
 
-    def setup_report(self, row, s_date, jl_s_date, ana_s_date, crt_date, isd):
+    def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
         res = []
         try:
             stk = row['stk']
@@ -277,8 +277,6 @@ img {
                                self.trend_dict.get(stk))
             stk_plot.plot_to_file()
             res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
-            # res.append(f"<h4>{stk} "
-            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
             res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
                        format(stk, stk))
             res.extend(self.build_indicators_table(row))
@@ -286,12 +284,6 @@ img {
             logging.error('Failed analysis for {0:s}'.format(stk))
             tb.print_exc()
             return []
-        try:
-            jl_res = StxJL.jl_report(stk, jl_s_date, crt_date, 1.5)
-            res.append(jl_res)
-        except:
-            logging.error('{0:s} JL(1.5) calc failed'.format(stk))
-            tb.print_exc()
         try:
             ana_res = self.ana_report(stk, ana_s_date, crt_date)
             res.append(ana_res)
@@ -440,13 +432,13 @@ img {
         for _, row in up_setup_df.iterrows():
             setup_len = row.info.get('length', 0)
             start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
-            res.extend(self.setup_report(row, start_date, jl_s_date, ana_s_date,
+            res.extend(self.setup_report(row, start_date, ana_s_date,
                                          crt_date, isd))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
             setup_len = row.info.get('length', 0)
             start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
-            res.extend(self.setup_report(row, start_date, jl_s_date, ana_s_date,
+            res.extend(self.setup_report(row, start_date, ana_s_date,
                                          crt_date, isd))
         return res
 
