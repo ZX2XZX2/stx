@@ -444,19 +444,36 @@ img {
 
     def get_jl_setups(self, dt):
         q = sql.Composed([
-            sql.SQL("SELECT * FROM time_setups WHERE dt="),
+            sql.SQL("SELECT time_setups.dt, time_setups.stk, "
+                    "ind_groups.industry, ind_groups.sector, "
+                    "time_setups.direction, time_setups.setup, "
+                    "time_setups.tm, time_setups.info, indicators_1.name, "
+                    "indicators_1.value, indicators_1.bucket_rank "
+                    "FROM time_setups, indicators_1, ind_groups "
+                    "WHERE time_setups.dt="),
             sql.Literal(dt),
-            sql.SQL(" AND (info->>'length')::int >= "), sql.Literal(25),
+            sql.SQL(" AND (time_setups.info->>'length')::int >= "),
+            sql.Literal(20),
             sql.SQL(" AND ((setup="), sql.Literal("JL_SR"),
-            sql.SQL(" AND (info->>'num_sr')::int > "), sql.Literal(1),
+            sql.SQL(" AND (time_setups.info->>'num_sr')::int > "),
+            sql.Literal(1),
             sql.SQL(") OR (setup IN ("),
             sql.SQL(', ').join([
                 sql.Literal('JL_P'),
                 sql.Literal('JL_B')
             ]),
-            sql.SQL(')))')
+            sql.SQL(')))'),
+            sql.SQL(" AND indicators_1.dt="),
+            sql.Literal(stxcal.prev_busday(dt)),
+            sql.SQL(" AND time_setups.stk=indicators_1.ticker "
+                    "AND indicators_1.name="),
+            sql.Literal('CS_45'),
+            sql.SQL(" AND ind_groups.dt = "),
+            sql.Literal(stxcal.prev_expiry(dt)),
+            sql.SQL( " AND ind_groups.stk=time_setups.stk "
+                     "ORDER BY time_setups.direction, indicators_1.value")
         ])
-        logging.info(f'q = {q.as_string(stxdb.db_get_cnx())}')
+        logging.info(f'jl setups sql = {q.as_string(stxdb.db_get_cnx())}')
         df = pd.read_sql(q, stxdb.db_get_cnx())
         return df
 
