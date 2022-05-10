@@ -420,14 +420,12 @@ img {
 
     def get_report(self, crt_date, setup_df, isd):
         s_date = stxcal.move_busdays(crt_date, -50)
-        jl_s_date = stxcal.move_busdays(crt_date, -350)
         ana_s_date = stxcal.move_busdays(crt_date, -20)
         res = []
         logging.info(f'setup_df has {len(setup_df)} rows')
         up_setup_df = setup_df.query("direction=='U'").copy()
-        up_setup_df.sort_values(by=['tm'], ascending=False, inplace=True)
+        up_setup_df.sort_values(by=['value'], ascending=False, inplace=True)
         down_setup_df = setup_df.query("direction=='D'").copy()
-        down_setup_df.sort_values(by=['tm'], ascending=False, inplace=True)
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
             setup_len = row.info.get('length', 0)
