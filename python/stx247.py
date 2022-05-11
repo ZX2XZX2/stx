@@ -62,7 +62,8 @@ img {
 </style>
 '''
 
-    def get_triggered_setups(self, dt, triggered=False):
+    def get_triggered_setups(self, dt, eod, triggered=False):
+        setups_date = dt if eod else stxcal.prev_busday(dt)
         q = sql.Composed([
             sql.SQL("SELECT time_setups.dt, time_setups.stk, "
                     "ind_groups.industry, ind_groups.sector, "
@@ -80,7 +81,7 @@ img {
             sql.SQL(") AND triggered="),
             sql.Literal('t' if triggered else 'f'),
             sql.SQL(" AND indicators_1.dt="),
-            sql.Literal(stxcal.prev_busday(dt)),
+            sql.Literal(setups_date),
             sql.SQL(" AND time_setups.stk=indicators_1.ticker "
                     "AND indicators_1.name="),
             sql.Literal('CS_45'),
@@ -440,7 +441,8 @@ img {
                                          crt_date, isd))
         return res
 
-    def get_jl_setups(self, dt):
+    def get_jl_setups(self, dt, eod):
+        setups_indicators_date = dt if eod else stxcal.prev_busday(dt)
         q = sql.Composed([
             sql.SQL("SELECT time_setups.dt, time_setups.stk, "
                     "ind_groups.industry, ind_groups.sector, "
@@ -462,7 +464,7 @@ img {
             ]),
             sql.SQL(')))'),
             sql.SQL(" AND indicators_1.dt="),
-            sql.Literal(stxcal.prev_busday(dt)),
+            sql.Literal(setups_indicators_date),
             sql.SQL(" AND time_setups.stk=indicators_1.ticker "
                     "AND indicators_1.name="),
             sql.Literal('CS_45'),
@@ -483,8 +485,8 @@ img {
                 stxgrps.calc_group_indicator(indicator, crt_date)
         isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
-        df_trigger_today = self.get_triggered_setups(crt_date, triggered=True)
-        df_jl = self.get_jl_setups(crt_date)
+        df_trigger_today = self.get_triggered_setups(crt_date, eod, triggered=True)
+        df_jl = self.get_jl_setups(crt_date, eod)
         logging.info(f'Found {len(df_trigger_today)} triggered setups and '
                      f'{len(df_jl)} JL setups for {crt_date}')
         if df_trigger_today.empty and df_jl.empty:
@@ -505,7 +507,7 @@ img {
                                              triggered=True))
         if eod:
             df_trigger_tomorrow = self.get_triggered_setups(
-                crt_date, triggered=False)
+                crt_date, eod, triggered=False)
             df_trigger_tomorrow = self.add_indicators(
                 df_trigger_tomorrow, crt_date, indicators, eod)
             next_date = stxcal.next_busday(crt_date)
