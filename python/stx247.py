@@ -258,6 +258,60 @@ img {
 
         return ts, title
 
+    """
+    1. Get the JL setups in the last 20 business days
+    2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
+    3. Load the data frame between d_0 and crt_date
+    4. Adjust the JL setups pivot prices
+    5. Calc the intersection with the current date
+    6. 
+    """
+    def setup_report1(self, row, crt_date):
+        res = []
+        s_date = stxcal.move_busdays(crt_date, -20)
+        stk = row['stk']
+        q = sql.Composed([
+            sql.SQL("SELECT * FROM time_setups WHERE dt BETWEEN "),
+            sql.Literal(s_date),
+            sql.SQL(" AND "),
+            sql.Literal(crt_date),
+            sql.SQL(" AND stk="),
+            sql.Literal(stk),
+            sql.SQL(" AND ((setup="), sql.Literal("JL_SR"),
+            sql.SQL(" AND (info->>'num_sr')::int > "), sql.Literal(1),
+            sql.SQL(")"),
+            sql.SQL(" OR (setup IN ("),
+            sql.SQL(', ').join([
+                sql.Literal('JL_P'),
+                sql.Literal('JL_B')
+            ]),
+            sql.SQL(") AND (info->>'length')::int >= "), sql.Literal(20),
+            sql.SQL('))')
+        ])
+        # logging.info(f'jl setups sql = {q.as_string(stxdb.db_get_cnx())}')
+        jl_setup_df = pd.read_sql(q, stxdb.db_get_cnx())
+        # logging.info(f'{stk} has {len(jl_setup_df)} JL setups')
+        dt_0 = crt_date
+        for _, jl_setup_row in jl_setup_df.iterrows():
+            crt_setup = jl_setup_row['setup']
+            crt_info = jl_setup_row['info']
+            if crt_setup == 'JL_B' or crt_setup == 'JL_P':
+                dt0 = jl_setup_row.info.get('channel', {}).get(
+                    'p1', {}).get('date')
+            else: # if crt_setup == 'JL_SR'
+                sr_pivots = jl_setup_row.info.get('sr_pivots', [])
+                if not sr_pivots:
+                    dt0 = None
+                else:
+                    dt0 = sr_pivots[0].get('date')
+            if dt0 is None:
+                continue
+            if dt_0 > str(dt0):
+                dt_0 = str(dt0)
+        dt_0 = stxcal.move_busdays(dt_0, -5) 
+        # logging.info(f'First date for {stk} is {dt_0}')
+                
+    
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
         res = []
         try:
@@ -388,6 +442,7 @@ img {
         for _, row in up_setup_df.iterrows():
             res.extend(self.trigger_setup_report(row, start_date,
                                                  crt_date))
+            self.setup_report1(row, crt_date)
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
             res.extend(self.trigger_setup_report(row, start_date,
