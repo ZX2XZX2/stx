@@ -240,6 +240,10 @@ class StxTS:
         tdf['exp'] = tdf.apply(funexp, axis=1)
         return tdf
 
+    def get(self, dt, field=None):
+        rec = self.df.iloc[self.find(dt)]
+        return rec if not field else rec.get(field)
+
 
 if __name__ == '__main__':
     stk = 'TASR'
