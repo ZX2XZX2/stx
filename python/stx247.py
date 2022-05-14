@@ -202,6 +202,7 @@ img {
         if setup == 'JL_B':
             d1 = str(row['dt'])
             p1 = row.info['ipx'] / 100.0
+            d2 = row.info.get('channel', {}).get('p1', {}).get('date')
             d2 = row.info['channel']['p1']['date']
             p2 = row.info['channel']['p1']['price'] / 100.0
             return dict(alines=[(d1, p1), (d2, p2)], colors=[setup_color])
@@ -262,9 +263,9 @@ img {
     1. Get the JL setups in the last 20 business days
     2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
     3. Load the data frame between d_0 and crt_date
-    4. Adjust the JL setups pivot prices
-    5. Calc the intersection with the current date
-    6. 
+    4. Add 50 and 200 MA to df
+    5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
+    6. for each trendline, calc the intersection with current date
     """
     def setup_report1(self, row, crt_date):
         res = []
@@ -308,10 +309,16 @@ img {
                 continue
             if dt_0 > str(dt0):
                 dt_0 = str(dt0)
-        dt_0 = stxcal.move_busdays(dt_0, -5) 
+        dt_0 = stxcal.move_busdays(dt_0, -5)
+        num_days = stxcal.num_busdays(dt_0, crt_date)
+        if num_days < 220:
+            dt_0 = stxcal.move_busdays(crt_date, -220)
         # logging.info(f'First date for {stk} is {dt_0}')
-                
-    
+        ts = StxTS(stk, dt_0, crt_date)
+        day_ix = ts.set_day(crt_date)
+        if day_ix == -1:
+            return None
+
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
         res = []
         try:
