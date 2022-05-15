@@ -259,18 +259,9 @@ img {
 
         return ts, title
 
-    """
-    1. Get the JL setups in the last 20 business days
-    2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
-    3. Load the data frame between d_0 and crt_date
-    4. Add 50 and 200 MA to df
-    5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
-    6. for each trendline, calc the intersection with current date
-    """
-    def setup_report1(self, row, crt_date):
-        res = []
-        s_date = stxcal.move_busdays(crt_date, -20)
-        stk = row['stk']
+
+    def get_jl_setups_for_analysis(self, stk, crt_date, num_jl_days):
+        s_date = stxcal.move_busdays(crt_date, -num_jl_days)
         q = sql.Composed([
             sql.SQL("SELECT * FROM time_setups WHERE dt BETWEEN "),
             sql.Literal(s_date),
@@ -289,9 +280,24 @@ img {
             sql.SQL(") AND (info->>'length')::int >= "), sql.Literal(20),
             sql.SQL('))')
         ])
-        # logging.info(f'jl setups sql = {q.as_string(stxdb.db_get_cnx())}')
+        logging.debug(f'jl stps sql = {q.as_string(stxdb.db_get_cnx())}')
         jl_setup_df = pd.read_sql(q, stxdb.db_get_cnx())
-        # logging.info(f'{stk} has {len(jl_setup_df)} JL setups')
+        logging.debug(f'{stk} has {len(jl_setup_df)} JL setups')
+        return jl_setup_df
+
+    """
+    1. Get the JL setups in the last 20 business days
+    2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
+    3. Load the data frame between d_0 and crt_date
+    4. Add 50 and 200 MA to df
+    5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
+    6. for each trendline, calc the intersection with current date
+    """
+    def setup_report1(self, row, crt_date, num_jl_days=20):
+        res = []
+        stk = row['stk']
+        jl_setup_df = self.get_jl_setups_for_analysis(stk, crt_date,
+                                                      num_jl_days)
         dt_0 = crt_date
         for _, jl_setup_row in jl_setup_df.iterrows():
             crt_setup = jl_setup_row['setup']
