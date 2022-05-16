@@ -285,20 +285,8 @@ img {
         logging.debug(f'{stk} has {len(jl_setup_df)} JL setups')
         return jl_setup_df
 
-    """
-    1. Get the JL setups in the last 20 business days
-    2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
-    3. Load the data frame between d_0 and crt_date
-    4. Add 50 and 200 MA to df
-    5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
-    6. for each trendline, calc the intersection with current date
-    """
-    def setup_report1(self, row, crt_date, num_jl_days=20):
-        res = []
-        stk = row['stk']
-        jl_setup_df = self.get_jl_setups_for_analysis(stk, crt_date,
-                                                      num_jl_days)
-        dt_0 = crt_date
+    def find_start_date(self, jl_setup_df, crt_date):
+        start_date = crt_date
         for _, jl_setup_row in jl_setup_df.iterrows():
             crt_setup = jl_setup_row['setup']
             crt_info = jl_setup_row['info']
@@ -313,14 +301,30 @@ img {
                     dt0 = sr_pivots[0].get('date')
             if dt0 is None:
                 continue
-            if dt_0 > str(dt0):
-                dt_0 = str(dt0)
-        dt_0 = stxcal.move_busdays(dt_0, -5)
-        num_days = stxcal.num_busdays(dt_0, crt_date)
+            if start_date > str(dt0):
+                start_date = str(dt0)
+        start_date = stxcal.move_busdays(start_date, -5)
+        num_days = stxcal.num_busdays(start_date, crt_date)
         if num_days < 220:
-            dt_0 = stxcal.move_busdays(crt_date, -220)
-        # logging.info(f'First date for {stk} is {dt_0}')
-        ts = StxTS(stk, dt_0, crt_date)
+            start_date = stxcal.move_busdays(crt_date, -220)
+        return start_date
+
+    """
+    1. Get the JL setups in the last 20 business days
+    2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
+    3. Load the data frame between d_0 and crt_date
+    4. Add 50 and 200 MA to df
+    5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
+    6. for each trendline, calc the intersection with current date
+    """
+    def setup_report1(self, row, crt_date, num_jl_days=20):
+        res = []
+        stk = row['stk']
+        jl_setup_df = self.get_jl_setups_for_analysis(stk, crt_date,
+                                                      num_jl_days)
+        start_date = self.find_start_date(jl_setup_df, crt_date)
+        logging.debug(f'First date for {stk} is {start_date}')
+        ts = StxTS(stk, start_date, crt_date)
         day_ix = ts.set_day(crt_date)
         if day_ix == -1:
             return None
