@@ -309,6 +309,28 @@ img {
             start_date = stxcal.move_busdays(crt_date, -220)
         return start_date
 
+    def get_stk_ts(self, stk, start_date, crt_date):
+        ts = StxTS(stk, start_date, crt_date)
+        day_ix = ts.set_day(crt_date)
+        if day_ix == -1:
+            return None
+        ts.df.index.name='Date'
+        ts.df.drop('oi', inplace=True, axis=1)
+        ts.df['o'] /= 100
+        ts.df['hi'] /= 100
+        ts.df['lo'] /= 100
+        ts.df['c'] /= 100
+        ts.df['v'] *= 1000
+        ts.df.rename(columns={'o': 'Open',
+                              'hi': 'High',
+                              'lo': 'Low',
+                              'c': 'Close',
+                              'v': 'Volume'},
+                     inplace=True)
+        ts.df['SMA50'] = ts.df['Close'].rolling(50).mean()
+        ts.df['SMA200'] = ts.df['Close'].rolling(200).mean()
+        return ts
+
     """
     1. Get the JL setups in the last 20 business days
     2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
@@ -324,10 +346,10 @@ img {
                                                       num_jl_days)
         start_date = self.find_start_date(jl_setup_df, crt_date)
         logging.debug(f'First date for {stk} is {start_date}')
-        ts = StxTS(stk, start_date, crt_date)
-        day_ix = ts.set_day(crt_date)
-        if day_ix == -1:
-            return None
+        ts = self.get_stk_ts(stk, start_date, crt_date)
+        if ts is None:
+            return []
+        return res
 
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
         res = []
