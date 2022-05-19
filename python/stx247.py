@@ -171,6 +171,37 @@ img {
         indicator_table.append('</table>')
         return indicator_table
 
+
+    def get_jl_trend_lines(self, ts, jl_setup_df, crt_date):
+        trend_lines = {}
+        for _, row in jl_setup_df.iterrows():
+            setup = row.setup
+            setup_color = 'g' if row.direction == 'U' else 'r'
+            if setup in ['JL_P', 'JL_B']:
+                piv1 = row.info.get('channel', {}).get('p1', {})
+                piv2 = row.info.get('channel', {}).get('p2', {})
+                if not piv1 or not piv2:
+                    continue
+            elif setup == 'JL_SR':
+                sr_pivots = row.info.get('sr_pivots', [])
+                if not sr_pivots or len(sr_pivots) < 2:
+                    continue
+                piv1, piv2 = sr_pivots[0], sr_pivots[-1]
+            d1, d2 = str(piv1['date']), str(piv2['date'])
+            s1, s2 = piv1['state'], piv2['state']
+            logging.debug(f'd1={d1}, d2={d2}, s1={s1}, s2={s2}')
+            y1 = ts.get(d1, 'High' if s1 in ['UT', 'NRa'] else 'Low')
+            y2 = ts.get(d2, 'High' if s2 in ['UT', 'NRa'] else 'Low')
+            x1, x2 = 0, stxcal.num_busdays(d1, d2)
+            logging.debug(f'x1={x1}, x2={x2}, y1={y1}, y2={y2}')
+            slope = (y2 - y1) / float(x2 - x1)
+            y3 = y2 + slope * stxcal.num_busdays(d2, crt_date)
+            alines = trend_lines.get('alines', [])
+            colors = trend_lines.get('colors', [])
+            alines.append([(d1, y1), (crt_date, y3)])
+            colors.append(setup_color)
+        return trend_lines
+
     def get_trend_lines(self, row, crt_dt):
         setup = row.setup
         setup_color = 'g' if row.direction == 'U' else 'r'
@@ -349,6 +380,7 @@ img {
         ts = self.get_stk_ts(stk, start_date, crt_date)
         if ts is None:
             return []
+        trend_lines = self.get_jl_trend_lines(ts, jl_setup_df, crt_date)
         return res
 
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
