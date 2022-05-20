@@ -362,6 +362,15 @@ img {
         ts.df['SMA200'] = ts.df['Close'].rolling(200).mean()
         return ts
 
+    def get_avg_stats(self, ts):
+        avg_volume = np.average(ts.df['Volume'].values[-20:])
+        rgs = [max(h, c_1) - min(l, c_1)
+               for h, l, c_1 in zip(ts.df['High'].values[-20:],
+                                    ts.df['Low'].values[-20:],
+                                    ts.df['Close'].values[-21:-1])]
+        avg_rg = np.average(rgs)
+        return avg_volume, avg_rg
+
     """
     1. Get the JL setups in the last 20 business days
     2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
@@ -381,6 +390,7 @@ img {
         if ts is None:
             return []
         trend_lines = self.get_jl_trend_lines(ts, jl_setup_df, crt_date)
+        avg_volume, avg_rg = self.get_avg_stats(ts)
         return res
 
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
