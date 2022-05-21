@@ -290,7 +290,6 @@ img {
 
         return ts, title
 
-
     def get_jl_setups_for_analysis(self, stk, crt_date, num_jl_days):
         s_date = stxcal.move_busdays(crt_date, -num_jl_days)
         q = sql.Composed([
@@ -371,6 +370,18 @@ img {
         avg_rg = np.average(rgs)
         return avg_volume, avg_rg
 
+    def get_title(self, ticker, avg_volume, avg_rg, direction=None,
+                  tm=None, setups=None):
+        title = ''.join([
+            f"{ticker}  "
+            f"D: {direction if direction else ''}  ",
+            f"V: {int(1000 * avg_volume):,d}  ",
+            f"R: {avg_rg / 100:.2f}  ",
+            f"T: {tm if tm else ''}  ",
+            f"S: {setups if setups else ''}"
+        ])
+        return title
+
     """
     1. Get the JL setups in the last 20 business days
     2. Find the furthest first date in those setups. Move 5 BDs further (d_0).
@@ -391,6 +402,8 @@ img {
             return []
         trend_lines = self.get_jl_trend_lines(ts, jl_setup_df, crt_date)
         avg_volume, avg_rg = self.get_avg_stats(ts)
+        title = self.get_title(stk, avg_volume, avg_rg, row['direction'],
+                               row['tm'], row['setup'])
         return res
 
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
