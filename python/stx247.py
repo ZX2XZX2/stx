@@ -357,8 +357,10 @@ img {
                               'c': 'Close',
                               'v': 'Volume'},
                      inplace=True)
-        ts.df['SMA50'] = ts.df['Close'].rolling(50).mean()
-        ts.df['SMA200'] = ts.df['Close'].rolling(200).mean()
+        if len(ts.df) > 51:
+            ts.df['SMA50'] = ts.df['Close'].rolling(50).mean()
+        if len(ts.df) > 201:
+            ts.df['SMA200'] = ts.df['Close'].rolling(200).mean()
         return ts
 
     def get_avg_stats(self, ts):
@@ -404,6 +406,11 @@ img {
         avg_volume, avg_rg = self.get_avg_stats(ts)
         title = self.get_title(stk, avg_volume, avg_rg, row['direction'],
                                row['tm'], row['setup'])
+        stk_plot = StxPlot(ts, title, start_date, crt_date, trend_lines)
+        stk_plot.plot_to_file()
+        res.append(f"<h4>{stk} [{row['industry']}, {row['sector']}]</h4>")
+        res.append(f'<img src="/tmp/{stk}.png" alt="{stk}">')
+        res.extend(self.build_indicators_table(row))
         return res
 
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
@@ -534,9 +541,9 @@ img {
         down_setup_df = setup_df.query("direction=='D'").copy()
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
-            res.extend(self.trigger_setup_report(row, start_date,
-                                                 crt_date))
-            self.setup_report1(row, crt_date)
+            # res.extend(self.trigger_setup_report(row, start_date,
+            #                                      crt_date))
+            res.extend(self.setup_report1(row, crt_date))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
             res.extend(self.trigger_setup_report(row, start_date,
