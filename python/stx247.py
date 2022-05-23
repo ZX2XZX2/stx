@@ -200,6 +200,8 @@ img {
             colors = trend_lines.get('colors', [])
             alines.append([(d1, y1), (crt_date, y3)])
             colors.append(setup_color)
+            trend_lines['alines'] = alines
+            trend_lines['colors'] = colors
         return trend_lines
 
     def get_trend_lines(self, row, crt_dt):
