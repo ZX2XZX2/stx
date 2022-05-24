@@ -379,8 +379,8 @@ img {
         title = ''.join([
             f"{ticker}  "
             f"D: {direction if direction else ''}  ",
-            f"V: {int(1000 * avg_volume):,d}  ",
-            f"R: {avg_rg / 100:.2f}  ",
+            f"V: {int(avg_volume):,d}  ",
+            f"R: {avg_rg:.2f}  ",
             f"T: {tm if tm else ''}  ",
             f"S: {setups if setups else ''}"
         ])
