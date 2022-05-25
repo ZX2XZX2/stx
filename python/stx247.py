@@ -410,7 +410,8 @@ img {
                                row['tm'], row['setup'])
         stk_plot = StxPlot(ts, title, start_date, crt_date, trend_lines)
         stk_plot.plot_to_file()
-        res.append(f"<h4>{stk} [{row['industry']}, {row['sector']}]</h4>")
+        res.append(f"<h4>{stk}  {row['bucket_rank']} [{row['industry']}, "
+                   "{row['sector']}]</h4>")
         res.append(f'<img src="/tmp/{stk}.png" alt="{stk}">')
         res.extend(self.build_indicators_table(row))
         return res
