@@ -356,6 +356,9 @@ void net_get_eod_data(FILE *eod_fp, char* stk, char* dt) {
 #endif
     char url[256];
     sprintf(url, "%s/quote%s&symbols=%s%s%s", Y_1, Y_3, stk, Y_4, Y_5);
+#ifdef DEBUG_NET_QUOTE
+    LOGINFO("URL = %s\n", url);
+#endif
     net_mem_ptr chunk = net_get_quote(url);
     if (chunk == NULL) {
         LOGERROR("%s: net_get_quote() returned null\n", stk);
