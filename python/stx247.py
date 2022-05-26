@@ -411,9 +411,12 @@ img {
         stk_plot = StxPlot(ts, title, start_date, crt_date, trend_lines)
         stk_plot.plot_to_file()
         res.append(f"<h4>{stk}  {row['bucket_rank']} [{row['industry']}, "
-                   "{row['sector']}]</h4>")
+                   f"{row['sector']}]</h4>")
         res.append(f'<img src="/tmp/{stk}.png" alt="{stk}">')
         res.extend(self.build_indicators_table(row))
+        ana_s_date = stxcal.move_busdays(crt_date, -num_jl_days)
+        ana_res = self.ana_report(stk, ana_s_date, crt_date)
+        res.append(ana_res)
         return res
 
     def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
