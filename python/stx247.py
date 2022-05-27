@@ -547,13 +547,10 @@ img {
         down_setup_df = setup_df.query("direction=='D'").copy()
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
-            # res.extend(self.trigger_setup_report(row, start_date,
-            #                                      crt_date))
             res.extend(self.setup_report1(row, crt_date))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
-            res.extend(self.trigger_setup_report(row, start_date,
-                                                 crt_date))
+            res.extend(self.setup_report1(row, crt_date))
         return res
 
     def index_report(self, crt_date):
@@ -593,14 +590,13 @@ img {
         for _, row in up_setup_df.iterrows():
             setup_len = row.info.get('length', 0)
             start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
-            res.extend(self.setup_report(row, start_date, ana_s_date,
-                                         crt_date, isd))
+            res.extend(self.setup_report1(row, crt_date))
+
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
             setup_len = row.info.get('length', 0)
             start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
-            res.extend(self.setup_report(row, start_date, ana_s_date,
-                                         crt_date, isd))
+            res.extend(self.setup_report1(row, crt_date))
         return res
 
     def get_jl_setups(self, dt, eod):
