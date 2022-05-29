@@ -493,43 +493,6 @@ img {
         res.append('</table>')
         return res
 
-
-    def trigger_setup_report(self, row, s_date, crt_date):
-        res = []
-        try:
-            stk = row['stk']
-            trend_lines = None # self.get_trend_lines(row)
-            ts, title = self.get_ts_and_title(stk, s_date, crt_date,
-                                              row['direction'], row['tm'],
-                                              row['setup'])
-            stk_plot = StxPlot(ts, title, s_date, crt_date, trend_lines)
-            stk_plot.plot_to_file()
-            res.append(f"<h4>{stk} {row['bucket_rank']} [{row['industry']}, "
-                       f"{row['sector']}]</h4>")
-            # res.append(f"<h4>{stk} "
-            #     f"[{', '.join(sorted(stxetfs.stock_labels(stk)))}]</h4>")
-            res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
-                       format(stk, stk))
-            res.extend(self.build_indicators_table(row))
-        except:
-            logging.error('Failed analysis for {0:s}'.format(stk))
-            tb.print_exc()
-            return []
-        # try:
-        #     jl_res = StxJL.jl_report(stk, jl_s_date, crt_date, 1.5)
-        #     res.append(jl_res)
-        # except:
-        #     logging.error('{0:s} JL(1.5) calc failed'.format(stk))
-        #     tb.print_exc()
-        # try:
-        #     ana_res = self.ana_report(stk, ana_s_date, crt_date)
-        #     res.append(ana_res)
-        # except:
-        #     logging.error('Failed to analyze {0:s}'.format(stk))
-        #     tb.print_exc()
-        return res
-
-
     """ Assume here that setup_df has the following columns: industry
     group, sector, cs_45, tm, and setup_df is already sorted following
     direction and cs_45. If triggered is True, then this is a
