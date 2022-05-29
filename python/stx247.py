@@ -394,7 +394,7 @@ img {
     5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
     6. for each trendline, calc the intersection with current date
     """
-    def setup_report1(self, row, crt_date, num_jl_days=20):
+    def setup_report1(self, row, crt_date, is_index=False, num_jl_days=20):
         res = []
         stk = row['stk']
         jl_setup_df = self.get_jl_setups_for_analysis(stk, crt_date,
@@ -413,7 +413,8 @@ img {
         res.append(f"<h4>{stk}  {row['bucket_rank']} [{row['industry']}, "
                    f"{row['sector']}]</h4>")
         res.append(f'<img src="/tmp/{stk}.png" alt="{stk}">')
-        res.extend(self.build_indicators_table(row))
+        if not is_index:
+            res.extend(self.build_indicators_table(row))
         ana_s_date = stxcal.move_busdays(crt_date, -num_jl_days)
         ana_res = self.ana_report(stk, ana_s_date, crt_date)
         res.append(ana_res)
@@ -559,11 +560,16 @@ img {
         res = []
         res.append('<h3>Index report</h3>')
         for index in ['^GSPC', '^IXIC', '^DJI']:
-            ts, title = self.get_ts_and_title(index, s_date, crt_date)
-            stk_plot = StxPlot(ts, title, s_date, crt_date)
-            stk_plot.plot_to_file()
-            res.append(f'<h4>{index}</h4>')
-            res.append(f'<img src="/tmp/{index}.png" alt="{index}">')
+            row = pd.Series({
+                'stk': index,
+                'direction': '',
+                'tm': '',
+                'setup': '',
+                'bucket_rank': 100,
+                'industry': 'Composite Index',
+                'sector': index
+            })
+            res.extend(self.setup_report1(row, crt_date, is_index=True))
             try:
                 jl_res = StxJL.jl_report(index, jl_s_date, crt_date, 1.0)
                 res.append(jl_res)
