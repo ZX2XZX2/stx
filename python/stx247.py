@@ -394,7 +394,7 @@ img {
     5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
     6. for each trendline, calc the intersection with current date
     """
-    def setup_report1(self, row, crt_date, is_index=False, num_jl_days=20):
+    def setup_report(self, row, crt_date, is_index=False, num_jl_days=20):
         res = []
         stk = row['stk']
         jl_setup_df = self.get_jl_setups_for_analysis(stk, crt_date,
@@ -418,41 +418,6 @@ img {
         ana_s_date = stxcal.move_busdays(crt_date, -num_jl_days)
         ana_res = self.ana_report(stk, ana_s_date, crt_date)
         res.append(ana_res)
-        return res
-
-    def setup_report(self, row, s_date, ana_s_date, crt_date, isd):
-        res = []
-        try:
-            stk = row['stk']
-            trend_lines = self.get_trend_lines(row, crt_date)
-            if trend_lines:
-                trend_start_date = trend_lines.get('alines')[0][0]
-                if trend_start_date < s_date:
-                    s_date = trend_start_date
-                stk_sr = self.trend_dict.get(stk, {})
-                stk_lines = stk_sr.get('alines', []) + trend_lines['alines']
-                stk_colors = stk_sr.get('colors', []) + trend_lines['colors']
-                self.trend_dict[stk] = dict(alines=stk_lines, colors=stk_colors)
-            ts, title = self.get_ts_and_title(stk, s_date, crt_date,
-                                              row['direction'], row['tm'],
-                                              row['setup'])
-            stk_plot = StxPlot(ts, title, s_date, crt_date,
-                               self.trend_dict.get(stk))
-            stk_plot.plot_to_file()
-            res.append(f"<h4>{stk} {isd.get(stk, ['N/A', 'N/A'])}</h4>")
-            res.append('<img src="/tmp/{0:s}.png" alt="{1:s}">'.
-                       format(stk, stk))
-            res.extend(self.build_indicators_table(row))
-        except:
-            logging.error('Failed analysis for {0:s}'.format(stk))
-            tb.print_exc()
-            return []
-        try:
-            ana_res = self.ana_report(stk, ana_s_date, crt_date)
-            res.append(ana_res)
-        except:
-            logging.error('Failed to analyze {0:s}'.format(stk))
-            tb.print_exc()
         return res
 
     """ Display the triggered setups in chronological order """
@@ -511,10 +476,10 @@ img {
         down_setup_df = setup_df.query("direction=='D'").copy()
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
-            res.extend(self.setup_report1(row, crt_date))
+            res.extend(self.setup_report(row, crt_date))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
-            res.extend(self.setup_report1(row, crt_date))
+            res.extend(self.setup_report(row, crt_date))
         return res
 
     def index_report(self, crt_date):
@@ -532,7 +497,7 @@ img {
                 'industry': 'Composite Index',
                 'sector': index
             })
-            res.extend(self.setup_report1(row, crt_date, is_index=True))
+            res.extend(self.setup_report(row, crt_date, is_index=True))
             try:
                 jl_res = StxJL.jl_report(index, jl_s_date, crt_date, 1.0)
                 res.append(jl_res)
@@ -547,25 +512,19 @@ img {
                     tb.print_exc()
         return res
 
-    def get_report(self, crt_date, setup_df, isd):
+    def get_report(self, crt_date, setup_df):
         s_date = stxcal.move_busdays(crt_date, -50)
-        ana_s_date = stxcal.move_busdays(crt_date, -20)
-        res = []
         logging.info(f'setup_df has {len(setup_df)} rows')
+        res = []
         up_setup_df = setup_df.query("direction=='U'").copy()
         up_setup_df.sort_values(by=['value'], ascending=False, inplace=True)
         down_setup_df = setup_df.query("direction=='D'").copy()
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
-            setup_len = row.info.get('length', 0)
-            start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
-            res.extend(self.setup_report1(row, crt_date))
-
+            res.extend(self.setup_report(row, crt_date))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
-            setup_len = row.info.get('length', 0)
-            start_date = stxcal.move_busdays(crt_date, -setup_len - 3)
-            res.extend(self.setup_report1(row, crt_date))
+            res.extend(self.setup_report(row, crt_date))
         return res
 
     def get_jl_setups(self, dt, eod):
@@ -610,7 +569,6 @@ img {
             for indicator in indicators:
                 logging.info(f'indicator = {indicator}, crt_date = {crt_date}')
                 stxgrps.calc_group_indicator(indicator, crt_date)
-        isd = self.get_industries_sectors(crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
         df_trigger_today = self.get_triggered_setups(crt_date, eod, triggered=True)
         df_jl = self.get_jl_setups(crt_date, eod)
@@ -642,7 +600,7 @@ img {
             res.extend(self.get_triggered_report(
                 crt_date, df_trigger_tomorrow))
         res.append(f'<h2>JL - {crt_date}</h2>')
-        res.extend(self.get_report(crt_date, df_jl, isd))
+        res.extend(self.get_report(crt_date, df_jl))
         res.append('</body>')
         res.append('</html>')
         with open('/tmp/x.html', 'w') as html_file:
@@ -757,53 +715,6 @@ img {
         z.close()
         logging.info(f'Archived {num_archived_pdfs} PDF reports '\
                      f'in {zipfile_name}')
-
-    def get_industries_sectors(self, dt):
-        ind_sector_dct = {}
-        db_date = stxcal.prev_expiry(dt)
-        q = sql.Composed([
-            sql.SQL("SELECT stk, industry, sector FROM ind_groups "),
-            sql.SQL("WHERE source = "),
-            sql.Literal('yf'),
-            sql.SQL(' AND dt = '),
-            sql.Literal(db_date)
-        ])
-        res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
-        if not res:
-            q = sql.Composed([
-                sql.SQL("SELECT dt FROM ind_groups WHERE dt >= "),
-                sql.Literal(dt),
-                sql.SQL(" ORDER BY dt LIMIT 1")
-            ])
-            upper_date = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
-            q = sql.Composed([
-                sql.SQL("SELECT dt FROM ind_groups WHERE dt < "),
-                sql.Literal(dt),
-                sql.SQL(" ORDER BY dt LIMIT 1")
-            ])
-            lower_date = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
-            if not upper_date and not lower_date:
-                return ind_sector_dct
-            if not upper_date:
-                db_date = lower_date[0]
-            else:
-                if not lower_date:
-                    db_date = upper_date[0]
-                else:
-                    lower_num = stxcal.num_busdays(lower_date[0], dt)
-                    upper_num = stxcal.num_busdays(dt, upper_date[0])
-                    db_date = lower_date[0] if lower_num <= upper_num else \
-                        upper_date[0]
-            q = sql.Composed([
-                sql.SQL("SELECT stk, industry, sector FROM ind_groups "),
-                sql.SQL("WHERE source = "),
-                sql.Literal('yf'),
-                sql.SQL(' AND dt = '),
-                sql.Literal(db_date)
-            ])
-            res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
-        ind_sector_dct = {x[0]: [x[1], x[2]] for x in res}
-        return ind_sector_dct
 
 
 if __name__ == '__main__':
