@@ -1,6 +1,7 @@
 import argparse
 from configparser import ConfigParser
 from contextlib import closing
+import csv
 import datetime
 import errno
 from enum import Enum
@@ -366,18 +367,39 @@ class StxDatafeed:
             return
         logging.info('Reading stooq file, renaming columns, getting daily '
                      'US stocks data')
-        df = pd.read_csv(stooq_file, dtype={
-            "<TICKER>": "string",
-            "<PER>": "string",
-            "<DATE>": "string",
-            "<TIME>": "string",
-            "<OPEN>": float,
-            "<HIGH>": float,
-            "<LOW>": float,
-            "<CLOSE>": float,
-            "<VOL>": int,
-            "<OPENINT>": int
-        })
+        try:
+            df = pd.read_csv(stooq_file, dtype={
+                "<TICKER>": "string",
+                "<PER>": "string",
+                "<DATE>": "string",
+                "<TIME>": "string",
+                "<OPEN>": float,
+                "<HIGH>": float,
+                "<LOW>": float,
+                "<CLOSE>": float,
+                "<VOL>": int,
+                "<OPENINT>": int
+            })
+        except:
+            with open(stooq_file) as stooqfile:
+                frdr = csv.reader(stooqfile)
+                line_num = 0
+                for row in frdr:
+                    line_num += 1
+                    try:
+                        stk = str(row[0])
+                        per = str(row[1])
+                        dt = str(row[2])
+                        tm = str(row[3])
+                        o = float(row[4])
+                        hi = float(row[5])
+                        lo = float(row[6])
+                        c = float(row[7])
+                        v = int(row[8])
+                        oi = int(row[9])
+                    except:
+                        logging.error(f"Failed to parse line {line_num}")
+            sys.exit(-1)
         df.columns = [x[1: -1].lower() for x in df.columns]
         stx_df = df.query('ticker.str.endswith(".US") and per == "D"',
                           engine='python').copy()
