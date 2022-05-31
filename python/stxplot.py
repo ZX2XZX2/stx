@@ -12,34 +12,35 @@ class StxPlot:
         self.s  = mpf.make_mpf_style(base_mpf_style='nightclouds',
                                      marketcolors=mc)
         self.trend_lines = trend_lines
+        self.plot_df = ts.df.loc[start_date:end_date,:]
         self.apd = None
-        if ('SMA50' in self.ts.df.columns and
-            'SMA200' in self.ts.df.columns):
-            self.apd = mpf.make_addplot(ts.df[['SMA50', 'SMA200']])
+        if ('SMA50' in self.plot_df.columns and
+            'SMA200' in self.plot_df.columns):
+            self.apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']])
 
     def plot_to_file(self):
         if not self.trend_lines:
             if not self.apd:
-                mpf.plot(self.ts.df, type='candle', style=self.s,
+                mpf.plot(self.plot_df, type='candle', style=self.s,
                          volume=True, title=self.title,
                          figratio=(18, 10), figscale=1,
                          savefig=f'/tmp/{self.ts.stk}.png')
             else:
-                mpf.plot(self.ts.df, type='candle', style=self.s,
+                mpf.plot(self.plot_df, type='candle', style=self.s,
                          volume=True, title=self.title,
                          figratio=(18, 10), figscale=1, addplot=self.apd,
                          savefig=f'/tmp/{self.ts.stk}.png')
         else:
             if not self.apd:
                 mpf.plot(
-                    self.ts.df, type='candle', alines=self.trend_lines,
+                    self.plot_df, type='candle', alines=self.trend_lines,
                     style=self.s, volume=True, title=self.title,
                     figratio=(18, 10), figscale=1,
                     savefig=f'/tmp/{self.ts.stk}.png'
                 )
             else:
                 mpf.plot(
-                    self.ts.df, type='candle', alines=self.trend_lines,
+                    self.plot_df, type='candle', alines=self.trend_lines,
                     style=self.s, volume=True, title=self.title,
                     figratio=(18, 10), figscale=1, addplot=self.apd,
                     savefig=f'/tmp/{self.ts.stk}.png'
@@ -47,9 +48,9 @@ class StxPlot:
 
     def plot(self):
         if not self.trend_lines:
-            mpf.plot(self.ts.df, type='candle', style=self.s, volume=True)
+            mpf.plot(self.plot_df, type='candle', style=self.s, volume=True)
         else:
-            mpf.plot(self.ts.df, type='candle', alines=self.trend_lines,
+            mpf.plot(self.plot_df, type='candle', alines=self.trend_lines,
                      style=self.s, volume=True)
 
 
