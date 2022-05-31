@@ -32,13 +32,13 @@ SELECT time_setups.dt, time_setups.stk, time_setups.direction, time_setups.setup
 """
 
 class StxAnalyzer:
-    def __init__(self, indicator_names, indicator_tenors):
+    def __init__(self, indicator_names, indicator_tenors, num_display_days):
         self.report_dir = os.path.join(os.getenv('HOME'), 'market')
         logging.info('PDF reports are stored locally in {0:s}'.
                      format(self.report_dir))
         self.indicator_names = indicator_names
         self.indicator_tenors = indicator_tenors
-        self.trend_dict = {}
+        self.num_display_days = num_display_days        
         self.report_style = '''
 <style>
 body {
@@ -172,7 +172,8 @@ img {
         return indicator_table
 
 
-    def get_jl_trend_lines(self, ts, jl_setup_df, crt_date):
+    def get_jl_trend_lines(self, ts, jl_setup_df, crt_date, display_start_date,
+                           avg_rg):
         trend_lines = {}
         for _, row in jl_setup_df.iterrows():
             setup = row.setup
@@ -198,7 +199,12 @@ img {
             y3 = y2 + slope * stxcal.num_busdays(d2, crt_date)
             alines = trend_lines.get('alines', [])
             colors = trend_lines.get('colors', [])
-            alines.append([(d1, y1), (crt_date, y3)])
+            if display_start_date < d1:
+                alines.append([(d1, y1), (crt_date, y3)])
+            else:
+                y4 = y3 - slope * stxcal.num_busdays(display_start_date,
+                                                     crt_date)
+                alines.append([(display_start_date, y4), (crt_date, y3)])
             colors.append(setup_color)
             trend_lines['alines'] = alines
             trend_lines['colors'] = colors
@@ -306,7 +312,8 @@ img {
     5. Add the trend lines for all JL setups (adjust JL setups pivot prices)
     6. for each trendline, calc the intersection with current date
     """
-    def setup_report(self, row, crt_date, is_index=False, num_jl_days=20):
+    def setup_report(self, row, crt_date, display_start_date, is_index=False,
+                     num_jl_days=20):
         res = []
         stk = row['stk']
         jl_setup_df = self.get_jl_setups_for_analysis(stk, crt_date,
@@ -316,11 +323,12 @@ img {
         ts = self.get_stk_ts(stk, start_date, crt_date)
         if ts is None:
             return []
-        trend_lines = self.get_jl_trend_lines(ts, jl_setup_df, crt_date)
         avg_volume, avg_rg = self.get_avg_stats(ts)
+        trend_lines = self.get_jl_trend_lines(ts, jl_setup_df, crt_date,
+                                              display_start_date, avg_rg)
         title = self.get_title(stk, avg_volume, avg_rg, row['direction'],
                                row['tm'], row['setup'])
-        stk_plot = StxPlot(ts, title, start_date, crt_date, trend_lines)
+        stk_plot = StxPlot(ts, title, display_start_date, crt_date, trend_lines)
         stk_plot.plot_to_file()
         res.append(f"<h4>{stk}  {row['bucket_rank']} [{row['industry']}, "
                    f"{row['sector']}]</h4>")
@@ -377,8 +385,8 @@ img {
     sorted by tm.  Otherwise, only provide setup charts sorted by
     CS_45.  TODO: retrieve JL setups for last 20 days and plot the
     channels for those setups on chart """
-    def get_triggered_report(self, crt_date, setup_df, triggered=False):
-        start_date = stxcal.move_busdays(crt_date, -90)
+    def get_triggered_report(self, crt_date, setup_df, display_start_date,
+                             triggered=False):
         logging.info(f'setup_df has {len(setup_df)} rows')
         res = []
         if triggered:
@@ -388,14 +396,15 @@ img {
         down_setup_df = setup_df.query("direction=='D'").copy()
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
-            res.extend(self.setup_report(row, crt_date))
+            res.extend(self.setup_report(row, crt_date, display_start_date))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
-            res.extend(self.setup_report(row, crt_date))
+            res.extend(self.setup_report(row, crt_date, display_start_date))
         return res
 
     def index_report(self, crt_date):
-        s_date = stxcal.move_busdays(crt_date, -90)
+        display_start_date = stxcal.move_busdays(crt_date,
+                                                 -self.num_display_days)
         jl_s_date = stxcal.move_busdays(crt_date, -350)
         res = []
         res.append('<h3>Index report</h3>')
@@ -409,7 +418,8 @@ img {
                 'industry': 'Composite Index',
                 'sector': index
             })
-            res.extend(self.setup_report(row, crt_date, is_index=True))
+            res.extend(self.setup_report(row, crt_date, display_start_date,
+                                         is_index=True))
             try:
                 jl_res = StxJL.jl_report(index, jl_s_date, crt_date, 1.0)
                 res.append(jl_res)
@@ -424,7 +434,7 @@ img {
                     tb.print_exc()
         return res
 
-    def get_report(self, crt_date, setup_df):
+    def get_report(self, crt_date, setup_df, display_start_date):
         s_date = stxcal.move_busdays(crt_date, -50)
         logging.info(f'setup_df has {len(setup_df)} rows')
         res = []
@@ -433,10 +443,10 @@ img {
         down_setup_df = setup_df.query("direction=='D'").copy()
         res.append('<h3>{0:d} UP Setups</h3>'.format(len(up_setup_df)))
         for _, row in up_setup_df.iterrows():
-            res.extend(self.setup_report(row, crt_date))
+            res.extend(self.setup_report(row, crt_date, display_start_date))
         res.append('<h3>{0:d} DOWN Setups</h3>'.format(len(down_setup_df)))
         for _, row in down_setup_df.iterrows():
-            res.extend(self.setup_report(row, crt_date))
+            res.extend(self.setup_report(row, crt_date, display_start_date))
         return res
 
     def get_jl_setups(self, dt, eod):
@@ -476,13 +486,16 @@ img {
         return df
 
     def do_analysis(self, crt_date, max_spread, indicators, eod):
+        display_start_date = stxcal.move_busdays(crt_date,
+                                                 -self.num_display_days)
         if eod:
             logging.info(f'indicators = {indicators}')
             for indicator in indicators:
                 logging.info(f'indicator = {indicator}, crt_date = {crt_date}')
                 stxgrps.calc_group_indicator(indicator, crt_date)
         spreads = self.get_opt_spreads(crt_date, eod)
-        df_trigger_today = self.get_triggered_setups(crt_date, eod, triggered=True)
+        df_trigger_today = self.get_triggered_setups(crt_date, eod,
+                                                     triggered=True)
         df_jl = self.get_jl_setups(crt_date, eod)
         logging.info(f'Found {len(df_trigger_today)} triggered setups and '
                      f'{len(df_jl)} JL setups for {crt_date}')
@@ -501,18 +514,22 @@ img {
         res.extend(self.index_report(crt_date))
         res.append(f'<h2>TODAY - {crt_date}</h2>')
         res.extend(self.get_triggered_report(crt_date, df_trigger_today,
+                                             display_start_date,
                                              triggered=True))
         if eod:
             df_trigger_tomorrow = self.get_triggered_setups(
                 crt_date, eod, triggered=False)
-            df_trigger_tomorrow = self.add_indicators(
-                df_trigger_tomorrow, crt_date, indicators, eod)
-            next_date = stxcal.next_busday(crt_date)
-            res.append(f'<h2>TOMMORROW - {next_date}</h2>')
-            res.extend(self.get_triggered_report(
-                crt_date, df_trigger_tomorrow))
+            if len(df_trigger_tomorrow) == 0:
+                logging.warn(f'No untriggered setups found for {crt_date}')
+            else:
+                df_trigger_tomorrow = self.add_indicators(
+                    df_trigger_tomorrow, crt_date, indicators, eod)
+                next_date = stxcal.next_busday(crt_date)
+                res.append(f'<h2>TOMMORROW - {next_date}</h2>')
+                res.extend(self.get_triggered_report(
+                    crt_date, df_trigger_tomorrow, display_start_date))
         res.append(f'<h2>JL - {crt_date}</h2>')
-        res.extend(self.get_report(crt_date, df_jl))
+        res.extend(self.get_report(crt_date, df_jl, display_start_date))
         res.append('</body>')
         res.append('</html>')
         with open('/tmp/x.html', 'w') as html_file:
@@ -633,6 +650,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--max_spread', type=int, default=33,
                         help='Maximum spread for leaders')
+    parser.add_argument('-b', '--display_days', type=int, default=90,
+                        help='Days to display in daily charts in the reports')
     parser.add_argument('-d', '--date', type=str, 
                         default=stxcal.current_busdate(hr=9),
                         help='Date to retrieve setups')
@@ -680,7 +699,7 @@ if __name__ == '__main__':
     indicators_df.sort_values(by=['indicator', 'tenor'], inplace=True)
     indicator_names = sorted(indicators_df['indicator'].unique())
     indicator_tenors = sorted(indicators_df['tenor'].unique())
-    stx_ana = StxAnalyzer(indicator_names, indicator_tenors)
+    stx_ana = StxAnalyzer(indicator_names, indicator_tenors, args.display_days)
     if args.startdate and args.enddate:
         logging.info(f'Run analysis from {args.startdate} to {args.enddate}')
         crs_date = args.startdate
