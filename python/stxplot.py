@@ -7,10 +7,11 @@ class StxPlot:
         self.ts = ts
         self.title = title
         # Create my own `marketcolors` to use with the `nightclouds` style:
-        mc = mpf.make_marketcolors(up='#00ff00',down='#ff0000',inherit=True)
+        # mc = mpf.make_marketcolors(up='#00ff00',down='#ff0000',inherit=True)
         # Create new style based on `nightclouds` but w/ my own `marketcolors`:
-        self.s  = mpf.make_mpf_style(base_mpf_style='nightclouds',
-                                     marketcolors=mc)
+        # self.s  = mpf.make_mpf_style(base_mpf_style='nightclouds',
+        #                              marketcolors=mc)
+        self.s = 'yahoo'
         self.trend_lines = trend_lines
         self.plot_df = ts.df.loc[start_date:end_date,:]
         self.apd = None
