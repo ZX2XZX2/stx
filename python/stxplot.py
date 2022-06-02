@@ -1,3 +1,4 @@
+from datetime import datetime
 import mplfinance as mpf
 from stxts import StxTS
 import sys
@@ -19,6 +20,46 @@ class StxPlot:
             'SMA200' in self.plot_df.columns):
             self.apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']])
 
+    def plotchart(self, savefig=True):
+        fig = mpf.figure(figsize=(10, 6), style='yahoo')
+        ax1 = fig.add_subplot(3, 1, (1, 2))
+        ax2 = fig.add_subplot(3, 1, 3, sharex=ax1)
+        apd = None
+        if ('SMA50' in self.plot_df.columns and
+            'SMA200' in self.plot_df.columns):
+            apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']],
+                                   ax=ax1)
+        fig.subplots_adjust(hspace=0)
+        xticks, xticklabels = [], []
+        mth = -1
+        for i, dt in enumerate(self.plot_df.index):
+            if dt.dayofweek == 0:
+                xticks.append(i)
+                if dt.month != mth:
+                    mth = dt.month
+                    xticklabels.append(datetime.strftime(dt, '%b %d'))
+                else:
+                    xticklabels.append(datetime.strftime(dt, '%d'))
+        ax1.set_xticks(xticks)
+        ax1.set_xticklabels(xticklabels)
+        if not self.trend_lines:
+            if not apd:
+                mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
+                         axtitle=self.title)
+            else:
+                mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
+                         axtitle=self.title, addplot=apd)
+        else:
+            if not apd:
+                mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
+                         axtitle=self.title, alines=self.trend_lines)
+            else:
+                mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
+                         axtitle=self.title, alines=self.trend_lines,
+                         addplot=apd)
+        if savefig:
+            fig.savefig(f'/tmp/{self.ts.stk}.png')
+            
     def plot_to_file(self):
         if not self.trend_lines:
             if not self.apd:
