@@ -329,7 +329,7 @@ img {
         title = self.get_title(stk, avg_volume, avg_rg, row['direction'],
                                row['tm'], row['setup'])
         stk_plot = StxPlot(ts, title, display_start_date, crt_date, trend_lines)
-        stk_plot.plot_to_file()
+        stk_plot.plotchart()
         res.append(f"<h4>{stk}  {row['bucket_rank']} [{row['industry']}, "
                    f"{row['sector']}]</h4>")
         res.append(f'<img src="/tmp/{stk}.png" alt="{stk}">')
