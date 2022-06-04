@@ -4,8 +4,12 @@ from stxts import StxTS
 import sys
 
 class StxPlot:
-    def __init__(self, ts, title, start_date, end_date, trend_lines=None):
-        self.ts = ts
+    def __init__(self, ts, title, start_date, end_date, trend_lines=None,
+                 stk=None):
+        if ts is not None:
+            self.ts = ts
+        else:
+            self.ts = self.loadts(stk, start_date, end_date)
         self.title = title
         # Create my own `marketcolors` to use with the `nightclouds` style:
         # mc = mpf.make_marketcolors(up='#00ff00',down='#ff0000',inherit=True)
@@ -14,12 +18,30 @@ class StxPlot:
         #                              marketcolors=mc)
         self.s = 'yahoo'
         self.trend_lines = trend_lines
-        self.plot_df = ts.df.loc[start_date:end_date,:]
-        self.apd = None
-        if ('SMA50' in self.plot_df.columns and
-            'SMA200' in self.plot_df.columns):
-            self.apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']])
+        self.plot_df = self.ts.df.loc[start_date:end_date,:]
 
+    def loadts(self, stk, start_date, end_date):
+        if stk is None:
+            return None
+        ts = StxTS(stk, start_date, end_date)
+        day_ix = ts.set_day(end_date)
+        if day_ix == -1:
+            return None
+        ts.df.index.name='Date'
+        ts.df.drop('oi', inplace=True, axis=1)
+        ts.df['o'] /= 100
+        ts.df['hi'] /= 100
+        ts.df['lo'] /= 100
+        ts.df['c'] /= 100
+        ts.df['v'] *= 1000
+        ts.df.rename(columns={'o': 'Open',
+                              'hi': 'High',
+                              'lo': 'Low',
+                              'c': 'Close',
+                              'v': 'Volume'},
+                     inplace=True)
+        return ts
+        
     def plotchart(self, savefig=True):
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
         ax1 = fig.add_subplot(3, 1, (1, 2))
@@ -60,52 +82,15 @@ class StxPlot:
         if savefig:
             fig.savefig(f'/tmp/{self.ts.stk}.png')
             
-    def plot_to_file(self):
-        if not self.trend_lines:
-            if not self.apd:
-                mpf.plot(self.plot_df, type='candle', style=self.s,
-                         volume=True, title=self.title,
-                         figratio=(18, 10), figscale=1,
-                         savefig=f'/tmp/{self.ts.stk}.png')
-            else:
-                mpf.plot(self.plot_df, type='candle', style=self.s,
-                         volume=True, title=self.title,
-                         figratio=(18, 10), figscale=1, addplot=self.apd,
-                         savefig=f'/tmp/{self.ts.stk}.png')
-        else:
-            if not self.apd:
-                mpf.plot(
-                    self.plot_df, type='candle', alines=self.trend_lines,
-                    style=self.s, volume=True, title=self.title,
-                    figratio=(18, 10), figscale=1,
-                    savefig=f'/tmp/{self.ts.stk}.png'
-                )
-            else:
-                mpf.plot(
-                    self.plot_df, type='candle', alines=self.trend_lines,
-                    style=self.s, volume=True, title=self.title,
-                    figratio=(18, 10), figscale=1, addplot=self.apd,
-                    savefig=f'/tmp/{self.ts.stk}.png'
-                )
-
-    def plot(self):
-        if not self.trend_lines:
-            mpf.plot(self.plot_df, type='candle', style=self.s, volume=True)
-        else:
-            mpf.plot(self.plot_df, type='candle', alines=self.trend_lines,
-                     style=self.s, volume=True)
-
-
 if __name__ == '__main__':
     # TODO: use argparser and all that stuff
     stk = sys.argv[1]
     sd = sys.argv[2]
     ed = sys.argv[3]
     sorp = sys.argv[4]
-    sp = StxPlot(stk, sd, ed)
-    if sorp.startswith('s'):
-        sp.plot_to_file()
-    elif sorp.startswith('p'):
-        sp.plot()
-    else:
-        print('Dont know what to do with {}'.format(sorp))
+
+    sp = StxPlot(None, stk, sd, ed, stk=stk)
+    savefig = sorp.startswith('s')
+    sp.plotchart(savefig=savefig)
+    if not savefig:
+        mpf.show()
