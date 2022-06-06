@@ -3,6 +3,7 @@ from configparser import ConfigParser
 from contextlib import closing
 import csv
 import datetime
+from dateutil import parser
 import errno
 from enum import Enum
 import glob
@@ -471,7 +472,7 @@ class StxDatafeed:
         valid_stx_df = sel_stx_df.query('not invalid').copy()
         logging.info('Found {0:d} valid records out of {1:d} records'.
                      format(len(valid_stx_df), len(sel_stx_df)))
-
+        
         def process_row(r):
             stk = r['ticker'][:-3].replace("-.", ".P.").replace(
                 "_", ".").replace('-', '.')
@@ -524,6 +525,179 @@ class StxDatafeed:
         logging.info('Updated latest eod datafeed date {0:s} in DB'.
                      format(last_upload_date))
         self.rename_stooq_file(dates.index[0], dates.index[num_dates - 1])
+
+    def parse_stooq_intraday(self, last_db_date):
+        logging.info('Checking if a new stooq file has been downloaded')
+        # stooq_file = os.path.join(os.getenv('DOWNLOAD_DIR'), 'data_d.txt')
+        download_dir = self.config.get('datafeed', 'download_dir')
+        stooq_file = os.path.join(download_dir, 'data_5.txt')
+        if not os.path.exists(stooq_file):
+            logging.info('No new intraday file found.  Nothing to do.')
+            return
+        logging.info('Reading stooq file, renaming columns, getting intraday '
+                     'US stocks data')
+        try:
+            df = pd.read_csv(stooq_file, dtype={
+                "<TICKER>": "string",
+                "<PER>": "string",
+                "<DATE>": "string",
+                "<TIME>": "string",
+                "<OPEN>": float,
+                "<HIGH>": float,
+                "<LOW>": float,
+                "<CLOSE>": float,
+                "<VOL>": int,
+                "<OPENINT>": int
+            })
+        except:
+            with open(stooq_file) as stooqfile:
+                frdr = csv.reader(stooqfile)
+                line_num = 0
+                for row in frdr:
+                    line_num += 1
+                    try:
+                        stk = str(row[0])
+                        per = str(row[1])
+                        dt = str(row[2])
+                        tm = str(row[3])
+                        o = float(row[4])
+                        hi = float(row[5])
+                        lo = float(row[6])
+                        c = float(row[7])
+                        v = int(row[8])
+                        oi = int(row[9])
+                    except:
+                        logging.error(f"Failed to parse line {line_num}")
+            sys.exit(-1)
+        df.columns = [x[1: -1].lower() for x in df.columns]
+        stx_df = df.query('ticker.str.endswith(".US") and per == "5"',
+                          engine='python').copy()
+        logging.info('Getting {0:d} intraday US stocks out of {1:d} records'.
+                     format(len(stx_df), len(df)))
+        stx_df['date'] = stx_df['date'].astype(str)
+        stx_df['time'] = stx_df['time'].astype(str)
+        stx_df['dt'] = stx_df.apply(
+            lambda r: f"{r['date'][0:4]}-{r['date'][4:6]}-{r['date'][6:8]} "
+            f"{r['time'][0:2]}:{r['time'][2:4]}:{r['time'][4:6]}",
+            axis=1)
+        logging.info('Converted intraday timestamps to yyyy-mm-dd hh:mm:ss'
+                     ' format')
+        # dates = stx_df.groupby(by='date')['ticker'].count()
+        # next_date = stxcal.next_busday(last_db_date)
+        # ix0, num_dates = 0, len(dates)
+        # logging.info('Data available for {0:d} dates, from {1:s} to {2:s}; DB '
+        #              'needs data starting from {3:s}'.format(
+        #         len(dates), dates.index[0], dates.index[num_dates - 1],
+        #         next_date))
+        # db_dates = []
+        # while ix0 < num_dates:
+        #     if dates.index[ix0] == next_date:
+        #         break
+        #     ix0 += 1
+        # for ixx in range(ix0, num_dates):
+        #     if dates.index[ixx] == next_date and dates.values[ixx] > 9000:
+        #         db_dates.append(dates.index[ixx])
+        #     else:
+        #         if dates.index[ixx] != next_date:
+        #             logging.error(f'Missing date {next_date}; got '
+        #                           f'{dates.index[ixx]} instead') 
+                    
+        #         if dates.values[ixx] < 9000:
+        #             logging.error(f'Not enough records ({dates.values[ixx]}) '
+        #                           f'available for {dates.index[ixx]}') 
+        #         break
+        #     next_date = stxcal.next_busday(next_date)
+
+        # if not db_dates:
+        #     logging.info('No new data available for processing. Exiting')
+        #     return
+        # logging.info('Check that there are no time gaps between DB data and '
+        #              'upload data')
+        # start_date = stxcal.next_busday(last_db_date)
+        # num_bdays = stxcal.num_busdays(start_date, db_dates[0])
+        # if num_bdays > 0:
+        #     logging.warn('No data for {0:d} days ({1:s} - {2:s}). Exiting ...'.
+        #                  format(num_bdays, start_date,
+        #                         stxcal.prev_busday(db_dates[0])))
+        #     return
+        # logging.info('Check that there are no time gaps in the upload data')
+        # for ixx in range(len(db_dates) - 1):
+        #     if stxcal.next_busday(db_dates[ixx]) != db_dates[ixx + 1]:
+        #         logging.warn('Inconsistent dates {0:s} and {1:s} '
+        #                      'at indexes {2:d} and {3:d}'.
+        #                      format(db_dates[ixx], db_dates[ixx + 1],
+        #                             ixx, ixx + 1))
+        sel_stx_df = stx_df # .query('date in @db_dates').copy()
+        # logging.info('{0:d}/{1:d} records found for following dates: [{2:s}]'.
+        #              format(len(sel_stx_df), len(stx_df), ', '.join(db_dates)))
+        sel_stx_df['invalid'] = sel_stx_df.apply(
+            lambda r: np.isnan(r['open']) or
+            np.isnan(r['high']) or
+            np.isnan(r['low']) or
+            np.isnan(r['close']) or
+            np.isnan(r['vol']) or r['vol'] == 0 or
+            r['open'] > r['high'] or r['open'] < r['low'] or
+            r['close'] > r['high'] or r['close'] < r['low'], 
+            axis=1)
+        valid_stx_df = sel_stx_df.query('not invalid').copy()
+        logging.info('Found {0:d} valid records out of {1:d} records'.
+                     format(len(valid_stx_df), len(sel_stx_df)))
+        
+        def process_row(r):
+            stk = r['ticker'][:-3].replace("-.", ".P.").replace(
+                "_", ".").replace('-', '.')
+            tt = parser.parse(r['dt'])
+            final_time = tt - datetime.timedelta(hours=6)
+            dt = final_time.strftime('%Y-%m-%d %H:%M:%S')
+            o = int(100 * r['open'])
+            hi = int(100 * r['high'])
+            lo = int(100 * r['low'])
+            c = int(100 * r['close'])
+            v = int(r['vol'])
+            v = v // 1000
+            if v == 0:
+                v = 1
+            lst = [stk, dt, o, hi, lo, c, v]
+            return pd.Series(lst)
+            
+        valid_stx_df[['ticker', 'dt', 'open', 'high', 'low', 'close',
+                      'vol']] = valid_stx_df.apply(process_row, axis=1)
+        valid_stx_df['openint'] = 2
+        valid_stx_df.drop(columns=['per', 'date', 'time', 'invalid'], axis=1,
+                          inplace=True)
+        valid_stx_df.columns = ['stk', 'dt', 'o', 'hi', 'lo', 'c', 'v', 'oi']
+
+        with closing(stxdb.db_get_cnx().cursor()) as crs:
+            sql = 'CREATE TEMPORARY TABLE temp_table ('\
+                'stk VARCHAR(16) NOT NULL, '\
+                'dt TIMESTAMP NOT NULL, '\
+                'o INTEGER NOT NULL, '\
+                'hi INTEGER NOT NULL, '\
+                'lo INTEGER NOT NULL, '\
+                'c INTEGER NOT NULL, '\
+                'v INTEGER, '\
+                'oi INTEGER, '\
+                'PRIMARY KEY(stk, dt))'
+            crs.execute(sql)
+            logging.info('Created temporary table')
+            upload_data = valid_stx_df.values.tolist()
+            execute_values(crs, 'INSERT INTO temp_table '
+                           '(stk, dt, o, hi, lo, c, v, oi) VALUES %s',
+                           upload_data)
+            logging.info('Uploaded dataframe into temporary table')
+            stxdb.db_write_cmd(
+                'INSERT INTO intraday (stk, dt, o, hi, lo, c, v, oi) '
+                'SELECT * FROM temp_table ON CONFLICT (stk, dt) DO '
+                'UPDATE SET o = EXCLUDED.o, hi = EXCLUDED.hi, '
+                'lo = EXCLUDED.lo, c = EXCLUDED.c, v = EXCLUDED.v, '
+                'oi = EXCLUDED.oi')
+            logging.info('Uploaded data into intraday table')
+        # last_upload_date = valid_stx_df['dt'].max()
+        # stxdb.db_write_cmd("UPDATE analyses SET dt='{0:s}' WHERE "
+        #                    "analysis='eod_datafeed'".format(last_upload_date))
+        # logging.info('Updated latest eod datafeed date {0:s} in DB'.
+        #              format(last_upload_date))
+        # self.rename_stooq_file(dates.index[0], dates.index[num_dates - 1])
 
     def rename_stooq_file(self, first_date, last_date):
         data_dir = self.config.get('datafeed', 'data_dir')
