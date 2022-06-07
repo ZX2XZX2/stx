@@ -570,12 +570,15 @@ class StxDatafeed:
                         logging.error(f"Failed to parse line {line_num}")
             sys.exit(-1)
         df.columns = [x[1: -1].lower() for x in df.columns]
+        # stx_df = df.query('ticker == "ZSL.US" and per == "5"',
+        #                   engine='python').copy()
         stx_df = df.query('ticker.str.endswith(".US") and per == "5"',
                           engine='python').copy()
         logging.info('Getting {0:d} intraday US stocks out of {1:d} records'.
                      format(len(stx_df), len(df)))
         stx_df['date'] = stx_df['date'].astype(str)
         stx_df['time'] = stx_df['time'].astype(str)
+        # TODO: substract 6 hours here
         stx_df['dt'] = stx_df.apply(
             lambda r: f"{r['date'][0:4]}-{r['date'][4:6]}-{r['date'][6:8]} "
             f"{r['time'][0:2]}:{r['time'][2:4]}:{r['time'][4:6]}",
@@ -646,17 +649,11 @@ class StxDatafeed:
         def process_row(r):
             stk = r['ticker'][:-3].replace("-.", ".P.").replace(
                 "_", ".").replace('-', '.')
-            tt = parser.parse(r['dt'])
-            final_time = tt - datetime.timedelta(hours=6)
-            dt = final_time.strftime('%Y-%m-%d %H:%M:%S')
             o = int(100 * r['open'])
             hi = int(100 * r['high'])
             lo = int(100 * r['low'])
             c = int(100 * r['close'])
             v = int(r['vol'])
-            v = v // 1000
-            if v == 0:
-                v = 1
             lst = [stk, dt, o, hi, lo, c, v]
             return pd.Series(lst)
             
@@ -665,7 +662,8 @@ class StxDatafeed:
         valid_stx_df['openint'] = 2
         valid_stx_df.drop(columns=['per', 'date', 'time', 'invalid'], axis=1,
                           inplace=True)
-        valid_stx_df.columns = ['stk', 'dt', 'o', 'hi', 'lo', 'c', 'v', 'oi']
+        print(f'{valid_stx_df}')
+        valid_stx_df.columns = ['stk', 'o', 'hi', 'lo', 'c', 'v', 'oi', 'dt']
 
         with closing(stxdb.db_get_cnx().cursor()) as crs:
             sql = 'CREATE TEMPORARY TABLE temp_table ('\
@@ -682,7 +680,7 @@ class StxDatafeed:
             logging.info('Created temporary table')
             upload_data = valid_stx_df.values.tolist()
             execute_values(crs, 'INSERT INTO temp_table '
-                           '(stk, dt, o, hi, lo, c, v, oi) VALUES %s',
+                           '(stk, o, hi, lo, c, v, oi, dt) VALUES %s',
                            upload_data)
             logging.info('Uploaded dataframe into temporary table')
             stxdb.db_write_cmd(
