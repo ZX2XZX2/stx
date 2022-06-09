@@ -1,12 +1,14 @@
+import argparse
 from datetime import datetime
 import mplfinance as mpf
 import pandas as pd
 from psycopg2 import sql
+import stxcal
 import stxdb
 import sys
 
 class StxPlotID:
-    def __init__(self, stk, start_date, end_date, period='5T'):
+    def __init__(self, stk, start_date, end_date, period=5):
         q = sql.Composed([
             sql.SQL("SELECT * FROM intraday WHERE stk="),
             sql.Literal(stk),
@@ -30,13 +32,18 @@ class StxPlotID:
                             'c': 'Close',
                             'v': 'Volume'},
                    inplace=True)
-        self.plot_df = idf
-        # resample_map ={'Open' :'first',
-        #                'High' :'max'  ,
-        #                'Low'  :'min'  ,
-        #                'Close':'last' }
-        # resample_period = '15T'
-        # rs = idf.resample(resample_period).agg(resample_map).dropna()
+        # self.plot_df = idf
+        resample_map ={'Open' :'first',
+                       'High' :'max'  ,
+                       'Low'  :'min'  ,
+                       'Close':'last',
+                       'Volume':'sum'}
+        if period > 5:
+            resample_period = f'{period}T'
+            rs = idf.resample(resample_period).agg(resample_map).dropna()
+            self.plot_df = rs
+        else:
+            self.plot_df = idf
         self.s = 'yahoo'
         self.stk = stk
         
@@ -81,14 +88,23 @@ class StxPlotID:
             fig.savefig(f'/tmp/{self.ts.stk}_ID.png')
 
 if __name__ == '__main__':
-    # TODO: use argparser and all that stuff
-    stk = sys.argv[1]
-    sd = sys.argv[2]
-    ed = sys.argv[3]
-    sorp = sys.argv[4]
-
-    sp = StxPlotID(stk, sd, ed)
-    savefig = sorp.startswith('s')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', '--stk', type=str, default='SPY',
+                        help='Stock to chart')
+    parser.add_argument('-p', '--period', type=int, default=15,
+                        help='Time interval covered by one candle, in minutes')
+    parser.add_argument('-a', '--sorp', type=str, default='p',
+                        help='Save or plot the chart (s)ave, (p)lot')
+    parser.add_argument('-s', '--startdate', type=str,
+                        default=stxcal.move_busdays(
+                            stxcal.current_busdate(hr=9), -10),
+                        help='Start date for chart')
+    parser.add_argument('-e', '--enddate', type=str,
+                        default=stxcal.current_busdate(hr=9),
+                        help='End date for chart')
+    args = parser.parse_args()
+    sp = StxPlotID(args.stk, args.startdate, args.enddate, args.period)
+    savefig = args.sorp.startswith('s')
     sp.plotchart(savefig=savefig)
     if not savefig:
         mpf.show()
