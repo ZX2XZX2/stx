@@ -57,18 +57,15 @@ class StxPlotID:
         #     apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']],
         #                            ax=ax1)
         fig.subplots_adjust(hspace=0)
-        # xticks, xticklabels = [], []
-        # mth = -1
-        # for i, dt in enumerate(self.plot_df.index):
-        #     if dt.dayofweek == 0:
-        #         xticks.append(i)
-        #         if dt.month != mth:
-        #             mth = dt.month
-        #             xticklabels.append(datetime.strftime(dt, '%b %d'))
-        #         else:
-        #             xticklabels.append(datetime.strftime(dt, '%d'))
-        # ax1.set_xticks(xticks)
-        # ax1.set_xticklabels(xticklabels)
+        xticks, xticklabels = [], []
+        day = -1
+        for i, dt in enumerate(self.plot_df.index):
+            if dt.day != day:
+                xticks.append(i)
+                xticklabels.append(datetime.strftime(dt, '%b %d'))
+                day = dt.day
+        ax1.set_xticks(xticks)
+        ax1.set_xticklabels(xticklabels)
         # if not self.trend_lines:
         if not apd:
             mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
