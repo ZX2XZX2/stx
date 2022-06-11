@@ -3,7 +3,6 @@ from configparser import ConfigParser
 from contextlib import closing
 import csv
 import datetime
-from dateutil import parser
 import errno
 from enum import Enum
 import glob
@@ -541,7 +540,7 @@ class StxDatafeed:
                 "<TICKER>": "string",
                 "<PER>": "string",
                 "<DATE>": "string",
-                "<TIME>": "string",
+                "<TIME>": "int",
                 "<OPEN>": float,
                 "<HIGH>": float,
                 "<LOW>": float,
@@ -559,7 +558,7 @@ class StxDatafeed:
                         stk = str(row[0])
                         per = str(row[1])
                         dt = str(row[2])
-                        tm = str(row[3])
+                        tm = int(row[3])
                         o = float(row[4])
                         hi = float(row[5])
                         lo = float(row[6])
@@ -571,21 +570,21 @@ class StxDatafeed:
             sys.exit(-1)
         df.columns = [x[1: -1].lower() for x in df.columns]
         # stx_df = df.query('ticker == "ZSL.US" and per == "5"',
-        #                   engine='python').copy()
+        #                    engine='python').copy()
         stx_df = df.query('ticker.str.endswith(".US") and per == "5"',
                           engine='python').copy()
         logging.info('Getting {0:d} intraday US stocks out of {1:d} records'.
                      format(len(stx_df), len(df)))
         stx_df['date'] = stx_df['date'].astype(str)
-        stx_df['time'] = stx_df['time'].astype(str)
-        # TODO: substract 6 hours here
+        stx_df['time'] -= 60000
+        stx_df.time = stx_df.time.astype(str).str.pad(6, fillchar='0')
         stx_df['dt'] = stx_df.apply(
             lambda r: f"{r['date'][0:4]}-{r['date'][4:6]}-{r['date'][6:8]} "
             f"{r['time'][0:2]}:{r['time'][2:4]}:{r['time'][4:6]}",
             axis=1)
-        logging.info('Converted intraday timestamps to yyyy-mm-dd hh:mm:ss'
-                     ' format')
-        # dates = stx_df.groupby(by='date')['ticker'].count()
+        logging.info('Formatted intraday timestamps like yyyy-mm-dd hh:mm:ss')
+        logging.info(f"Intraday records available for each date in this file:")
+        logging.info(f"\n{stx_df.groupby(by='date')['ticker'].count()}")
         # next_date = stxcal.next_busday(last_db_date)
         # ix0, num_dates = 0, len(dates)
         # logging.info('Data available for {0:d} dates, from {1:s} to {2:s}; DB '
@@ -630,10 +629,10 @@ class StxDatafeed:
         #                      'at indexes {2:d} and {3:d}'.
         #                      format(db_dates[ixx], db_dates[ixx + 1],
         #                             ixx, ixx + 1))
-        sel_stx_df = stx_df # .query('date in @db_dates').copy()
+        # sel_stx_df = stx_df # .query('date in @db_dates').copy()
         # logging.info('{0:d}/{1:d} records found for following dates: [{2:s}]'.
         #              format(len(sel_stx_df), len(stx_df), ', '.join(db_dates)))
-        sel_stx_df['invalid'] = sel_stx_df.apply(
+        stx_df['invalid'] = stx_df.apply(
             lambda r: np.isnan(r['open']) or
             np.isnan(r['high']) or
             np.isnan(r['low']) or
@@ -642,10 +641,9 @@ class StxDatafeed:
             r['open'] > r['high'] or r['open'] < r['low'] or
             r['close'] > r['high'] or r['close'] < r['low'], 
             axis=1)
-        valid_stx_df = sel_stx_df.query('not invalid').copy()
-        logging.info('Found {0:d} valid records out of {1:d} records'.
-                     format(len(valid_stx_df), len(sel_stx_df)))
-        
+        valid_stx_df = stx_df.query('not invalid').copy()
+        logging.info(f'{len(valid_stx_df)} valid records out of {len(stx_df)} '
+                     'records')
         def process_row(r):
             stk = r['ticker'][:-3].replace("-.", ".P.").replace(
                 "_", ".").replace('-', '.')
@@ -653,12 +651,11 @@ class StxDatafeed:
             hi = int(100 * r['high'])
             lo = int(100 * r['low'])
             c = int(100 * r['close'])
-            v = int(r['vol'])
-            lst = [stk, dt, o, hi, lo, c, v]
+            lst = [stk, o, hi, lo, c]
             return pd.Series(lst)
             
-        valid_stx_df[['ticker', 'dt', 'open', 'high', 'low', 'close',
-                      'vol']] = valid_stx_df.apply(process_row, axis=1)
+        valid_stx_df[['ticker', 'open', 'high', 'low', 'close']] = \
+            valid_stx_df.apply(process_row, axis=1)
         valid_stx_df['openint'] = 2
         valid_stx_df.drop(columns=['per', 'date', 'time', 'invalid'], axis=1,
                           inplace=True)
