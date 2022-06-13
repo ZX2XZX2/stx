@@ -525,11 +525,13 @@ class StxDatafeed:
                      format(last_upload_date))
         self.rename_stooq_file(dates.index[0], dates.index[num_dates - 1])
 
-    def parse_stooq_intraday(self, last_db_date):
+    def parse_stooq_intraday(self, intraday_file=None):
         logging.info('Checking if a new stooq file has been downloaded')
-        # stooq_file = os.path.join(os.getenv('DOWNLOAD_DIR'), 'data_d.txt')
-        download_dir = self.config.get('datafeed', 'download_dir')
-        stooq_file = os.path.join(download_dir, 'data_5.txt')
+        if intraday_file is None:
+            download_dir = self.config.get('datafeed', 'download_dir')
+            stooq_file = os.path.join(download_dir, 'data_5.txt')
+        else:
+            stooq_file = intraday_file
         if not os.path.exists(stooq_file):
             logging.info('No new intraday file found.  Nothing to do.')
             return
@@ -569,8 +571,6 @@ class StxDatafeed:
                         logging.error(f"Failed to parse line {line_num}")
             sys.exit(-1)
         df.columns = [x[1: -1].lower() for x in df.columns]
-        # stx_df = df.query('ticker == "ZSL.US" and per == "5"',
-        #                    engine='python').copy()
         stx_df = df.query('ticker.str.endswith(".US") and per == "5"',
                           engine='python')
         logging.info(f'Getting {len(stx_df)} intraday US stocks out of '
@@ -589,59 +589,12 @@ class StxDatafeed:
         dates = stx_df.groupby(by='date')['ticker'].count()
         logging.info(f"\n{dates}")
         for dd in dates.index:
-            if dd == '2022-01-24' or dd == '2022-01-25':
-                continue
             logging.info(f'Processing intraday data for {dd}')
             daily_df = stx_df.query('date == @dd').copy()
             self.process_daily_intraday(dd, daily_df)
-
-        # next_date = stxcal.next_busday(last_db_date)
-        # ix0, num_dates = 0, len(dates)
-        # logging.info('Data available for {0:d} dates, from {1:s} to {2:s}; DB '
-        #              'needs data starting from {3:s}'.format(
-        #         len(dates), dates.index[0], dates.index[num_dates - 1],
-        #         next_date))
-        # db_dates = []
-        # while ix0 < num_dates:
-        #     if dates.index[ix0] == next_date:
-        #         break
-        #     ix0 += 1
-        # for ixx in range(ix0, num_dates):
-        #     if dates.index[ixx] == next_date and dates.values[ixx] > 9000:
-        #         db_dates.append(dates.index[ixx])
-        #     else:
-        #         if dates.index[ixx] != next_date:
-        #             logging.error(f'Missing date {next_date}; got '
-        #                           f'{dates.index[ixx]} instead') 
-                    
-        #         if dates.values[ixx] < 9000:
-        #             logging.error(f'Not enough records ({dates.values[ixx]}) '
-        #                           f'available for {dates.index[ixx]}') 
-        #         break
-        #     next_date = stxcal.next_busday(next_date)
-
-        # if not db_dates:
-        #     logging.info('No new data available for processing. Exiting')
-        #     return
-        # logging.info('Check that there are no time gaps between DB data and '
-        #              'upload data')
-        # start_date = stxcal.next_busday(last_db_date)
-        # num_bdays = stxcal.num_busdays(start_date, db_dates[0])
-        # if num_bdays > 0:
-        #     logging.warn('No data for {0:d} days ({1:s} - {2:s}). Exiting ...'.
-        #                  format(num_bdays, start_date,
-        #                         stxcal.prev_busday(db_dates[0])))
-        #     return
-        # logging.info('Check that there are no time gaps in the upload data')
-        # for ixx in range(len(db_dates) - 1):
-        #     if stxcal.next_busday(db_dates[ixx]) != db_dates[ixx + 1]:
-        #         logging.warn('Inconsistent dates {0:s} and {1:s} '
-        #                      'at indexes {2:d} and {3:d}'.
-        #                      format(db_dates[ixx], db_dates[ixx + 1],
-        #                             ixx, ixx + 1))
-        # sel_stx_df = stx_df # .query('date in @db_dates').copy()
-        # logging.info('{0:d}/{1:d} records found for following dates: [{2:s}]'.
-        #              format(len(sel_stx_df), len(stx_df), ', '.join(db_dates)))
+        if intraday_file is None:
+            self.rename_stooq_file(dates.index[0], dates.index[num_dates - 1],
+                                   intraday=True)
 
     def process_daily_intraday(self, dt, daily_df):
         daily_df['invalid'] = daily_df.apply(
@@ -670,9 +623,8 @@ class StxDatafeed:
         valid_stx_df['openint'] = 2
         valid_stx_df.drop(columns=['per', 'date', 'time', 'invalid'], axis=1,
                           inplace=True)
-        # print(f'{valid_stx_df}')
+        logging.debug(f'\n{valid_stx_df}')
         valid_stx_df.columns = ['stk', 'o', 'hi', 'lo', 'c', 'v', 'oi', 'dt']
-
         with closing(stxdb.db_get_cnx().cursor()) as crs:
             sql1 = 'DROP TABLE IF EXISTS temp_intraday_table'
             crs.execute(sql1)
@@ -700,22 +652,17 @@ class StxDatafeed:
                 'lo = EXCLUDED.lo, c = EXCLUDED.c, v = EXCLUDED.v, '
                 'oi = EXCLUDED.oi')
             logging.info(f'{dt}: uploaded data into intraday table')
-        # last_upload_date = valid_stx_df['dt'].max()
-        # stxdb.db_write_cmd("UPDATE analyses SET dt='{0:s}' WHERE "
-        #                    "analysis='eod_datafeed'".format(last_upload_date))
-        # logging.info('Updated latest eod datafeed date {0:s} in DB'.
-        #              format(last_upload_date))
-        # self.rename_stooq_file(dates.index[0], dates.index[num_dates - 1])
 
-    def rename_stooq_file(self, first_date, last_date):
+    def rename_stooq_file(self, first_date, last_date, intraday=False):
         data_dir = self.config.get('datafeed', 'data_dir')
-        stooq_file = os.path.join(data_dir, 'data_d.txt')
+        stooq_file = os.path.join(data_dir,
+                                  'data_5.txt' if intraday else 'data_d.txt')
         if os.path.exists(stooq_file):
-            archive_file = os.path.join(data_dir,
-                'stooq_{0:s}_{1:s}.txt'.format(first_date, last_date))
+            archive_file = os.path.join(
+                data_dir,
+                f"stooq{'ID' if intraday else ''}_{first_date}_{last_date}.txt")
             os.rename(stooq_file, archive_file)
-            logging.info('Moved {0:s} into {1:s}'.format(stooq_file,
-                archive_file))
+            logging.info(f'Moved {stooq_file} into {archive_file}')
 
     def get_profile_count(self, dt):
         profile_count = 0
@@ -747,6 +694,9 @@ if __name__ == '__main__':
                         help='download directory for EOD files',
                         type=str,
                         default=os.path.join(os.getenv('HOME'), 'Downloads'))
+    parser.add_argument('-i', '--intraday_file',
+                        help='Intraday data file to load in DB',
+                        type=str)
     args = parser.parse_args()
     logging.basicConfig(
         format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
@@ -754,6 +704,11 @@ if __name__ == '__main__':
         datefmt='%Y-%m-%d %H:%M:%S',
         level=logging.INFO
     )
+    if args.intraday_file is not None:
+        logging.info(f'Process intraday data from file {args.intraday_file}')
+        sdf = StxDatafeed()
+        sdf.parse_stooq_intraday(args.intraday_file)
+        sys.exit(0)
     logging.info('Getting index (S&P500, Nasdaq, Dow Jones) quotes')
     si = StxIndex()
     index_end_date = stxcal.current_busdate(hr=9)
