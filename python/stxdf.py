@@ -572,19 +572,29 @@ class StxDatafeed:
         # stx_df = df.query('ticker == "ZSL.US" and per == "5"',
         #                    engine='python').copy()
         stx_df = df.query('ticker.str.endswith(".US") and per == "5"',
-                          engine='python').copy()
-        logging.info('Getting {0:d} intraday US stocks out of {1:d} records'.
-                     format(len(stx_df), len(df)))
+                          engine='python')
+        logging.info(f'Getting {len(stx_df)} intraday US stocks out of '
+                     f'{len(df)} records')
         stx_df['date'] = stx_df['date'].astype(str)
+        stx_df['date'] = stx_df.apply(
+            lambda r: f"{r['date'][0:4]}-{r['date'][4:6]}-{r['date'][6:8]}",
+            axis=1)
         stx_df['time'] -= 60000
         stx_df.time = stx_df.time.astype(str).str.pad(6, fillchar='0')
-        stx_df['dt'] = stx_df.apply(
-            lambda r: f"{r['date'][0:4]}-{r['date'][4:6]}-{r['date'][6:8]} "
-            f"{r['time'][0:2]}:{r['time'][2:4]}:{r['time'][4:6]}",
-            axis=1)
+        stx_df['dt'] = stx_df.apply(lambda r: f"{r['date']} {r['time'][0:2]}:"
+                                    f"{r['time'][2:4]}:{r['time'][4:6]}",
+                                    axis=1)
         logging.info('Formatted intraday timestamps like yyyy-mm-dd hh:mm:ss')
-        logging.info(f"Intraday records available for each date in this file:")
-        logging.info(f"\n{stx_df.groupby(by='date')['ticker'].count()}")
+        logging.info(f"Intraday records available by date:")
+        dates = stx_df.groupby(by='date')['ticker'].count()
+        logging.info(f"\n{dates}")
+        for dd in dates.index:
+            if dd == '2022-01-24' or dd == '2022-01-25':
+                continue
+            logging.info(f'Processing intraday data for {dd}')
+            daily_df = stx_df.query('date == @dd').copy()
+            self.process_daily_intraday(dd, daily_df)
+
         # next_date = stxcal.next_busday(last_db_date)
         # ix0, num_dates = 0, len(dates)
         # logging.info('Data available for {0:d} dates, from {1:s} to {2:s}; DB '
@@ -632,7 +642,9 @@ class StxDatafeed:
         # sel_stx_df = stx_df # .query('date in @db_dates').copy()
         # logging.info('{0:d}/{1:d} records found for following dates: [{2:s}]'.
         #              format(len(sel_stx_df), len(stx_df), ', '.join(db_dates)))
-        stx_df['invalid'] = stx_df.apply(
+
+    def process_daily_intraday(self, dt, daily_df):
+        daily_df['invalid'] = daily_df.apply(
             lambda r: np.isnan(r['open']) or
             np.isnan(r['high']) or
             np.isnan(r['low']) or
@@ -641,29 +653,30 @@ class StxDatafeed:
             r['open'] > r['high'] or r['open'] < r['low'] or
             r['close'] > r['high'] or r['close'] < r['low'], 
             axis=1)
-        valid_stx_df = stx_df.query('not invalid').copy()
-        logging.info(f'{len(valid_stx_df)} valid records out of {len(stx_df)} '
-                     'records')
-        def process_row(r):
-            stk = r['ticker'][:-3].replace("-.", ".P.").replace(
-                "_", ".").replace('-', '.')
-            o = int(100 * r['open'])
-            hi = int(100 * r['high'])
-            lo = int(100 * r['low'])
-            c = int(100 * r['close'])
-            lst = [stk, o, hi, lo, c]
-            return pd.Series(lst)
-            
-        valid_stx_df[['ticker', 'open', 'high', 'low', 'close']] = \
-            valid_stx_df.apply(process_row, axis=1)
+        valid_stx_df = daily_df.query('not invalid').copy()
+        logging.info(f'{dt}: {len(valid_stx_df)}/{len(daily_df)} valid/total '
+                     f'records')
+        valid_stx_df['open'] *= 100
+        valid_stx_df['high'] *= 100
+        valid_stx_df['low'] *= 100
+        valid_stx_df['close'] *= 100
+        valid_stx_df['open'] = valid_stx_df['open'].astype(int)
+        valid_stx_df['high'] = valid_stx_df['high'].astype(int)
+        valid_stx_df['low'] = valid_stx_df['low'].astype(int)
+        valid_stx_df['close'] = valid_stx_df['close'].astype(int)
+        valid_stx_df['ticker'] = valid_stx_df.apply(
+            lambda r: r['ticker'][:-3].replace("-.", ".P.").replace(
+                "_", ".").replace('-', '.'), axis=1)
         valid_stx_df['openint'] = 2
         valid_stx_df.drop(columns=['per', 'date', 'time', 'invalid'], axis=1,
                           inplace=True)
-        print(f'{valid_stx_df}')
+        # print(f'{valid_stx_df}')
         valid_stx_df.columns = ['stk', 'o', 'hi', 'lo', 'c', 'v', 'oi', 'dt']
 
         with closing(stxdb.db_get_cnx().cursor()) as crs:
-            sql = 'CREATE TEMPORARY TABLE temp_table ('\
+            sql1 = 'DROP TABLE IF EXISTS temp_intraday_table'
+            crs.execute(sql1)
+            sql2 = 'CREATE TEMPORARY TABLE temp_intraday_table ('\
                 'stk VARCHAR(16) NOT NULL, '\
                 'dt TIMESTAMP NOT NULL, '\
                 'o INTEGER NOT NULL, '\
@@ -673,20 +686,20 @@ class StxDatafeed:
                 'v INTEGER, '\
                 'oi INTEGER, '\
                 'PRIMARY KEY(stk, dt))'
-            crs.execute(sql)
-            logging.info('Created temporary table')
+            crs.execute(sql2)
+            logging.debug('Created temporary table')
             upload_data = valid_stx_df.values.tolist()
-            execute_values(crs, 'INSERT INTO temp_table '
+            execute_values(crs, 'INSERT INTO temp_intraday_table '
                            '(stk, o, hi, lo, c, v, oi, dt) VALUES %s',
                            upload_data)
-            logging.info('Uploaded dataframe into temporary table')
+            logging.debug(f'{dt}: uploaded dataframe into temporary table')
             stxdb.db_write_cmd(
                 'INSERT INTO intraday (stk, dt, o, hi, lo, c, v, oi) '
-                'SELECT * FROM temp_table ON CONFLICT (stk, dt) DO '
+                'SELECT * FROM temp_intraday_table ON CONFLICT (stk, dt) DO '
                 'UPDATE SET o = EXCLUDED.o, hi = EXCLUDED.hi, '
                 'lo = EXCLUDED.lo, c = EXCLUDED.c, v = EXCLUDED.v, '
                 'oi = EXCLUDED.oi')
-            logging.info('Uploaded data into intraday table')
+            logging.info(f'{dt}: uploaded data into intraday table')
         # last_upload_date = valid_stx_df['dt'].max()
         # stxdb.db_write_cmd("UPDATE analyses SET dt='{0:s}' WHERE "
         #                    "analysis='eod_datafeed'".format(last_upload_date))
