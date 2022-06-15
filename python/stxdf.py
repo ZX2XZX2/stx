@@ -525,7 +525,7 @@ class StxDatafeed:
                      format(last_upload_date))
         self.rename_stooq_file(dates.index[0], dates.index[num_dates - 1])
 
-    def parse_stooq_intraday(self, intraday_file=None):
+    def parse_stooq_intraday(self, intraday_file=None, intraday_date=None):
         logging.info('Checking if a new stooq file has been downloaded')
         if intraday_file is None:
             download_dir = self.config.get('datafeed', 'download_dir')
@@ -579,6 +579,8 @@ class StxDatafeed:
         stx_df['date'] = stx_df.apply(
             lambda r: f"{r['date'][0:4]}-{r['date'][4:6]}-{r['date'][6:8]}",
             axis=1)
+        if intraday_date:
+            stx_df = stx_df.query('date == @intraday_date').copy()
         stx_df['time'] -= 60000
         stx_df.time = stx_df.time.astype(str).str.pad(6, fillchar='0')
         stx_df['dt'] = stx_df.apply(lambda r: f"{r['date']} {r['time'][0:2]}:"
@@ -604,7 +606,7 @@ class StxDatafeed:
             np.isnan(r['close']) or
             np.isnan(r['vol']) or r['vol'] == 0 or
             r['open'] > r['high'] or r['open'] < r['low'] or
-            r['close'] > r['high'] or r['close'] < r['low'], 
+            r['close'] > r['high'] or r['close'] < r['low'],
             axis=1)
         valid_stx_df = daily_df.query('not invalid').copy()
         logging.info(f'{dt}: {len(valid_stx_df)}/{len(daily_df)} valid/total '
@@ -697,6 +699,9 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--intraday_file',
                         help='Intraday data file to load in DB',
                         type=str)
+    parser.add_argument('-x', '--intraday_date',
+                        help='Particular date to parse from intraday file',
+                        type=str)
     args = parser.parse_args()
     logging.basicConfig(
         format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
@@ -706,8 +711,10 @@ if __name__ == '__main__':
     )
     if args.intraday_file is not None:
         logging.info(f'Process intraday data from file {args.intraday_file}')
+        if args.intraday_date:
+            logging.info(f' for this date: {args.intraday_date}')
         sdf = StxDatafeed()
-        sdf.parse_stooq_intraday(args.intraday_file)
+        sdf.parse_stooq_intraday(args.intraday_file, args.intraday_date)
         sys.exit(0)
     logging.info('Getting index (S&P500, Nasdaq, Dow Jones) quotes')
     si = StxIndex()
