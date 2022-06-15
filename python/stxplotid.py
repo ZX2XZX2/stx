@@ -46,16 +46,19 @@ class StxPlotID:
             self.plot_df = idf
         self.s = 'yahoo'
         self.stk = stk
+        if len(self.plot_df) > 51:
+            self.plot_df['SMA50'] = self.plot_df['Close'].rolling(50).mean()
+        if len(self.plot_df) > 201:
+            self.plot_df['SMA200'] = self.plot_df['Close'].rolling(200).mean()
         
     def plotchart(self, savefig=True):
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
         ax1 = fig.add_subplot(3, 1, (1, 2))
         ax2 = fig.add_subplot(3, 1, 3, sharex=ax1)
         apd = None
-        # if ('SMA50' in self.plot_df.columns and
-        #     'SMA200' in self.plot_df.columns):
-        #     apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']],
-        #                            ax=ax1)
+        if ('SMA50' in self.plot_df.columns and
+            'SMA200' in self.plot_df.columns):
+            apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']], ax=ax1)
         fig.subplots_adjust(hspace=0)
         xticks, xticklabels = [], []
         day = -1
