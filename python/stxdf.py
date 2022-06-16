@@ -606,9 +606,17 @@ class StxDatafeed:
             np.isnan(r['close']) or
             np.isnan(r['vol']) or r['vol'] == 0 or
             r['open'] > r['high'] or r['open'] < r['low'] or
-            r['close'] > r['high'] or r['close'] < r['low'],
+            r['close'] > r['high'] or r['close'] < r['low'] or
+            r['vol'] >= 2147483647 or r['high'] >= 21474836.47,
             axis=1)
         valid_stx_df = daily_df.query('not invalid').copy()
+        invalid_stx_df = daily_df.query('invalid').copy()
+        if len(invalid_stx_df) > 0:
+            logging.warn(f'{dt}: found {len(invalid_stx_df)} invalid records:')
+            for ixx, row in invalid_stx_df.iterrows():
+                print(f"{ixx}: {row['ticker']} {row['dt']} {row['open']} "
+                      f"{row['high']} {row['low']} {row['close']} "
+                      f"{row['vol']}")
         logging.info(f'{dt}: {len(valid_stx_df)}/{len(daily_df)} valid/total '
                      f'records')
         valid_stx_df['open'] *= 100
