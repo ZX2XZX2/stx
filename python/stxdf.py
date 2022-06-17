@@ -547,7 +547,7 @@ class StxDatafeed:
                 "<HIGH>": float,
                 "<LOW>": float,
                 "<CLOSE>": float,
-                "<VOL>": int,
+                "<VOL>": float,
                 "<OPENINT>": int
             })
         except:
@@ -565,7 +565,7 @@ class StxDatafeed:
                         hi = float(row[5])
                         lo = float(row[6])
                         c = float(row[7])
-                        v = int(row[8])
+                        v = float(row[8])
                         oi = int(row[9])
                     except:
                         logging.error(f"Failed to parse line {line_num}")
@@ -586,6 +586,7 @@ class StxDatafeed:
         stx_df['dt'] = stx_df.apply(lambda r: f"{r['date']} {r['time'][0:2]}:"
                                     f"{r['time'][2:4]}:{r['time'][4:6]}",
                                     axis=1)
+        stx_df['vol'] = stx_df['vol'].astype(int)
         logging.info('Formatted intraday timestamps like yyyy-mm-dd hh:mm:ss')
         logging.info(f"Intraday records available by date:")
         dates = stx_df.groupby(by='date')['ticker'].count()
