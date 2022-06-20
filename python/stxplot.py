@@ -42,7 +42,7 @@ class StxPlot:
                      inplace=True)
         return ts
         
-    def plotchart(self, savefig=True):
+    def drawchart(self, savefig=True):
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
         ax1 = fig.add_subplot(3, 1, (1, 2))
         ax2 = fig.add_subplot(3, 1, 3, sharex=ax1)
@@ -79,9 +79,14 @@ class StxPlot:
                 mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
                          axtitle=self.title, alines=self.trend_lines,
                          addplot=apd)
+        return fig
+
+    def plotchart(self, savefig=True):
+        fig = self.drawchart(savefig)
         if savefig:
             fig.savefig(f'/tmp/{self.ts.stk}.png')
-            
+
+
 if __name__ == '__main__':
     # TODO: use argparser and all that stuff
     stk = sys.argv[1]
