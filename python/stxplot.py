@@ -1,4 +1,6 @@
+import base64
 from datetime import datetime
+from io import BytesIO
 import mplfinance as mpf
 from stxts import StxTS
 import sys
@@ -42,7 +44,7 @@ class StxPlot:
                      inplace=True)
         return ts
         
-    def drawchart(self, savefig=True):
+    def drawchart(self):
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
         ax1 = fig.add_subplot(3, 1, (1, 2))
         ax2 = fig.add_subplot(3, 1, 3, sharex=ax1)
@@ -82,9 +84,18 @@ class StxPlot:
         return fig
 
     def plotchart(self, savefig=True):
-        fig = self.drawchart(savefig)
+        fig = self.drawchart()
         if savefig:
             fig.savefig(f'/tmp/{self.ts.stk}.png')
+
+    def webchartstream(self):
+        fig = self.drawchart()
+        figfile = BytesIO()
+        fig.savefig(figfile, format='png')
+        figfile.seek(0)
+        figdata_png = figfile.getvalue()
+        figdata_png = base64.b64encode(figdata_png)
+        return figdata_png
 
 
 if __name__ == '__main__':
@@ -92,10 +103,14 @@ if __name__ == '__main__':
     stk = sys.argv[1]
     sd = sys.argv[2]
     ed = sys.argv[3]
-    sorp = sys.argv[4]
+    sorporw = sys.argv[4]
 
     sp = StxPlot(None, stk, sd, ed, stk=stk)
-    savefig = sorp.startswith('s')
-    sp.plotchart(savefig=savefig)
-    if not savefig:
-        mpf.show()
+    if sorporw == 'w':
+        chartstream = sp.webchartstream()
+        print(f'{chartstream}')
+    else:
+        savefig = sorporw.startswith('s')
+        sp.plotchart(savefig=savefig)
+        if not savefig:
+            mpf.show()
