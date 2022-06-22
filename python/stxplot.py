@@ -94,8 +94,8 @@ class StxPlot:
         fig.savefig(figfile, format='png')
         figfile.seek(0)
         figdata_png = figfile.getvalue()
-        figdata_png = base64.b64encode(figdata_png)
-        return figdata_png
+        figdata_png = base64.b64encode(figdata_png).decode("utf-8")
+        return f'<img src="data:image/png;base64,{figdata_png}" width="1500">'
 
 
 if __name__ == '__main__':
