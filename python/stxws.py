@@ -1,4 +1,6 @@
 from flask import Flask
+import matplotlib
+matplotlib.use('Agg')
 import os
 import stxcal
 from stxplot import StxPlot
@@ -8,7 +10,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    end_date = stxcal.current_busdate()
+    end_date = stxcal.current_busdate(hr=10)
     start_date = stxcal.move_busdays(end_date, -90)
     res = []
     res.append('<html>')
