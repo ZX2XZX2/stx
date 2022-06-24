@@ -6,5 +6,6 @@ BASE_DIR=${HOME}/stx
 cd ${BASE_DIR}/python
 export LANG=en_US.UTF-8
 export FLASK_APP=stxws
+export FLASK_ENV=development
 flask run
 cd ${CRT_DIR}
