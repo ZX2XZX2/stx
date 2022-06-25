@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 import matplotlib
 matplotlib.use('Agg')
 import os
@@ -22,3 +22,7 @@ def index():
     res.append('</body>')
     res.append('</html>')
     return ''.join(res)
+
+@app.route('/template')
+def use_template():
+    return render_template('template.html')
