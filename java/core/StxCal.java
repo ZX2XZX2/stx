@@ -219,6 +219,7 @@ public class StxCal {
         if( y< 1970) addHol( y, "-05-30", "Memorial Day");
         if( y>= 1971) addHol( y, "-05-25", "Memorial Day", 1, 1);
         if( y== 2004) addHol( y, "-06-11", "Reagan's funeral");
+        if( y >= 2022) addHol( y, "-06-19", "Juneteenth");
         addHol( y, "-07-04", "Independence Day");
         if( y== 1968)
             addHol( y, "-07-05", "Day after Independence Day");
