@@ -357,7 +357,7 @@ class StxDatafeed:
                 except OSError as e:
                     print ("Error: %s - %s." % (e.filename, e.strerror))
 
-    def parse_stooq_new(self, last_db_date):
+    def parse_stooq_eod(self, last_db_date):
         logging.info('Checking if a new stooq file has been downloaded')
         # stooq_file = os.path.join(os.getenv('DOWNLOAD_DIR'), 'data_d.txt')
         download_dir = self.config.get('datafeed', 'download_dir')
@@ -596,7 +596,7 @@ class StxDatafeed:
             daily_df = stx_df.query('date == @dd').copy()
             self.process_daily_intraday(dd, daily_df)
         if intraday_file is None:
-            self.rename_stooq_file(dates.index[0], dates.index[num_dates - 1],
+            self.rename_stooq_file(dates.index[0], dates.index[-1],
                                    intraday=True)
 
     def process_daily_intraday(self, dt, daily_df):
@@ -742,7 +742,8 @@ if __name__ == '__main__':
     logging.info('The start date is: {0:s}'.format(start_date))
     res = stxdb.db_read_cmd("SELECT MAX(dt) FROM dividends")
     splits_start_date = str(res[0][0]) if res else '2000-01-01'
-    sdf.parse_stooq_new(start_date)
+    sdf.parse_stooq_eod(start_date)
+    sdf.parse_stooq_intraday()
     last_expiry = stxcal.prev_expiry(str(datetime.datetime.now().date()))
     profile_count = sdf.get_profile_count(last_expiry)
     if profile_count < 5000:
