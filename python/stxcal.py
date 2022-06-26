@@ -230,6 +230,38 @@ def get_cal(start=None, end=None):
         )
         non_trading_rules.append(flag_day_saturday)
 
+        juneteenth = rrule.rrule(
+            rrule.MONTHLY,
+            bymonth=6,
+            bymonthday=19,
+            cache=True,
+            dtstart=datetime(2022, 1, 1, tzinfo=pytz.utc),
+            until=end
+        )
+        non_trading_rules.append(juneteenth)
+
+        juneteenth_sunday = rrule.rrule(
+            rrule.MONTHLY,
+            bymonth=6,
+            bymonthday=20,
+            byweekday=rrule.MO,
+            cache=True,
+            dtstart=datetime(2022, 1, 1, tzinfo=pytz.utc),
+            until=end
+        )
+        non_trading_rules.append(juneteenth_sunday)
+
+        juneteenth_saturday = rrule.rrule(
+            rrule.MONTHLY,
+            bymonth=6,
+            bymonthday=18,
+            byweekday=rrule.FR,
+            cache=True,
+            dtstart=datetime(2022, 1, 1, tzinfo=pytz.utc),
+            until=end
+        )
+        non_trading_rules.append(juneteenth_saturday)
+        
         july_4th = rrule.rrule(
             rrule.MONTHLY,
             bymonth=7,
