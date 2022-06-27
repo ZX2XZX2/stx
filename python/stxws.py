@@ -23,6 +23,13 @@ def index():
     res.append('</html>')
     return ''.join(res)
 
-@app.route('/template')
-def use_template():
-    return render_template('template.html')
+@app.route('/indexes')
+def show_indexes():
+    charts = []
+    end_date = stxcal.current_busdate(hr=10)
+    start_date = stxcal.move_busdays(end_date, -90)
+    for stxindex in ['^GSPC', '^IXIC', '^DJI']:
+        sp = StxPlot(None, stxindex, start_date, end_date, stk=stxindex)
+        chartdict = { 'figdata_png': sp.b64_png() }
+        charts.append(chartdict)
+    return render_template('indexes.html', charts=charts)
