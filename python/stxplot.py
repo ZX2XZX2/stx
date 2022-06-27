@@ -98,6 +98,16 @@ class StxPlot:
         return f'<img src="data:image/png;base64,{figdata_png}" width="1500">'
 
 
+    def b64_png(self):
+        fig = self.drawchart()
+        figfile = BytesIO()
+        fig.savefig(figfile, format='png')
+        figfile.seek(0)
+        figdata_png = figfile.getvalue()
+        figdata_png = base64.b64encode(figdata_png).decode("utf-8")
+        return figdata_png
+
+
 if __name__ == '__main__':
     # TODO: use argparser and all that stuff
     stk = sys.argv[1]
