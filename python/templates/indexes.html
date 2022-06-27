@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>{% block title %} Welcome to XTC {% endblock %}</h1>
+  {% for chart in charts %}
+    <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
+  {% endfor %}
+{% endblock %}
