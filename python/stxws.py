@@ -23,6 +23,7 @@ def index():
     res.append('</html>')
     return ''.join(res)
 
+
 @app.route('/indexes')
 def show_indexes():
     charts = []
@@ -33,3 +34,18 @@ def show_indexes():
         chartdict = { 'figdata_png': sp.b64_png() }
         charts.append(chartdict)
     return render_template('indexes.html', charts=charts)
+
+
+@app.route('/charts')
+def charts():
+    return "This will create the charts"
+
+
+@app.route('/scanners')
+def scanners():
+    return "This will show the scanners"
+
+
+@app.route('/rtscanners')
+def rtscanners():
+    return "This will show the realtime scanners"
