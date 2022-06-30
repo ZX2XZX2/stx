@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>{% block title %} XTC Intraday Charts {% endblock %}</h1>
+  <form method="post">
+    <div class="form-group">
+        <label for="stocks">Stock(s)</label>
+        <input type="text" name="stocks"
+               placeholder="Stocks" class="form-control"
+               value="{{ stx }}"></input>
+    </div>
+    <div class="form-group">
+        <label for="datetime">Datetime</label>
+        <input type="text" name="datetime"
+               placeholder="Datetime" class="form-control"
+               value="{{ dt }}"</input>
+    </div>
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+</form>
+  {% for chart in charts %}
+    <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
+  {% endfor %}
+{% endblock %}
