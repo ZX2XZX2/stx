@@ -1,5 +1,7 @@
 import argparse
+import base64
 from datetime import datetime
+from io import BytesIO
 import mplfinance as mpf
 import pandas as pd
 from psycopg2 import sql
@@ -8,14 +10,14 @@ import stxdb
 import sys
 
 class StxPlotID:
-    def __init__(self, stk, start_date, end_date, period=5):
+    def __init__(self, stk, start_dt, end_dt, period=5):
         q = sql.Composed([
             sql.SQL("SELECT * FROM intraday WHERE stk="),
             sql.Literal(stk),
             sql.SQL(" AND dt BETWEEN "),
-            sql.Literal(f'{start_date} 09:30:00'),
+            sql.Literal(start_dt),
             sql.SQL(" AND "),
-            sql.Literal(f'{end_date} 16:00:00'),
+            sql.Literal(end_dt),
             sql.SQL(" ORDER BY dt")
         ])
         idf = pd.read_sql(q, stxdb.db_get_cnx(), index_col='dt',
@@ -50,8 +52,8 @@ class StxPlotID:
             self.plot_df['SMA50'] = self.plot_df['Close'].rolling(50).mean()
         if len(self.plot_df) > 201:
             self.plot_df['SMA200'] = self.plot_df['Close'].rolling(200).mean()
-        
-    def plotchart(self, savefig=True):
+
+    def drawchart(self):
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
         ax1 = fig.add_subplot(3, 1, (1, 2))
         ax2 = fig.add_subplot(3, 1, 3, sharex=ax1)
@@ -84,8 +86,22 @@ class StxPlotID:
         #         mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
         #                  axtitle=self.title, alines=self.trend_lines,
         #                  addplot=apd)
+        return fig
+
+    def plotchart(self, savefig=True):
+        fig = self.drawchart()
         if savefig:
             fig.savefig(f'/tmp/{self.ts.stk}_ID.png')
+
+    def b64_png(self):
+        fig = self.drawchart()
+        figfile = BytesIO()
+        fig.savefig(figfile, format='png')
+        figfile.seek(0)
+        figdata_png = figfile.getvalue()
+        figdata_png = base64.b64encode(figdata_png).decode("utf-8")
+        return figdata_png
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
