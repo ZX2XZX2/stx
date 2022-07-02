@@ -84,9 +84,38 @@ def idcharts():
     return render_template('charts_intraday.html', charts=charts, stx=stks, dt=end_dt)
 
 
-@app.route('/scanners')
+@app.route('/scanners', methods=('GET', 'POST'))
 def scanners():
-    return "This will show the scanners"
+    charts = []
+    intraday_charts = []
+    """1. Get all the JC_1234 and JC_5DAYS setups for the current day.
+    2. Use the same DB query as in the report generator
+    3. Filter on the indicators
+    4. Check, by using the intraday data, which setups have been
+    triggered as of the current date and time.  Calculate the time
+    when it was triggered.
+    5. Generate the eod and intraday charts for each triggered setup
+    6. Replace the setup time retrieved from the database with the
+    setup time calculated in 4.
+    """
+    end_dt = f'{stxcal.current_busdate(hr=10)} 16:00'
+    if request.method == 'POST':
+        stks = request.form['stocks']
+        end_dt = request.form['datetime']
+        if not stks:
+            flash('Stocks are required!')
+        elif not end_dt:
+            flash('Date is required!')
+        else:
+            stk_list = stks.split(' ')
+            end_date, end_time = end_dt.split(' ')
+            start_date = stxcal.move_busdays(end_date, -10)
+            start_dt = f'{start_date} 09:35'
+            for stk in stk_list:
+                sp = StxPlotID(stk, start_dt, end_dt, 15)
+                chartdict = { 'figdata_png': sp.b64_png() }
+                charts.append(chartdict)
+    return render_template('charts_intraday.html', charts=charts, stx=stks, dt=end_dt)
 
 
 @app.route('/rtscanners')
