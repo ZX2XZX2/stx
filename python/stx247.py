@@ -261,27 +261,36 @@ img {
 
     def get_stk_ts(self, stk, start_date, crt_date):
         ts = StxTS(stk, start_date, crt_date)
-        day_ix = ts.set_day(crt_date)
-        if day_ix == -1:
+        try:
+            ts.mpf_eod(crt_date)
+        except RuntimeError as re:
+            logging.error(re)
             return None
-        ts.df.index.name='Date'
-        ts.df.drop('oi', inplace=True, axis=1)
-        ts.df['o'] /= 100
-        ts.df['hi'] /= 100
-        ts.df['lo'] /= 100
-        ts.df['c'] /= 100
-        ts.df['v'] *= 1000
-        ts.df.rename(columns={'o': 'Open',
-                              'hi': 'High',
-                              'lo': 'Low',
-                              'c': 'Close',
-                              'v': 'Volume'},
-                     inplace=True)
-        if len(ts.df) > 51:
-            ts.df['SMA50'] = ts.df['Close'].rolling(50).mean()
-        if len(ts.df) > 201:
-            ts.df['SMA200'] = ts.df['Close'].rolling(200).mean()
         return ts
+
+    # def get_stk_idts(self, stk, start_datetime, crt_datetime):
+    #     ts = StxTS(stk, start_date, crt_date)
+    #     day_ix = ts.set_day(crt_date)
+    #     if day_ix == -1:
+    #         return None
+    #     ts.df.index.name='Date'
+    #     ts.df.drop('oi', inplace=True, axis=1)
+    #     ts.df['o'] /= 100
+    #     ts.df['hi'] /= 100
+    #     ts.df['lo'] /= 100
+    #     ts.df['c'] /= 100
+    #     ts.df['v'] *= 1000
+    #     ts.df.rename(columns={'o': 'Open',
+    #                           'hi': 'High',
+    #                           'lo': 'Low',
+    #                           'c': 'Close',
+    #                           'v': 'Volume'},
+    #                  inplace=True)
+    #     if len(ts.df) > 51:
+    #         ts.df['SMA50'] = ts.df['Close'].rolling(50).mean()
+    #     if len(ts.df) > 201:
+    #         ts.df['SMA200'] = ts.df['Close'].rolling(200).mean()
+    #     return ts
 
     def get_avg_stats(self, ts):
         avg_volume = np.average(ts.df['Volume'].values[-20:])
@@ -644,6 +653,27 @@ img {
         z.close()
         logging.info(f'Archived {num_archived_pdfs} PDF reports '\
                      f'in {zipfile_name}')
+
+    # def loaddata(self, stk, direction, crt_date, crt_time):
+    #     res = {}
+    #     start_date = stxcal.move_busdays(crt_date, -220)
+    #     ts = self.get_stk_ts(stk, start_date, crt_date)
+    #     if ts is None:
+    #         logging.error(f'Could not load data for {stk} as of {crt_date}')
+    #         return None
+    #     res['eod_ts'] = ts
+    #     id_start_date = stxcal.move_busdays(crt_date, -10)
+    #     id_start_datetime = f'{id_start_date} 09:35'
+    #     crt_datetime = f'{crt_date} {crt_time}'
+    #     tsid = self.get_stk_idts(stk, id_start_datetime, crt_datetime)
+        # if ts is None:
+        #     return []
+        # avg_volume, avg_rg = self.get_avg_stats(ts)
+        # trend_lines = self.get_jl_trend_lines(ts, jl_setup_df, crt_date,
+        #                                       display_start_date, avg_rg)
+        # title = self.get_title(stk, avg_volume, avg_rg, row['direction'],
+        #                        row['tm'], row['setup'])
+        # stk_plot = StxPlot(ts, title, display_start_date, crt_date, trend_lines)   
 
 
 if __name__ == '__main__':
