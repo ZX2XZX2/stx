@@ -244,6 +244,28 @@ class StxTS:
         rec = self.df.iloc[self.find(dt)]
         return rec if not field else rec.get(field)
 
+    def mpf_eod(self, crt_date):
+        day_ix = self.set_day(crt_date)
+        if day_ix == -1:
+            raise RuntimeError(f'Failed to get {self.stk} data asof {crt_date}')
+        self.df.index.name='Date'
+        self.df.drop('oi', inplace=True, axis=1)
+        self.df['o'] /= 100
+        self.df['hi'] /= 100
+        self.df['lo'] /= 100
+        self.df['c'] /= 100
+        self.df['v'] *= 1000
+        self.df.rename(columns={'o': 'Open',
+                                'hi': 'High',
+                                'lo': 'Low',
+                                'c': 'Close',
+                                'v': 'Volume'},
+                       inplace=True)
+        if len(self.df) > 51:
+            self.df['SMA50'] = self.df['Close'].rolling(50).mean()
+        if len(self.df) > 201:
+            self.df['SMA200'] = self.df['Close'].rolling(200).mean()
+
 
 if __name__ == '__main__':
     stk = 'TASR'
