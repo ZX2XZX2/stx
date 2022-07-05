@@ -11,6 +11,7 @@ class StxTSID(StxTS):
         self.id_sd = stxcal.move_busdays(ed, -10)
         self.id_sdt = f'{self.id_sd} 09:35'
         self.id_edt = f'{ed} {et}'
+        self.crt_date = ed
         self.id_tbl = id_tbl
         self.idf = self.load_intraday()
 
@@ -28,31 +29,45 @@ class StxTSID(StxTS):
         ])
         idf = pd.read_sql(q, stxdb.db_get_cnx(), index_col='dt',
                           parse_dates=['dt'])
-        idf.index.name='Date'
-        idf.drop(['stk', 'oi'], inplace=True, axis=1)
-        idf['o'] /= 100
-        idf['hi'] /= 100
-        idf['lo'] /= 100
-        idf['c'] /= 100
-        idf.rename(columns={'o': 'Open',
-                            'hi': 'High',
-                            'lo': 'Low',
-                            'c': 'Close',
-                            'v': 'Volume'},
-                   inplace=True)
         return idf
+
+    def mpf_id(self, crt_date):
+        super().mpf_eod(crt_date)
+        self.idf.index.name='Date'
+        self.idf.drop(['stk', 'oi'], inplace=True, axis=1)
+        self.idf['o'] /= 100
+        self.idf['hi'] /= 100
+        self.idf['lo'] /= 100
+        self.idf['c'] /= 100
+        self.idf.rename(columns={'o': 'Open',
+                                 'hi': 'High',
+                                 'lo': 'Low',
+                                 'c': 'Close',
+                                 'v': 'Volume'},
+                        inplace=True)
+        self.adjust_last_day()
 
     def adjust_intraday_splits(self):
         # TODO: adjust intraday data for splits
         pass
 
-    # def adjust_last_day(self):
-    #     # self.plot_df = idf
-    #     resample_map ={'Open' :'first',
-    #                    'High' :'max'  ,
-    #                    'Low'  :'min'  ,
-    #                    'Close':'last',
-    #                    'Volume':'sum'}
+    def adjust_last_day(self):
+        lastday_tf = self.idf.loc[self.crt_date]
+        resample_map = {
+            'Open' :'first',
+            'High' :'max'  ,
+            'Low'  :'min'  ,
+            'Close':'last',
+            'Volume':'sum'
+        }
+        crt_dt = self.crt_date
+        last_daily = lastday_tf.resample('1440T').agg(resample_map).dropna()
+        self.df.loc[self.ed, 'Open'] = last_daily.loc[self.ed, 'Open']
+        self.df.loc[self.ed, 'High'] = last_daily.loc[self.ed, 'High']
+        self.df.loc[self.ed, 'Low'] = last_daily.loc[self.ed, 'Low']
+        self.df.loc[self.ed, 'Close'] = last_daily.loc[self.ed, 'Close']
+        self.df.loc[self.ed, 'Volume'] = last_daily.loc[self.ed, 'Volume']
+
     #     if period > 5:
     #         resample_period = f'{period}T'
     #         rs = idf.resample(resample_period).agg(resample_map).dropna()
