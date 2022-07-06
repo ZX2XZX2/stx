@@ -2,12 +2,24 @@ from flask import Flask, render_template, request, url_for, flash
 import matplotlib
 matplotlib.use('Agg')
 import os
+import pandas as pd
 import stxcal
+from stx247 import StxAnalyzer
 from stxplot import StxPlot
 from stxplotid import StxPlotID
 
 app = Flask(__name__)
-
+indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
+indicator_list = indicators.split(',')
+indicator_tenor_list = [x.split('_') for x in indicator_list]
+indicators_df = pd.DataFrame(indicator_tenor_list,
+                             columns=['indicator', 'tenor'])
+indicators_df['tenor'] = indicators_df['tenor'].astype('int')
+indicators_df.sort_values(by=['indicator', 'tenor'], inplace=True)
+indicator_names = sorted(indicators_df['indicator'].unique())
+indicator_tenors = sorted(indicators_df['tenor'].unique())
+display_days = 90
+stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
 @app.route('/')
 def index():
@@ -81,7 +93,8 @@ def idcharts():
                 sp = StxPlotID(stk, start_dt, end_dt, 15)
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
-    return render_template('charts_intraday.html', charts=charts, stx=stks, dt=end_dt)
+    return render_template(
+        'charts_intraday.html', charts=charts, stx=stks, dt=end_dt)
 
 
 @app.route('/scanners', methods=('GET', 'POST'))
@@ -98,23 +111,43 @@ def scanners():
     6. Replace the setup time retrieved from the database with the
     setup time calculated in 4.
     """
-    end_dt = f'{stxcal.current_busdate(hr=10)} 16:00'
+    end_dt = ''
     if request.method == 'POST':
-        stks = request.form['stocks']
         end_dt = request.form['datetime']
-        if not stks:
-            flash('Stocks are required!')
-        elif not end_dt:
+        if not end_dt:
             flash('Date is required!')
-        else:
-            stk_list = stks.split(' ')
-            end_date, end_time = end_dt.split(' ')
-            start_date = stxcal.move_busdays(end_date, -10)
-            start_dt = f'{start_date} 09:35'
-            for stk in stk_list:
-                sp = StxPlotID(stk, start_dt, end_dt, 15)
-                chartdict = { 'figdata_png': sp.b64_png() }
-                charts.append(chartdict)
+            return render_template(
+                'scanner.html', charts=None, id_charts=None, dt=end_dt)
+        end_date, end_time = end_dt.split(' ')
+        start_date = stxcal.move_busdays(end_date, -220)
+        date_1 = stxcal.prev_busday(end_date)
+        eod = False
+        # Return all triggered setups for the day
+        setup_df = stx_ana.get_triggered_setups(end_date, eod, triggered=True)
+        min_up_cs = request.form['min_up_cs']
+        max_down_cs = request.form['max_down_cs']
+        # Filter out:
+        # 1. UP setups with CS_45 rank below a threshold
+        # 2. DOWN setups with CS_45 rank above a threshold
+        sdf = setup_df.query("(direction=='U' and bucket_rank>@min_up_cs) or "
+                             "(direction=='D' and bucket_rank<@max_down_cs)")
+        # 3. Setups not triggered yet
+        for _, row in sdf.iterrows():
+            tsid = StxTSID(row['stk'], start_date, end_date, end_time)
+            tsid.mpf_id(end_date)
+            if ((row['direction'] == 'U' and
+                 tsid.df.loc[end_date, 'High'] < tsid.df.loc[date_1, 'High']) or
+                (row['direction'] == 'D' and
+                 tsid.df.loc[end_date, 'Low'] > tsid.df.loc[date_1, 'Low'])):
+                continue
+
+            # start_date = stxcal.move_busdays(end_date, -90)
+            # id_start_date_1 = f'{stxcal.move_busdays(end_date, -10)} 09:35'
+            # id_start_date_2 = f'{stxcal.move_busdays(end_date, -5)} 09:35'
+            # for stk in stk_list:
+            #     sp = StxPlotID(stk, start_dt, end_dt, 15)
+            #     chartdict = { 'figdata_png': sp.b64_png() }
+            #     charts.append(chartdict)
     return render_template('charts_intraday.html', charts=charts, stx=stks, dt=end_dt)
 
 
