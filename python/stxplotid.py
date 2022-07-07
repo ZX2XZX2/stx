@@ -10,31 +10,33 @@ import stxdb
 import sys
 
 class StxPlotID:
-    def __init__(self, stk, start_dt, end_dt, period=5):
-        q = sql.Composed([
-            sql.SQL("SELECT * FROM intraday WHERE stk="),
-            sql.Literal(stk),
-            sql.SQL(" AND dt BETWEEN "),
-            sql.Literal(start_dt),
-            sql.SQL(" AND "),
-            sql.Literal(end_dt),
-            sql.SQL(" ORDER BY dt")
-        ])
-        idf = pd.read_sql(q, stxdb.db_get_cnx(), index_col='dt',
-                          parse_dates=['dt'])
-        idf.index.name='Date'
-        idf.drop('oi', inplace=True, axis=1)
-        idf['o'] /= 100
-        idf['hi'] /= 100
-        idf['lo'] /= 100
-        idf['c'] /= 100
-        idf.rename(columns={'o': 'Open',
-                            'hi': 'High',
-                            'lo': 'Low',
-                            'c': 'Close',
-                            'v': 'Volume'},
-                   inplace=True)
-        # self.plot_df = idf
+    def __init__(self, idf, start_dt, end_dt, stk, period=5):
+        if idf is None:
+            q = sql.Composed([
+                sql.SQL("SELECT * FROM intraday WHERE stk="),
+                sql.Literal(stk),
+                sql.SQL(" AND dt BETWEEN "),
+                sql.Literal(start_dt),
+                sql.SQL(" AND "),
+                sql.Literal(end_dt),
+                sql.SQL(" ORDER BY dt")
+            ])
+            idf = pd.read_sql(q, stxdb.db_get_cnx(), index_col='dt',
+                              parse_dates=['dt'])
+            idf.index.name='Date'
+            idf.drop('oi', inplace=True, axis=1)
+            idf['o'] /= 100
+            idf['hi'] /= 100
+            idf['lo'] /= 100
+            idf['c'] /= 100
+            idf.rename(columns={'o': 'Open',
+                                'hi': 'High',
+                                'lo': 'Low',
+                                'c': 'Close',
+                                'v': 'Volume'},
+                       inplace=True)
+        else:
+            idf = idf.loc[start_dt:end_dt,:]
         resample_map ={'Open' :'first',
                        'High' :'max'  ,
                        'Low'  :'min'  ,
@@ -119,7 +121,7 @@ if __name__ == '__main__':
                         default=stxcal.current_busdate(hr=9),
                         help='End date for chart')
     args = parser.parse_args()
-    sp = StxPlotID(args.stk, args.startdate, args.enddate, args.period)
+    sp = StxPlotID(None, args.startdate, args.enddate, args.stk, args.period)
     savefig = args.sorp.startswith('s')
     sp.plotchart(savefig=savefig)
     if not savefig:
