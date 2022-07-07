@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>{% block title %} XTC Scanner {% endblock %}</h1>
+  <form method="post">
+    <div class="form-group">
+        <label for="datetime">Datetime</label>
+        <input type="text" name="datetime"
+               placeholder="Datetime" class="form-control"
+               value="{{ dt }}"</input>
+    </div>
+    <div class="form-group">
+        <label for="min_up_cs">Min Up CS</label>
+        <input type="text" name="min_up_cs"
+               placeholder="MinUpCS" class="form-control"
+               value="{{ min_up_cs }}"</input>
+    </div>
+    <div class="form-group">
+        <label for="max_down_cs">Max Down CS</label>
+        <input type="text" name="max_down_cs"
+               placeholder="MaxDownCS" class="form-control"
+               value="{{ max_down_cs }}"</input>
+    </div>
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+</form>
+  {% for chart in charts %}
+    <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="1500">
+    <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="1500">
+    <img src="data:image/png;base64,{{ chart['id2_png'] }}" width="1500">
+  {% endfor %}
+{% endblock %}
