@@ -7,6 +7,7 @@ import stxcal
 from stx247 import StxAnalyzer
 from stxplot import StxPlot
 from stxplotid import StxPlotID
+from stxtsid import StxTSID
 
 app = Flask(__name__)
 indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
@@ -90,7 +91,7 @@ def idcharts():
             start_date = stxcal.move_busdays(end_date, -10)
             start_dt = f'{start_date} 09:35'
             for stk in stk_list:
-                sp = StxPlotID(stk, start_dt, end_dt, 15)
+                sp = StxPlotID(None, start_dt, end_dt, stk, 15)
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
     return render_template(
@@ -124,8 +125,8 @@ def scanners():
         eod = False
         # Return all triggered setups for the day
         setup_df = stx_ana.get_triggered_setups(end_date, eod, triggered=True)
-        min_up_cs = request.form['min_up_cs']
-        max_down_cs = request.form['max_down_cs']
+        min_up_cs = int(request.form['min_up_cs'])
+        max_down_cs = int(request.form['max_down_cs'])
         # Filter out:
         # 1. UP setups with CS_45 rank below a threshold
         # 2. DOWN setups with CS_45 rank above a threshold
@@ -140,7 +141,9 @@ def scanners():
                 (row['direction'] == 'D' and
                  tsid.df.loc[end_date, 'Low'] > tsid.df.loc[date_1, 'Low'])):
                 continue
-
+            res = tsid.getchartstreams(end_dt, eod_days=90, id_days1=10,
+                                       id_mins1=30, id_days2=5, id_mins2=10)
+            charts.append(res)
             # start_date = stxcal.move_busdays(end_date, -90)
             # id_start_date_1 = f'{stxcal.move_busdays(end_date, -10)} 09:35'
             # id_start_date_2 = f'{stxcal.move_busdays(end_date, -5)} 09:35'
@@ -148,7 +151,7 @@ def scanners():
             #     sp = StxPlotID(stk, start_dt, end_dt, 15)
             #     chartdict = { 'figdata_png': sp.b64_png() }
             #     charts.append(chartdict)
-    return render_template('charts_intraday.html', charts=charts, stx=stks, dt=end_dt)
+    return render_template('scanner.html', charts=charts, dt=end_dt)
 
 
 @app.route('/rtscanners')
