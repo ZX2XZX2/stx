@@ -151,7 +151,8 @@ def scanners():
             #     sp = StxPlotID(stk, start_dt, end_dt, 15)
             #     chartdict = { 'figdata_png': sp.b64_png() }
             #     charts.append(chartdict)
-    return render_template('scanner.html', charts=charts, dt=end_dt)
+    return render_template('scanner.html', charts=charts, dt=end_dt,
+                           min_up_cs=min_up_cs, max_down_cs=max_down_cs)
 
 
 @app.route('/rtscanners')
