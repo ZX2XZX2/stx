@@ -26,6 +26,7 @@
     </div>
 </form>
   {% for chart in charts %}
+    {{ chart['indicator_table']| safe }}
     <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="1500">
     <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="1500">
     <img src="data:image/png;base64,{{ chart['id2_png'] }}" width="1500">
