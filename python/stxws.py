@@ -101,7 +101,6 @@ def idcharts():
 @app.route('/scanners', methods=('GET', 'POST'))
 def scanners():
     charts = []
-    intraday_charts = []
     """1. Get all the JC_1234 and JC_5DAYS setups for the current day.
     2. Use the same DB query as in the report generator
     3. Filter on the indicators
@@ -118,7 +117,8 @@ def scanners():
         if not end_dt:
             flash('Date is required!')
             return render_template(
-                'scanner.html', charts=None, id_charts=None, dt=end_dt)
+                'scanner.html', charts=[], dt=end_dt,
+                min_up_cs=min_up_cs, max_down_cs=max_down_cs)
         end_date, end_time = end_dt.split(' ')
         start_date = stxcal.move_busdays(end_date, -220)
         date_1 = stxcal.prev_busday(end_date)
@@ -132,6 +132,7 @@ def scanners():
         # 2. DOWN setups with CS_45 rank above a threshold
         sdf = setup_df.query("(direction=='U' and bucket_rank>@min_up_cs) or "
                              "(direction=='D' and bucket_rank<@max_down_cs)")
+        sdf = stx_ana.add_indicators(sdf, end_date, indicator_list, False)
         # 3. Setups not triggered yet
         for _, row in sdf.iterrows():
             tsid = StxTSID(row['stk'], start_date, end_date, end_time)
@@ -143,6 +144,8 @@ def scanners():
                 continue
             res = tsid.getchartstreams(end_dt, eod_days=90, id_days1=10,
                                        id_mins1=30, id_days2=5, id_mins2=10)
+            indicator_tbl = stx_ana.build_indicators_table(row)
+            res['indicator_table'] = ''.join(indicator_tbl)
             charts.append(res)
             # start_date = stxcal.move_busdays(end_date, -90)
             # id_start_date_1 = f'{stxcal.move_busdays(end_date, -10)} 09:35'
@@ -151,6 +154,9 @@ def scanners():
             #     sp = StxPlotID(stk, start_dt, end_dt, 15)
             #     chartdict = { 'figdata_png': sp.b64_png() }
             #     charts.append(chartdict)
+    else:
+        min_up_cs = 90
+        max_down_cs = 10
     return render_template('scanner.html', charts=charts, dt=end_dt,
                            min_up_cs=min_up_cs, max_down_cs=max_down_cs)
 
