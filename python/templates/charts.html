@@ -9,9 +9,18 @@
       <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}"/>
       <br>
       <label for="datetime">Datetime</label>
-      <input type="date" name="datetime"
-             placeholder="Datetime"
-             value="{{ dt }}"/>
+      <input type="date" name="datetime" placeholder="Datetime" value="{{ dt }}"/><br>
+      <label for="days">Timeframe (days):</label>
+      <select name="days">
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="30">30</option>
+        <option value="60">60</option>
+        <option value="90" selected>90</option>
+        <option value="126">126</option>
+        <option value="252">252</option>
+      </select>
+      <br>
     </fieldset>
     <button type="submit" class="btn btn-primary">Submit</button>
   </form>
