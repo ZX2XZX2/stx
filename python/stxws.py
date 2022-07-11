@@ -54,6 +54,7 @@ def charts():
     if request.method == 'POST':
         stks = request.form['stocks']
         dt = request.form['datetime']
+        num_days = int(request.form['days'])
         if not stks:
             flash('Stocks are required!')
         elif not dt:
@@ -61,7 +62,7 @@ def charts():
         else:
             stk_list = stks.split(' ')
             end_date = dt
-            start_date = stxcal.move_busdays(end_date, -90)
+            start_date = stxcal.move_busdays(end_date, -num_days)
             for stk in stk_list:
                 sp = StxPlot(None, stk, start_date, end_date, stk=stk)
                 chartdict = { 'figdata_png': sp.b64_png() }
