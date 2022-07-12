@@ -1,24 +1,28 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>{% block title %} XTC Intraday Charts {% endblock %}</h1>
+  <h1>{% block title %} XTC ID Charts {% endblock %}</h1>
   <form method="post">
-    <div class="form-group">
-        <label for="stocks">Stock(s)</label>
-        <input type="text" name="stocks"
-               placeholder="Stocks" class="form-control"
-               value="{{ stx }}"></input>
-    </div>
-    <div class="form-group">
-        <label for="datetime">Datetime</label>
-        <input type="text" name="datetime"
-               placeholder="Datetime" class="form-control"
-               value="{{ dt }}"</input>
-    </div>
-    <div class="form-group">
-        <button type="submit" class="btn btn-primary">Submit</button>
-    </div>
-</form>
+    <fieldset>
+      <label for="stocks">Stock(s)</label>
+      <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}"/>
+      <br>
+      <label for="dt_date">Date</label>
+      <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/><br>
+      <label for="dt_time">Time</label>
+      <input type="text" name="dt_time" placeholder="Time" value="{{ dt_time }}"/><br>
+      <label for="days">Timeframe (days)</label>
+      <select name="days">
+        <option value="1d5m">1day/5mins</option>
+        <option value="1d10m">1day/10mins</option>
+        <option value="2d5m">2days/5mins</option>
+        <option value="2d10m">2days/10mins</option>
+        <option value="2d15m">2days/15mins</option>
+      </select>
+      <br>
+    </fieldset>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
   {% for chart in charts %}
     <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
   {% endfor %}
