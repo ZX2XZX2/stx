@@ -4,13 +4,12 @@
   <h1>{% block title %} XTC EOD Charts {% endblock %}</h1>
   <form method="post">
     <fieldset>
-      <legend>EOD Charts</legend>
       <label for="stocks">Stock(s)</label>
       <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}"/>
       <br>
-      <label for="datetime">Datetime</label>
-      <input type="date" name="datetime" placeholder="Datetime" value="{{ dt }}"/><br>
-      <label for="days">Timeframe (days):</label>
+      <label for="datetime">Date</label>
+      <input type="date" name="datetime" placeholder="Date" value="{{ dt }}"/><br>
+      <label for="days">Timeframe (days)</label>
       <select name="days">
         <option value="10">10</option>
         <option value="20">20</option>
