@@ -74,18 +74,19 @@ def charts():
 def idcharts():
     charts = []
     stks = ''
-    end_dt = f'{stxcal.current_busdate(hr=10)} 16:00'
+    end_date = stxcal.current_busdate(hr=10)
+    end_time = '16:00'
     if request.method == 'POST':
         stks = request.form['stocks']
-        end_dt = request.form['datetime']
+        end_date = request.form['dt_date']
+        end_time = request.form['dt_time']
+        end_dt = f'{end_date} {end_time}'
         if not stks:
             flash('Stocks are required!')
         elif not end_dt:
             flash('Date is required!')
         else:
-            
             stk_list = stks.split(' ')
-            end_date, end_time = end_dt.split(' ')
             start_date = stxcal.move_busdays(end_date, -10)
             start_dt = f'{start_date} 09:35'
             for stk in stk_list:
@@ -93,7 +94,8 @@ def idcharts():
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
     return render_template(
-        'charts_intraday.html', charts=charts, stx=stks, dt=end_dt)
+        'charts_intraday.html', charts=charts, stx=stks,
+        dt_date=end_date, dt_time=end_time)
 
 
 @app.route('/scanners', methods=('GET', 'POST'))
