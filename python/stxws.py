@@ -98,6 +98,38 @@ def idcharts():
         dt_date=end_date, dt_time=end_time)
 
 
+@app.route('/idc', methods=('GET', 'POST'))
+def idc():
+    charts = []
+    stks = ''
+    end_date = stxcal.current_busdate(hr=10)
+    end_time = '16:00'
+    num_days = 5
+    frequency = '5min'
+    if request.method == 'POST':
+        stks = request.form['stocks']
+        end_date = request.form['dt_date']
+        end_time = request.form['dt_time']
+        end_dt = f'{end_date} {end_time}'
+        if not stks:
+            flash('Stocks are required!')
+        elif not end_dt:
+            flash('Date is required!')
+        else:
+            num_days = int(request.form['num_days'])
+            stk_list = stks.split(' ')
+            start_date = stxcal.move_busdays(end_date, -num_days+1)
+            start_dt = f'{start_date} 09:35'
+            for stk in stk_list:
+                sp = StxPlotID(None, start_dt, end_dt, stk, 15)
+                chartdict = { 'figdata_png': sp.b64_png() }
+                charts.append(chartdict)
+    return render_template(
+        'idcharts_1.html', charts=charts, stx=stks,
+        dt_date=end_date, dt_time=end_time)
+    return render_template('idcharts_1.html')
+
+
 @app.route('/scanners', methods=('GET', 'POST'))
 def scanners():
     charts = []
