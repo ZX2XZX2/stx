@@ -10,40 +10,17 @@
       <br>
       <label for="dt_date">Date</label>
       <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/>
-
       <label for="dt_time">Time</label>
-      {%  if not dt_time %}
-      <input type="text" name="dt_time" placeholder="Time" value="16:00"/><br>
-      {% else %}
       <input type="text" name="dt_time" placeholder="Time" value="{{ dt_time }}"/><br>
-      {% endif %}
-      
-      <label for="days">Timeframe (1-30 days)</label>
-      {%  if not num_days %}
-      <input type="text" name="num_days" placeholder="Days" value="5"/><br>
-      {% else %}
+      <label for="num_days">Timeframe (1-30 days)</label>
       <input type="text" name="num_days" placeholder="Days" value="{{ num_days }}"/><br>
-      {% endif %}      
       <label for="frequency">Frequency</label>
-      {%  if not num_days %}
       <select id="frequency" name="frequency">
         <option value="5min" selected>5min</option>
         <option value="10min">10min</option>
         <option value="15min">15min</option>
+        <option value="30min">30min</option>
       </select>
-      {% elif num_days <=5 %}
-      <select id="frequency" name="frequency">
-        <option value="5min" selected>5min</option>
-        <option value="10min">10min</option>
-        <option value="15min">15min</option>
-      </select>
-      {% else %}
-      <select id="frequency" name="frequency">
-        <option value="10min">10min</option>
-        <option value="15min">15min</option>
-        <option value="30min" selected>30min</option>
-      </select>
-      {% endif %}
       <br>
     </fieldset>
     <button type="submit" class="btn btn-primary">Submit</button>
