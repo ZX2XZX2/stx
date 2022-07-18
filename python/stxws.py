@@ -22,6 +22,13 @@ indicator_tenors = sorted(indicators_df['tenor'].unique())
 display_days = 90
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
+frequencydict = {
+    '5min': '5min',
+    '10min': '10min',
+    '15min': '15min',
+    '30min': '30min'
+}
+
 @app.route('/')
 def index():
     charts = []
@@ -105,13 +112,14 @@ def idc():
     end_date = stxcal.current_busdate(hr=10)
     end_time = '16:00'
     num_days = 5
-    frequency = '5min'
+    freq = '5min'
     if request.method == 'POST':
         stks = request.form['stocks']
         end_date = request.form['dt_date']
         end_time = request.form['dt_time']
         end_dt = f'{end_date} {end_time}'
         num_days = int(request.form['num_days'])
+        freq = request.form['frequency']
         if not stks:
             flash('Stocks are required!')
         elif not end_dt:
@@ -120,16 +128,19 @@ def idc():
             stk_list = stks.split(' ')
             start_date = stxcal.move_busdays(end_date, -num_days + 1)
             start_dt = f'{start_date} 09:35'
+            frequency = int(freq[:-3])
             for stk in stk_list:
-                sp = StxPlotID(None, start_dt, end_dt, stk, 15)
+                sp = StxPlotID(None, start_dt, end_dt, stk, frequency)
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
         return render_template(
             'idcharts_1.html', charts=charts, stx=stks,
-            dt_date=end_date, dt_time=end_time, num_days=num_days)
+            dt_date=end_date, dt_time=end_time, num_days=num_days,
+            frequencydict=frequencydict, freq=freq)
     return render_template(
         'idcharts_1.html', charts=charts, stx=stks,
-        dt_date=end_date, dt_time=end_time, num_days=num_days)
+        dt_date=end_date, dt_time=end_time, num_days=num_days,
+        frequencydict=frequencydict, freq=freq)
 
 
 @app.route('/scanners', methods=('GET', 'POST'))
