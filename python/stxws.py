@@ -106,11 +106,11 @@ def idcharts():
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
         return render_template(
-            'idcharts_1.html', charts=charts, stx=stks,
+            'idcharts.html', charts=charts, stx=stks,
             dt_date=end_date, dt_time=end_time, num_days=num_days,
             frequencydict=frequencydict, freq=freq)
     return render_template(
-        'idcharts_1.html', charts=charts, stx=stks,
+        'idcharts.html', charts=charts, stx=stks,
         dt_date=end_date, dt_time=end_time, num_days=num_days,
         frequencydict=frequencydict, freq=freq)
 
