@@ -44,13 +44,15 @@ def index():
 @app.route('/indexes')
 def show_indexes():
     charts = []
+    date_dict = {}
     end_date = stxcal.current_busdate(hr=10)
     start_date = stxcal.move_busdays(end_date, -90)
     for stxindex in ['^GSPC', '^IXIC', '^DJI']:
         sp = StxPlot(None, stxindex, start_date, end_date, stk=stxindex)
+        date_dict[stxindex] = str(sp.ts.df.index[sp.ts.l - 1].date())
         chartdict = { 'figdata_png': sp.b64_png() }
         charts.append(chartdict)
-    return render_template('indexes.html', charts=charts)
+    return render_template('indexes.html', charts=charts, date_dict=date_dict)
 
 
 @app.route('/charts', methods=('GET', 'POST'))
