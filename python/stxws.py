@@ -22,6 +22,7 @@ indicator_tenors = sorted(indicators_df['tenor'].unique())
 display_days = 90
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
+
 frequencydict = {
     '5min': '5min',
     '10min': '10min',
@@ -29,16 +30,19 @@ frequencydict = {
     '30min': '30min'
 }
 
+
 @app.route('/')
 def index():
     charts = []
+    date_dict = {}
     end_date = stxcal.current_busdate(hr=10)
     start_date = stxcal.move_busdays(end_date, -90)
     for stxindex in ['^GSPC', '^IXIC', '^DJI']:
         sp = StxPlot(None, stxindex, start_date, end_date, stk=stxindex)
+        date_dict[stxindex] = str(sp.ts.df.index[sp.ts.l - 1].date())
         chartdict = { 'figdata_png': sp.b64_png() }
         charts.append(chartdict)
-    return render_template('indexes.html', charts=charts)
+    return render_template('indexes.html', charts=charts, date_dict=date_dict)
 
 
 @app.route('/indexes')
@@ -88,6 +92,7 @@ def idcharts():
     num_days = 5
     freq = '5min'
     if request.method == 'POST':
+        # print(f"action = {request.form['action']}")
         stks = request.form['stocks']
         end_date = request.form['dt_date']
         end_time = request.form['dt_time']
