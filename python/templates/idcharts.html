@@ -22,7 +22,8 @@
       </select>
       <br>
     </fieldset>
-    <button type="submit" class="btn btn-primary">Submit</button>
+    <button type="submit" name="action" value="Current">Current</button>
+    <button type="submit" name="action" value="Next">Next</button>
   </form>
   {% for chart in charts %}
     <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
