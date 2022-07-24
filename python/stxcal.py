@@ -643,5 +643,21 @@ def gen_cal(start_date='1984-12-31', end_date='2025-12-31'):
         s_date += np.timedelta64(1, 'D')
 
 
+def next_intraday(dt):
+    next_date, next_time = None, None
+    npdt = np.datetime64(dt)
+    npdt += np.timedelta64(5, 'm')
+    pddt = pd.Timestamp(npdt)
+    pddt_str = str(pddt)
+    pd_date, pd_time = pddt_str.split(' ')
+    if pddt.hour == 16 and pddt.minute == 5:
+        next_date = next_busday(pd_date)
+        next_time = '09:35'
+    else:
+        next_date = pd_date
+        next_time = pd_time[:-3]
+    return next_date, next_time
+
+
 if __name__ == '__main__':
     gen_cal()
