@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, url_for, flash
+import logging
 import matplotlib
 matplotlib.use('Agg')
 import os
@@ -9,6 +10,12 @@ from stxplot import StxPlot
 from stxplotid import StxPlotID
 from stxtsid import StxTSID
 
+logging.basicConfig(
+    format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
+    '%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO
+)
 app = Flask(__name__)
 indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
 indicator_list = indicators.split(',')
@@ -92,7 +99,7 @@ def idcharts():
     num_days = 5
     freq = '5min'
     if request.method == 'POST':
-        # print(f"action = {request.form['action']}")
+        logging.info(f"action = {request.form['action']}")
         stks = request.form['stocks']
         end_date = request.form['dt_date']
         end_time = request.form['dt_time']
@@ -104,6 +111,11 @@ def idcharts():
         elif not end_dt:
             flash('Date is required!')
         else:
+            if request.form['action'] == 'Next':
+                logging.info(f'end_dt = {end_dt}')
+                end_date, end_time = stxcal.next_intraday(end_dt)
+                end_dt = f'{end_date} {end_time}'                
+                logging.info(f'end_date = {end_date} end_time = {end_time}')
             stk_list = stks.split(' ')
             start_date = stxcal.move_busdays(end_date, -num_days + 1)
             start_dt = f'{start_date} 09:35'
