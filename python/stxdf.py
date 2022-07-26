@@ -377,7 +377,7 @@ class StxDatafeed:
                 "<HIGH>": float,
                 "<LOW>": float,
                 "<CLOSE>": float,
-                "<VOL>": int,
+                "<VOL>": float,
                 "<OPENINT>": int
             })
         except:
@@ -395,7 +395,7 @@ class StxDatafeed:
                         hi = float(row[5])
                         lo = float(row[6])
                         c = float(row[7])
-                        v = int(row[8])
+                        v = float(row[8])
                         oi = int(row[9])
                     except:
                         logging.error(f"Failed to parse line {line_num}")
@@ -406,6 +406,7 @@ class StxDatafeed:
         logging.info('Getting {0:d} daily US stocks out of {1:d} records'.
                      format(len(stx_df), len(df)))
         stx_df['date'] = stx_df['date'].astype(str)
+        stx_df['vol'] = stx_df['vol'].astype(int)
         stx_df['date'] = stx_df.apply(
             lambda r: '{0:s}-{1:s}-{2:s}'.
             format(r['date'][0:4], r['date'][4:6], r['date'][6:8]), axis=1)
