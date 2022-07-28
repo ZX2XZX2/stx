@@ -619,12 +619,21 @@ def current_busdate(hr=20):
 # if time between 9:35 and 16:00, return current business day and time
 # truncated to 5 mins
 # if time between 16:00 and 24:00, return current business day and 16:00
-def current_intraday_busdate():
-    crt_time = datetime.now()
+def current_intraday_busdatetime():
+    crt_dt = datetime.now()
     crt_date = crt_time.date()
-    if crt_time.hour < 9 or (crt_time.hour == 9 and crt_time.minute < 35):
+    crt_time = str(crt_dt.time())[:5]
+    if crt_dt.hour < 9 or (crt_dt.hour == 9 and crt_dt.minute < 35):
         crt_date -= timedelta(days=1)
-    return move_busdays(str(crt_date), 0)
+        crt_time = '16:00'
+    elif crt_dt.hour > 16 or (crt_dt.hour == 16 and crt_dt.minute > 0):
+        crt_time = '16:00'
+    else:
+        hrs, mins = crt_time.split(':')
+        mins = int(mins)
+        mns = mins - (mins % 5)
+        crt_time = f'{hrs}:{mns:02d}'
+    return move_busdays(str(crt_date), 0), crt_time
 
 
 def current_time():
