@@ -99,7 +99,6 @@ def idcharts():
     num_days = 5
     freq = '5min'
     if request.method == 'POST':
-        logging.info(f"action = {request.form['action']}")
         stks = request.form['stocks']
         end_date = request.form['dt_date']
         end_time = request.form['dt_time']
@@ -112,10 +111,8 @@ def idcharts():
             flash('Date is required!')
         else:
             if request.form['action'] == 'Next':
-                logging.info(f'end_dt = {end_dt}')
                 end_date, end_time = stxcal.next_intraday(end_dt)
                 end_dt = f'{end_date} {end_time}'                
-                logging.info(f'end_date = {end_date} end_time = {end_time}')
             stk_list = stks.split(' ')
             start_date = stxcal.move_busdays(end_date, -num_days + 1)
             start_dt = f'{start_date} 09:35'
@@ -137,6 +134,14 @@ def idcharts():
 @app.route('/scanners', methods=('GET', 'POST'))
 def scanners():
     charts = []
+    stks = ''
+    end_date = stxcal.current_busdate(hr=10)
+    end_time = '16:00'
+    min_up_cs = 90
+    max_down_cs = 10
+    eod_num_days = 90
+    id_num_days = 10
+    freq = '15min'
     """1. Get all the JC_1234 and JC_5DAYS setups for the current day.
     2. Use the same DB query as in the report generator
     3. Filter on the indicators
@@ -149,12 +154,17 @@ def scanners():
     """
     end_dt = ''
     if request.method == 'POST':
-        end_dt = request.form['datetime']
+        end_date = request.form['dt_date']
+        end_time = request.form['dt_time']
+        end_dt = f'{end_date} {end_time}'
+        eod_num_days = int(request.form['eod_num_days'])
+        id_num_days = int(request.form['id_num_days'])
         if not end_dt:
             flash('Date is required!')
             return render_template(
-                'scanner.html', charts=[], dt=end_dt,
-                min_up_cs=min_up_cs, max_down_cs=max_down_cs)
+                'scanner.html', charts=[], end_date='', end_time='',
+                min_up_cs=min_up_cs, max_down_cs=max_down_cs,
+                frequencydict=frequencydict, freq=freq)
         end_date, end_time = end_dt.split(' ')
         start_date = stxcal.move_busdays(end_date, -220)
         date_1 = stxcal.prev_busday(end_date)
@@ -166,8 +176,8 @@ def scanners():
         # Filter out:
         # 1. UP setups with CS_45 rank below a threshold
         # 2. DOWN setups with CS_45 rank above a threshold
-        sdf = setup_df.query("(direction=='U' and bucket_rank>@min_up_cs) or "
-                             "(direction=='D' and bucket_rank<@max_down_cs)")
+        sdf = setup_df.query("(direction=='U' and bucket_rank>=@min_up_cs) or "
+                             "(direction=='D' and bucket_rank<=@max_down_cs)")
         sdf = stx_ana.add_indicators(sdf, end_date, indicator_list, False)
         # 3. Setups not triggered yet
         for _, row in sdf.iterrows():
@@ -193,8 +203,10 @@ def scanners():
     else:
         min_up_cs = 90
         max_down_cs = 10
-    return render_template('scanner.html', charts=charts, dt=end_dt,
-                           min_up_cs=min_up_cs, max_down_cs=max_down_cs)
+    return render_template('scanner.html', charts=charts, dt_date=end_date,
+                           dt_time=end_time, min_up_cs=min_up_cs,
+                           max_down_cs=max_down_cs,
+                           frequencydict=frequencydict, freq=freq)
 
 
 @app.route('/rtscanners')
