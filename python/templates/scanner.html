@@ -3,27 +3,29 @@
 {% block content %}
   <h1>{% block title %} XTC Scanner {% endblock %}</h1>
   <form method="post">
-    <div class="form-group">
-        <label for="datetime">Datetime</label>
-        <input type="text" name="datetime"
-               placeholder="Datetime" class="form-control"
-               value="{{ dt }}"</input>
-    </div>
-    <div class="form-group">
-        <label for="min_up_cs">Min Up CS</label>
-        <input type="text" name="min_up_cs"
-               placeholder="MinUpCS" class="form-control"
-               value="{{ min_up_cs }}"</input>
-    </div>
-    <div class="form-group">
+    <fieldset>
+      <label for="dt_date">Date</label>
+      <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/>
+      <label for="dt_time">Time</label>
+      <input type="text" name="dt_time" placeholder="Time" value="{{ dt_time }}"/><br>
+      <label for="eod_num_days">Daily Timeframe (10-500 days)</label>
+      <input type="text" name="eod_num_days" placeholder="EOD Days" value="{{ eod_num_days }}"/><br>
+      <label for="id_num_days">Intrday Timeframe (1-30 days)</label>
+      <input type="text" name="id_num_days" placeholder="ID Days" value="{{ id_num_days }}"/><br>
+      <label for="frequency">Frequency</label>
+      <select id="frequency" name="frequency">
+        {% for key, value in frequencydict.items() %}
+        <option value="{{ key }}" {% if (key == freq) %} selected="selected" {% endif %}> {{ value }} </option>
+        {% endfor %}
+      </select>
+      <br>
+      <label for="min_up_cs">Min Up CS</label>
+      <input type="text" name="min_up_cs" placeholder="MinUpCS" value="{{ min_up_cs }}"</input>
         <label for="max_down_cs">Max Down CS</label>
-        <input type="text" name="max_down_cs"
-               placeholder="MaxDownCS" class="form-control"
-               value="{{ max_down_cs }}"</input>
-    </div>
-    <div class="form-group">
-        <button type="submit" class="btn btn-primary">Submit</button>
-    </div>
+        <input type="text" name="max_down_cs" placeholder="MaxDownCS" value="{{ max_down_cs }}"</input>
+    </fieldset>
+    <button type="submit" name="action" value="Current">Current</button>
+    <button type="submit" name="action" value="Next">Next</button>
 </form>
   {% for chart in charts %}
     {{ chart['indicator_table']| safe }}
