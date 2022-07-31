@@ -42,7 +42,7 @@ frequencydict = {
 def index():
     charts = []
     date_dict = {}
-    end_date = stxcal.current_busdate(hr=10)
+    end_date, end_time = stxcal.current_intraday_busdatetime()
     start_date = stxcal.move_busdays(end_date, -90)
     for stxindex in ['^GSPC', '^IXIC', '^DJI']:
         sp = StxPlot(None, stxindex, start_date, end_date, stk=stxindex)
@@ -56,7 +56,7 @@ def index():
 def show_indexes():
     charts = []
     date_dict = {}
-    end_date = stxcal.current_busdate(hr=10)
+    end_date, end_time = stxcal.current_intraday_busdatetime()
     start_date = stxcal.move_busdays(end_date, -90)
     for stxindex in ['^GSPC', '^IXIC', '^DJI']:
         sp = StxPlot(None, stxindex, start_date, end_date, stk=stxindex)
@@ -70,7 +70,7 @@ def show_indexes():
 def charts():
     charts = []
     stks = ''
-    dt = stxcal.current_busdate(hr=10)
+    dt, end_time = stxcal.current_intraday_busdatetime()
     if request.method == 'POST':
         stks = request.form['stocks']
         dt = request.form['datetime']
@@ -94,8 +94,7 @@ def charts():
 def idcharts():
     charts = []
     stks = ''
-    end_date = stxcal.current_busdate(hr=10)
-    end_time = '16:00'
+    end_date, end_time = stxcal.current_intraday_busdatetime()
     num_days = 5
     freq = '5min'
     if request.method == 'POST':
@@ -135,8 +134,7 @@ def idcharts():
 def scanners():
     charts = []
     stks = ''
-    end_date = stxcal.current_busdate(hr=10)
-    end_time = '16:00'
+    end_date, end_time = stxcal.current_intraday_busdatetime()
     min_up_cs = 90
     max_down_cs = 10
     eod_num_days = 90
