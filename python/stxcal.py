@@ -621,7 +621,7 @@ def current_busdate(hr=20):
 # if time between 16:00 and 24:00, return current business day and 16:00
 def current_intraday_busdatetime():
     crt_dt = datetime.now()
-    crt_date = crt_time.date()
+    crt_date = crt_dt.date()
     crt_time = str(crt_dt.time())[:5]
     if crt_dt.hour < 9 or (crt_dt.hour == 9 and crt_dt.minute < 35):
         crt_date -= timedelta(days=1)
