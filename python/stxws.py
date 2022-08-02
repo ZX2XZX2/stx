@@ -161,6 +161,7 @@ def scanners():
             flash('Date is required!')
             return render_template(
                 'scanner.html', charts=[], end_date='', end_time='',
+                eod_num_days=eod_num_days, id_num_days=id_num_days,
                 min_up_cs=min_up_cs, max_down_cs=max_down_cs,
                 frequencydict=frequencydict, freq=freq)
         end_date, end_time = end_dt.split(' ')
@@ -186,7 +187,8 @@ def scanners():
                 (row['direction'] == 'D' and
                  tsid.df.loc[end_date, 'Low'] > tsid.df.loc[date_1, 'Low'])):
                 continue
-            res = tsid.getchartstreams(end_dt, eod_days=90, id_days1=10,
+            res = tsid.getchartstreams(end_dt, eod_days=eod_num_days,
+                                       id_days1=id_num_days,
                                        id_mins1=30, id_days2=5, id_mins2=10)
             indicator_tbl = stx_ana.build_indicators_table(row)
             res['indicator_table'] = ''.join(indicator_tbl)
@@ -204,6 +206,8 @@ def scanners():
     return render_template('scanner.html', charts=charts, dt_date=end_date,
                            dt_time=end_time, min_up_cs=min_up_cs,
                            max_down_cs=max_down_cs,
+                           eod_num_days=eod_num_days,
+                           id_num_days=id_num_days,
                            frequencydict=frequencydict, freq=freq)
 
 
