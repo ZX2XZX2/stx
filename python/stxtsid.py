@@ -71,7 +71,7 @@ class StxTSID(StxTS):
         self.df.loc[self.ed, 'Volume'] = last_daily.loc[self.ed, 'Volume']
 
     def getchartstreams(self, end_dt, eod_days=90, id_days1=10,
-                        id_mins1=30, id_days2=5, id_mins2=10):
+                        id_mins1=30, id_days2=None, id_mins2=None):
         chartdict = {}
         end_date, end_time = end_dt.split(' ')
         start_date = stxcal.move_busdays(end_date, -eod_days)
@@ -81,10 +81,11 @@ class StxTSID(StxTS):
         start_dt = f'{start_date} 09:35'
         spid1 = StxPlotID(self.idf, start_dt, end_dt, self.stk, id_mins1)
         chartdict[ 'id1_png'] = spid1.b64_png()
-        start_date = stxcal.move_busdays(end_date, -id_days2)
-        start_dt = f'{start_date} 09:35'
-        spid2 = StxPlotID(self.idf, start_dt, end_dt, self.stk, id_mins2)
-        chartdict[ 'id2_png'] = spid2.b64_png()
+        if id_days2 is not None and id_mins2 is not None:
+            start_date = stxcal.move_busdays(end_date, -id_days2)
+            start_dt = f'{start_date} 09:35'
+            spid2 = StxPlotID(self.idf, start_dt, end_dt, self.stk, id_mins2)
+            chartdict[ 'id2_png'] = spid2.b64_png()
         return chartdict
     #     if period > 5:
     #         resample_period = f'{period}T'
