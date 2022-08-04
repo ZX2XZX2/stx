@@ -31,6 +31,8 @@
     {{ chart['indicator_table']| safe }}
     <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="1500">
     <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="1500">
+    {% if chart.get('id2_png') %}
     <img src="data:image/png;base64,{{ chart['id2_png'] }}" width="1500">
+    {% endif %}
   {% endfor %}
 {% endblock %}
