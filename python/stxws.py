@@ -189,17 +189,10 @@ def scanners():
                 continue
             res = tsid.getchartstreams(end_dt, eod_days=eod_num_days,
                                        id_days1=id_num_days,
-                                       id_mins1=30, id_days2=5, id_mins2=10)
+                                       id_mins1=30)
             indicator_tbl = stx_ana.build_indicators_table(row)
             res['indicator_table'] = ''.join(indicator_tbl)
             charts.append(res)
-            # start_date = stxcal.move_busdays(end_date, -90)
-            # id_start_date_1 = f'{stxcal.move_busdays(end_date, -10)} 09:35'
-            # id_start_date_2 = f'{stxcal.move_busdays(end_date, -5)} 09:35'
-            # for stk in stk_list:
-            #     sp = StxPlotID(stk, start_dt, end_dt, 15)
-            #     chartdict = { 'figdata_png': sp.b64_png() }
-            #     charts.append(chartdict)
     else:
         min_up_cs = 90
         max_down_cs = 10
