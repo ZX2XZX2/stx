@@ -164,6 +164,9 @@ def scanners():
                 eod_num_days=eod_num_days, id_num_days=id_num_days,
                 min_up_cs=min_up_cs, max_down_cs=max_down_cs,
                 frequencydict=frequencydict, freq=freq)
+        if request.form['action'] == 'Next':
+            end_date, end_time = stxcal.next_intraday(end_dt)
+            end_dt = f'{end_date} {end_time}'
         end_date, end_time = end_dt.split(' ')
         start_date = stxcal.move_busdays(end_date, -220)
         date_1 = stxcal.prev_busday(end_date)
