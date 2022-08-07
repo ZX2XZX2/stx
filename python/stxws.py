@@ -157,6 +157,7 @@ def scanners():
         end_dt = f'{end_date} {end_time}'
         eod_num_days = int(request.form['eod_num_days'])
         id_num_days = int(request.form['id_num_days'])
+        freq = request.form['frequency']
         if not end_dt:
             flash('Date is required!')
             return render_template(
@@ -171,6 +172,7 @@ def scanners():
         start_date = stxcal.move_busdays(end_date, -220)
         date_1 = stxcal.prev_busday(end_date)
         eod = False
+        frequency = int(freq[:-3])
         # Return all triggered setups for the day
         setup_df = stx_ana.get_triggered_setups(end_date, eod, triggered=True)
         min_up_cs = int(request.form['min_up_cs'])
@@ -192,7 +194,7 @@ def scanners():
                 continue
             res = tsid.getchartstreams(end_dt, eod_days=eod_num_days,
                                        id_days1=id_num_days,
-                                       id_mins1=30)
+                                       id_mins1=frequency)
             indicator_tbl = stx_ana.build_indicators_table(row)
             res['indicator_table'] = ''.join(indicator_tbl)
             charts.append(res)
