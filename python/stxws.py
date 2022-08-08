@@ -29,7 +29,6 @@ indicator_tenors = sorted(indicators_df['tenor'].unique())
 display_days = 90
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
-
 frequencydict = {
     '5min': '5min',
     '10min': '10min',
@@ -71,10 +70,11 @@ def charts():
     charts = []
     stks = ''
     dt, end_time = stxcal.current_intraday_busdatetime()
+    num_days = 90
     if request.method == 'POST':
         stks = request.form['stocks']
         dt = request.form['datetime']
-        num_days = int(request.form['days'])
+        num_days = int(request.form['num_days'])
         if not stks:
             flash('Stocks are required!')
         elif not dt:
@@ -87,7 +87,8 @@ def charts():
                 sp = StxPlot(None, stk, start_date, end_date, stk=stk)
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
-    return render_template('charts.html', charts=charts, stx=stks, dt=dt)
+    return render_template('charts.html', charts=charts, stx=stks, dt=dt,
+                           num_days=num_days)
 
 
 @app.route('/idcharts', methods=('GET', 'POST'))
