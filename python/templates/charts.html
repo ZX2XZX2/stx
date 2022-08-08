@@ -10,18 +10,11 @@
       <label for="datetime">Date</label>
       <input type="date" name="datetime" placeholder="Date" value="{{ dt }}"/><br>
       <label for="days">Timeframe (days)</label>
-      <select name="days">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="30">30</option>
-        <option value="60">60</option>
-        <option value="90" selected>90</option>
-        <option value="126">126</option>
-        <option value="252">252</option>
-      </select>
+      <input type="text" name="num_days" placeholder="Days" value="{{ num_days }}"/><br>
       <br>
     </fieldset>
-    <button type="submit" class="btn btn-primary">Submit</button>
+    <button type="submit" name="action" value="Current">Current</button>
+    <button type="submit" name="action" value="Next">Next</button>
   </form>
   {% for chart in charts %}
     <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
