@@ -81,6 +81,8 @@ def charts():
             flash('Date is required!')
         else:
             stk_list = stks.split(' ')
+            if request.form['action'] == 'Next':
+                dt = stxcal.next_busday(dt)
             end_date = dt
             start_date = stxcal.move_busdays(end_date, -num_days)
             for stk in stk_list:
