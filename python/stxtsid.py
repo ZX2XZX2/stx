@@ -75,7 +75,7 @@ class StxTSID(StxTS):
         chartdict = {}
         end_date, end_time = end_dt.split(' ')
         start_date = stxcal.move_busdays(end_date, -eod_days)
-        sp = StxPlot(None, self.stk, start_date, end_date, stk=self.stk)
+        sp = StxPlot(self, self.stk, start_date, end_date, stk=self.stk)
         chartdict['eod_png'] = sp.b64_png()
         start_date = stxcal.move_busdays(end_date, -id_days1)
         start_dt = f'{start_date} 09:35'
