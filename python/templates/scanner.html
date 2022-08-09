@@ -20,9 +20,12 @@
       </select>
       <br>
       <label for="min_up_cs">Min Up CS</label>
-      <input type="text" name="min_up_cs" placeholder="MinUpCS" value="{{ min_up_cs }}"</input>
-        <label for="max_down_cs">Max Down CS</label>
-        <input type="text" name="max_down_cs" placeholder="MaxDownCS" value="{{ max_down_cs }}"</input>
+      <input type="text" name="min_up_cs" placeholder="MinUpCS" value="{{ min_up_cs }}"/>
+      <label for="max_down_cs">Max Down CS</label>
+      <input type="text" name="max_down_cs" placeholder="MaxDownCS" value="{{ max_down_cs }}" />
+      <br>
+      <label for="untriggered">Get All Setups for Next Day</label>
+      <input type="checkbox" name="untriggered" value="true"/>
     </fieldset>
     <button type="submit" name="action" value="Current">Current</button>
     <button type="submit" name="action" value="Next">Next</button>
