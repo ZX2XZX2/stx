@@ -78,8 +78,7 @@ img {
                 sql.Literal('JC_5DAYS'),
                 sql.Literal('JC_1234')
             ]),
-            sql.SQL(") AND triggered="),
-            sql.Literal('t' if triggered else 'f'),
+            sql.SQL(")" if eod else ") AND triggered='t'"),
             sql.SQL(" AND indicators_1.dt="),
             sql.Literal(setups_date),
             sql.SQL(" AND time_setups.stk=indicators_1.ticker "
