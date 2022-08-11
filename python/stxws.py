@@ -168,16 +168,21 @@ def scanners():
                 eod_num_days=eod_num_days, id_num_days=id_num_days,
                 min_up_cs=min_up_cs, max_down_cs=max_down_cs,
                 frequencydict=frequencydict, freq=freq)
-        if request.form['action'] == 'Next':
-            end_date, end_time = stxcal.next_intraday(end_dt)
-            end_dt = f'{end_date} {end_time}'
+        if request.form.get('untriggered') is not None:
+            eod = True
+            triggered = False
+        else:
+            eod = False
+            triggered = True
+            if request.form['action'] == 'Next':
+                end_date, end_time = stxcal.next_intraday(end_dt)
+                end_dt = f'{end_date} {end_time}'
         end_date, end_time = end_dt.split(' ')
         start_date = stxcal.move_busdays(end_date, -220)
         date_1 = stxcal.prev_busday(end_date)
-        eod = False
         frequency = int(freq[:-3])
         # Return all triggered setups for the day
-        setup_df = stx_ana.get_triggered_setups(end_date, eod, triggered=True)
+        setup_df = stx_ana.get_triggered_setups(end_date, eod, triggered)
         min_up_cs = int(request.form['min_up_cs'])
         max_down_cs = int(request.form['max_down_cs'])
         # Filter out:
@@ -185,14 +190,14 @@ def scanners():
         # 2. DOWN setups with CS_45 rank above a threshold
         sdf = setup_df.query("(direction=='U' and bucket_rank>=@min_up_cs) or "
                              "(direction=='D' and bucket_rank<=@max_down_cs)")
-        sdf = stx_ana.add_indicators(sdf, end_date, indicator_list, False)
+        sdf = stx_ana.add_indicators(sdf, end_date, indicator_list, eod)
         # 3. Setups not triggered yet
         for _, row in sdf.iterrows():
             tsid = StxTSID(row['stk'], start_date, end_date, end_time)
             tsid.mpf_id(end_date)
-            if ((row['direction'] == 'U' and
+            if ((not eod and row['direction'] == 'U' and
                  tsid.df.loc[end_date, 'High'] < tsid.df.loc[date_1, 'High']) or
-                (row['direction'] == 'D' and
+                (not eod and row['direction'] == 'D' and
                  tsid.df.loc[end_date, 'Low'] > tsid.df.loc[date_1, 'Low'])):
                 continue
             res = tsid.getchartstreams(end_dt, eod_days=eod_num_days,
