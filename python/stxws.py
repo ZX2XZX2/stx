@@ -9,6 +9,7 @@ from stx247 import StxAnalyzer
 from stxplot import StxPlot
 from stxplotid import StxPlotID
 from stxtsid import StxTSID
+import traceback as tb
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
@@ -193,19 +194,23 @@ def scanners():
         sdf = stx_ana.add_indicators(sdf, end_date, indicator_list, eod)
         # 3. Setups not triggered yet
         for _, row in sdf.iterrows():
-            tsid = StxTSID(row['stk'], start_date, end_date, end_time)
-            tsid.mpf_id(end_date)
-            if ((not eod and row['direction'] == 'U' and
-                 tsid.df.loc[end_date, 'High'] < tsid.df.loc[date_1, 'High']) or
-                (not eod and row['direction'] == 'D' and
-                 tsid.df.loc[end_date, 'Low'] > tsid.df.loc[date_1, 'Low'])):
-                continue
-            res = tsid.getchartstreams(end_dt, eod_days=eod_num_days,
-                                       id_days1=id_num_days,
-                                       id_mins1=frequency)
-            indicator_tbl = stx_ana.build_indicators_table(row)
-            res['indicator_table'] = ''.join(indicator_tbl)
-            charts.append(res)
+            try:
+                tsid = StxTSID(row['stk'], start_date, end_date, end_time)
+                tsid.mpf_id(end_date)
+                if ((not eod and row['direction'] == 'U' and
+                     tsid.df.loc[end_date, 'High']<tsid.df.loc[date_1, 'High'])
+                    or (not eod and row['direction'] == 'D' and
+                        tsid.df.loc[end_date,'Low']>tsid.df.loc[date_1,'Low'])):
+                    continue
+                res = tsid.getchartstreams(end_dt, eod_days=eod_num_days,
+                                           id_days1=id_num_days,
+                                           id_mins1=frequency)
+                indicator_tbl = stx_ana.build_indicators_table(row)
+                res['indicator_table'] = ''.join(indicator_tbl)
+                charts.append(res)
+            except:
+                logging.error(f"Intraday analysis failed for {row['stk']}")
+                tb.print_exc()
     else:
         min_up_cs = 90
         max_down_cs = 10
