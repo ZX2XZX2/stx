@@ -71,8 +71,10 @@ class StxPlotID:
                 xticks.append(i)
                 xticklabels.append(datetime.strftime(dt, '%b %d'))
                 day = dt.day
+        print(f'xticklabels = {xticklabels}')
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(xticklabels)
+        ax2.set_xticklabels(xticklabels)
         # if not self.trend_lines:
         if not apd:
             mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
