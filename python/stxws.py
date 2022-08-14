@@ -183,7 +183,12 @@ def scanners():
         date_1 = stxcal.prev_busday(end_date)
         frequency = int(freq[:-3])
         # Return all triggered setups for the day
-        setup_df = stx_ana.get_triggered_setups(end_date, eod, triggered)
+        if not eod:
+            setup_df = stx_ana.get_triggered_setups(
+                end_date, eod, triggered)
+        else:
+            setup_df = stx_ana.get_triggered_setups(
+                stxcal.next_busday(end_date), eod, triggered)
         min_up_cs = int(request.form['min_up_cs'])
         max_down_cs = int(request.form['max_down_cs'])
         # Filter out:
