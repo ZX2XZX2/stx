@@ -269,6 +269,9 @@ cJSON* net_get_sub_array(cJSON *parent, char* sub_array_name) {
  *  Get the intraday data for a stock.  'range' is the time interval
  *  over which data is retrieved (1d, 5d, 1m).  'interval' is the size
  *  of a data candlestick (5m, 10m, 15m)
+ *
+ *  TODO: replace 'range' with unsigned long 'period1' and 'period2':
+ *  symbol=NERV&period1=1660929571&period2=1662225571&useYfid=true&interval=15m
  */
 id_ptr net_get_intraday_data(char* stk, char* range, char* interval,
                              int* num_records) {
