@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 import os
 import requests
@@ -21,16 +22,15 @@ class StxGetSplits:
         return [exchange, ticker, splitdate, splitratio]
 
     def getsplits(self):
-        # dt = stxcal.today_date()
         fname = os.path.join(
             os.getenv('HOME'),
             'Downloads',
-            f"split_{self.dt.replace('-', '')}.txt"
+            f"splits_{self.dt.replace('-', '')}.txt"
         )
         res = ['\t'.join(['Exchange', 'Symbol', 'Date', 'Ratio'])]
         headers = requests.utils.default_headers()
         data = requests.get('https://eoddata.com/splits.aspx', headers=headers)
-        fn = os.path.join('/tmp', f"split_{self.dt.replace('-', '')}.txt")
+        fn = os.path.join('/tmp', f"splits_{self.dt.replace('-', '')}.txt")
         with open(fn, 'w') as fp:
             fp.write(data.text)
         srch_str1 = '<table class="quotes">'
@@ -57,3 +57,13 @@ class StxGetSplits:
                 print(f'Failed to parse line {tkns[:4]}')
         with open(fname, 'w') as fp:
             fp.write('\n'.join(res))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--date', type=str,
+                        help='Date in the splits file name',
+                        default=stxcal.today_date())
+    args = parser.parse_args()
+    sgs = StxGetSplits(args.date)
+    sgs.getsplits()
