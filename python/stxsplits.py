@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime
+import logging
 import os
 import requests
 import stxcal
@@ -47,14 +48,14 @@ class StxGetSplits:
                 lineres = self.parsesplit(tkns, 0)
                 res.append('\t'.join(lineres))
             except:
-                print(f'Failed to parse line {tkns[:4]}')
+                logging.warn(f'Failed to parse line {tkns[:4]}')
             if len(tkns) < 9:
                 continue
             try:
                 lineres = self.parsesplit(tkns, 4)
                 res.append('\t'.join(lineres))
             except:
-                print(f'Failed to parse line {tkns[:4]}')
+                logging.warn(f'Failed to parse line {tkns[:4]}')
         with open(fname, 'w') as fp:
             fp.write('\n'.join(res))
 
@@ -65,5 +66,11 @@ if __name__ == '__main__':
                         help='Date in the splits file name',
                         default=stxcal.today_date())
     args = parser.parse_args()
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
+        '%(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.INFO
+    )
     sgs = StxGetSplits(args.date)
     sgs.getsplits()
