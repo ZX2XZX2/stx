@@ -20,6 +20,7 @@ import stxcal
 import stxdb
 import stxgrps
 from stxidx import StxIndex
+from stxsplits import StxGetSplits
 from stxts import StxTS
 import subprocess
 import sys
@@ -140,6 +141,9 @@ class StxDatafeed:
             stxdb.db_insert_eods(upload_lines)
 
     def handle_splits(self, start_date):
+        # Get the most recent splits file
+        sgs = StxGetSplits(stxcal.today_date())
+        sgs.getsplits()
         split_files = [x for x in os.listdir(self.in_dir)
                        if x.startswith('splits_')]
         split_files.sort()
