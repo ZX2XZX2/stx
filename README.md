@@ -17,3 +17,10 @@ To install:
    root	ALL=(ALL:ALL) ALL
    username	ALL=(ALL) NOPASSWD: /usr/bin/pg_dump
    ```
+6. To fix the intraday data, run the following commands in the `pgsql` CLI:
+   ```
+   create table intraday_5 (like intraday including indexes);
+   insert into intraday_5 (select stk, dt - interval '5 min', o, hi, lo, c, v, oi from intraday);
+   drop table intraday;
+   alter table intraday_5 rename to intraday;
+   ```
