@@ -663,7 +663,8 @@ class StxDatafeed:
             logging.debug(f'{dt}: uploaded dataframe into temporary table')
             stxdb.db_write_cmd(
                 'INSERT INTO intraday (stk, dt, o, hi, lo, c, v, oi) '
-                'SELECT * FROM temp_intraday_table ON CONFLICT (stk, dt) DO '
+                "SELECT stk, dt - INTERVAL '5 min', o, hi, lo, c, v, oi "
+                "FROM temp_intraday_table ON CONFLICT (stk, dt) DO "
                 'UPDATE SET o = EXCLUDED.o, hi = EXCLUDED.hi, '
                 'lo = EXCLUDED.lo, c = EXCLUDED.c, v = EXCLUDED.v, '
                 'oi = EXCLUDED.oi')
