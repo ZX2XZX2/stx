@@ -161,8 +161,7 @@ class StxDatafeed:
                 stk = tokens[1].strip()
                 stk_splits = split_dct.get(stk, {})
                 dt = str(datetime.datetime.strptime(tokens[2].strip(),
-                                                    # '%m/%d/%Y').date())
-                                                    '%Y-%m-%d').date())
+                                                    '%m/%d/%Y').date())
                 if dt < start_date:
                     continue
                 denominator, nominator = tokens[3].strip().split('-')
