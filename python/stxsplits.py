@@ -24,6 +24,7 @@ class StxGetSplits:
         return [exchange, ticker, splitdate, splitratio]
 
     def getsplits(self):
+        logging.info(f'Getting splits as of {dt}')
         fname = os.path.join(
             os.getenv('HOME'),
             'Downloads',
@@ -59,6 +60,7 @@ class StxGetSplits:
                 logging.warn(f'Failed to parse line {tkns[:4]}')
         with open(fname, 'w') as fp:
             fp.write('\n'.join(res))
+        logging.info(f'Wrote {len(res)} splits in {fname}')
 
 
 if __name__ == '__main__':
