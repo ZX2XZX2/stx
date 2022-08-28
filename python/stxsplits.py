@@ -24,7 +24,7 @@ class StxGetSplits:
         return [exchange, ticker, splitdate, splitratio]
 
     def getsplits(self):
-        logging.info(f'Getting splits as of {dt}')
+        logging.info(f'Getting splits as of {self.dt}')
         fname = os.path.join(
             os.getenv('HOME'),
             'Downloads',
