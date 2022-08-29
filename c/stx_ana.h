@@ -650,10 +650,15 @@ void ana_intraday_data(char *stk, char *range, char *interval) {
                 break;
             }
         }
+        char id_date[20];
+        struct tm *ts;
         for (int ix = 0; ix < num_recs; ix++) {
-            fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp,
-                    id_data[ix].open, id_data[ix].high, id_data[ix].low,
-                    id_data[ix].close, id_data[ix].volume);
+            ts = localtime(&(id_data[ix].timestamp));
+            strftime(id_date, 20, "%Y-%m-%d %H:%M", ts);
+            /* fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp, */
+            fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open,
+                    id_data[ix].high, id_data[ix].low, id_data[ix].close,
+                    id_data[ix].volume);
             eod_volume += id_data[ix].volume;
             if (id_data[ix].high > eod_high)
                 eod_high = id_data[ix].high;
