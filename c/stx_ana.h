@@ -635,21 +635,13 @@ void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
 }
 
 /**
- *  Method to get intraday data in real-time, and aggregate intraday
- *  data into daily OHLC records.  For now, just print data on screen.
+ *  Method to get intraday data in real-time.  For now, just print
+ *  data on screen.
  */
 void ana_intraday_data(char *stk, char *range, char *interval) {
     int num_recs;
     id_ptr id_data = net_get_intraday_data(stk, range, interval, &num_recs);
     if (id_data != NULL) {
-        int ix, eod_open = id_data[0].open, eod_close = 0,
-            eod_high = -1, eod_low = 100000000, eod_volume = 0;
-        for (int ix = num_recs - 1; ix >= 0; ix--) {
-            if (id_data[ix].close > 0) {
-                eod_close = id_data[ix].close;
-                break;
-            }
-        }
         char id_date[20];
         struct tm *ts;
         for (int ix = 0; ix < num_recs; ix++) {
@@ -659,14 +651,7 @@ void ana_intraday_data(char *stk, char *range, char *interval) {
             fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open,
                     id_data[ix].high, id_data[ix].low, id_data[ix].close,
                     id_data[ix].volume);
-            eod_volume += id_data[ix].volume;
-            if (id_data[ix].high > eod_high)
-                eod_high = id_data[ix].high;
-            if (id_data[ix].low < eod_low)
-                eod_low = id_data[ix].low;
         }
-        fprintf(stderr, "EOD: %d %d %d %d %d\n", eod_open, eod_high, eod_low,
-                eod_close, eod_volume);
         free(id_data);
         id_data = NULL;
     } else {
