@@ -280,6 +280,9 @@ id_ptr net_get_intraday_data(char* stk, char* range, char* interval,
     *num_records = 0;
     sprintf(url, "%s%s%s%s%s%s%s", YID_1, stk, YID_2, interval, YID_3, range,
             YID_4);
+#ifdef DEBUG_ID_QUOTE
+    LOGINFO("net_get_intraday_data(): url = %s\n", url);
+#endif
     net_mem_ptr chunk = net_get_quote(url);
     if (chunk == NULL) {
         LOGERROR("%s: net_get_quote() returned null\n", stk);
@@ -343,12 +346,6 @@ id_ptr net_get_intraday_data(char* stk, char* range, char* interval,
     num = 0;
     cJSON_ArrayForEach(crs, closes)
         id_data[num++].close = (int)(100 * crs->valuedouble);
-    FILE* fpw = fopen("/tmp/intraday_out.txt", "w");
-    for (num = 0; num < total; num++)
-        fprintf(fpw, "%ld %d %d %d %d %d\n", id_data[num].timestamp,
-                id_data[num].open, id_data[num].high, id_data[num].low,
-                id_data[num].close, id_data[num].volume);
-    fclose(fpw);
  end:
     if (chunk->memory != NULL)
         free(chunk->memory);
