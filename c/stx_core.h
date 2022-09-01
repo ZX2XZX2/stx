@@ -759,4 +759,30 @@ hashtable_ptr ht_jl(const char* factor) {
     return jl_factor_ht;
 }
 
+/**
+ *  Cannot reference strptime(), so I got to do this :(
+ */
+unsigned long cal_tsfromdt(char *dt) {
+    char *year_str, *mth_str, *day_str, *hrs_str, *mins_str;
+    struct timespec spec;
+    clock_gettime(CLOCK_REALTIME, &spec);
+    unsigned long endts = spec.tv_sec;
+    struct tm *ts;
+    ts = localtime(&endts);
+    hrs_str = strchr(dt, ' ');
+    *hrs_str++ = '\0';
+    mins_str = strchr(hrs_str, ':');
+    *mins_str++ = '\0';
+    year_str = strtok(dt, "-");
+    mth_str = strtok(NULL, "-");
+    day_str = strtok(NULL, "-");
+    ts->tm_year = atoi(year_str) - 1900;
+    ts->tm_mon = atoi(mth_str) - 1;
+    ts->tm_mday = atoi(day_str);
+    ts->tm_hour = atoi(hrs_str);
+    ts->tm_min = atoi(mins_str);
+    unsigned long startts = mktime(ts);
+    return startts;
+}
+
 #endif
