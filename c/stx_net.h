@@ -273,13 +273,17 @@ cJSON* net_get_sub_array(cJSON *parent, char* sub_array_name) {
  *  TODO: replace 'range' with unsigned long 'period1' and 'period2':
  *  symbol=NERV&period1=1660929571&period2=1662225571&useYfid=true&interval=15m
  */
-id_ptr net_get_intraday_data(char* stk, char* range, char* interval,
+
+id_ptr net_get_intraday_data(char* stk, unsigned long startts,
+                             unsigned long endts, char* interval,
                              int* num_records) {
     char url[256];
     id_ptr id_data = NULL;
     *num_records = 0;
-    sprintf(url, "%s%s%s%s%s%s%s", YID_1, stk, YID_2, interval, YID_3, range,
-            YID_4);
+    sprintf(url, "%s%s?symbol=%s&period1=%lu&period2=%lu&useYfid=true&"
+            "interval=%s&lang=en-US&region=US&crumb=fqU.nRgWHiq&"
+            "corsDomain=finance.yahoo.com", YID_1, stk, stk, startts, endts,
+            interval);
 #ifdef DEBUG_ID_QUOTE
     LOGINFO("net_get_intraday_data(): url = %s\n", url);
 #endif
