@@ -683,23 +683,24 @@ void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
 /*     char* stk = strtok(stk_list, ","); */
 /*     while (stk != NULL) { */
 /*         /\** look for stk in json document *\/ */
-        
+
 /*         token = strtok(NULL, ","); */
 /*     } */
- 
+
 /*     return 0; */
 /*     PQclear(res); */
 
 /* } */
 
 /**
- *  Get intraday data for a stock for a custom time interval, between
- *  period1 and period2
+ *  Get intraday data for a stock for a custom time interval, starting
+ *  at startts and until now
  */
-void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) { 
+void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
     struct timespec spec;
     clock_gettime(CLOCK_REALTIME, &spec);
     unsigned long endts = spec.tv_sec;
+#ifdef DEBUG_ID_QUOTE
     char parsed_date[20];
     struct tm *ts;
     ts = localtime(&startts);
@@ -708,7 +709,7 @@ void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
     ts = localtime(&endts);
     strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
     printf("endts = %s\n", parsed_date);
-    
+#endif
     int num_recs;
     id_ptr id_data = net_get_intraday_data(stk, startts, endts, interval,
                                            &num_recs);
