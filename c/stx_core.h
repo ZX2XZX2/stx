@@ -211,12 +211,13 @@ typedef struct stx_data_t {
     char stk[16];
 } stx_data, *stx_data_ptr;
 
-typedef enum { DIVI_HT, CAL_HT, DATA_HT } ht_type;
+typedef enum { DIVI_HT, CAL_HT, DATA_HT, STR_HT } ht_type;
 
 union item_value {
     float ratio;
     cal_info_ptr cal;
     void* data;
+    char* str;
 };
 
 typedef struct ht_item_t {
@@ -283,6 +284,13 @@ ht_item_ptr ht_new_data(const char* k, void* data) {
     strcpy(hi->key, k);
     hi->item_type = DATA_HT;
     hi->val.data = data;
+    return hi;
+}
+
+ht_item_ptr ht_new_str(ht_item_ptr hi, const char* k, char* str) {
+    strcpy(hi->key, k);
+    hi->item_type = STR_HT;
+    hi->val.str = str;
     return hi;
 }
 
@@ -380,6 +388,28 @@ hashtable_ptr ht_divis(PGresult* res) {
     return ht_new(list, num);
 }
 
+hashtable_ptr ht_strings(PGresult* res) {
+    int num = PQntuples(res);
+#ifdef DDEBUGG
+    LOGDEBUG("Found %d records\n", num);
+#endif
+    ht_item_ptr list = NULL;
+    if (num > 0) {
+        list = (ht_item_ptr) calloc((size_t)num, sizeof(ht_item));
+        for(int ix = 0; ix < num; ix++) {
+#ifdef DDEBUGG
+            LOGDEBUG("ix = %d\n", ix);
+#endif
+            char* key = PQgetvalue(res, ix, 0);
+            char* value = PQgetvalue(res, ix, 1);
+            ht_new_str(list + ix, key, value);
+#ifdef DDEBUGG
+            LOGDEBUG("key = %s, value = %s\n", key, value);
+#endif
+        }
+    }
+    return ht_new(list, num);
+}
 
 hashtable_ptr ht_calendar(PGresult* res) {
     int num = PQntuples(res);
