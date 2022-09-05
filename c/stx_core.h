@@ -477,6 +477,8 @@ void ht_print(hashtable_ptr ht) {
         ht_item_ptr crs = ht->list + ix;
         if (crs->item_type == DIVI_HT)
             LOGINFO("  %s, %12.6f\n", crs->key, crs->val.ratio);
+        else if (crs->item_type == STR_HT)
+            LOGINFO("  %s, %s\n", crs->key, crs->val.str);
         else
             LOGINFO("  %s, %5d %5d %d\n", crs->key, crs->val.cal->day_number, 
                     crs->val.cal->busday_number, crs->val.cal->is_busday);
