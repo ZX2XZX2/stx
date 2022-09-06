@@ -638,6 +638,33 @@ void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
  *  Return the last datetime for which intraday data is available for
  *  a list of stocks.
  */
+
+void ana_intraday_data(char* stk_list) {
+    char sql_cmd[1024];
+    sprintf(sql_cmd, "SELECT stk, MAX(dt) FROM intraday WHERE stk IN "
+            "(%s) group by stk", stk_list);
+    PGresult *res = db_query(sql_cmd);
+/* #ifdef DEBUG */
+    LOGDEBUG("Found %d intraday last dates for %s\n", PQntuples(res), stk_list);
+/* #endif */
+    hashtable_ptr result = ht_strings(res);
+    PQclear(res);
+    char* stk = strtok(stk_list, ",");
+    ht_item hti;
+    memset(&hti, 0, sizeof(ht_item));
+    while (stk != NULL) {
+        *stk++ = '\0';
+        *(stk + strlen(stk) - 1) = '\0';
+        ht_item_ptr last_date = ht_get(result, stk);
+        if (last_date == NULL) {
+            LOGINFO("Could not find last date for %s\n", stk);
+        } else {
+            LOGINFO("Last date for %s is %s\n", stk, last_date->val.str);
+        }
+        stk = strtok(NULL, ",");
+    }
+}
+
 /* cJSON* ana_get_intraday_dt(char *stk_list) { */
 /*     cJSON *last_intraday_date_list = cJSON_CreateArray(); */
 /*     if (last_intraday_date_list == NULL) { */
