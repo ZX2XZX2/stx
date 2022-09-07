@@ -635,6 +635,45 @@ void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
 }
 
 /**
+ *  Get intraday data for a stock for a custom time interval, starting
+ *  at startts and until now
+ */
+void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
+    struct timespec spec;
+    clock_gettime(CLOCK_REALTIME, &spec);
+    unsigned long endts = spec.tv_sec;
+#ifdef DEBUG_ID_QUOTE
+    char parsed_date[20];
+    struct tm *ts;
+    ts = localtime(&startts);
+    strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
+    printf("startts = %s\n", parsed_date);
+    ts = localtime(&endts);
+    strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
+    printf("endts = %s\n", parsed_date);
+#endif
+    int num_recs;
+    id_ptr id_data = net_get_intraday_data(stk, startts, endts, interval,
+                                           &num_recs);
+    if (id_data != NULL) {
+        char id_date[20];
+        struct tm *ts;
+        for (int ix = 0; ix < num_recs; ix++) {
+            ts = localtime(&(id_data[ix].timestamp));
+            strftime(id_date, 20, "%Y-%m-%d %H:%M", ts);
+            /* fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp, */
+            fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open,
+                    id_data[ix].high, id_data[ix].low, id_data[ix].close,
+                    id_data[ix].volume);
+        }
+        free(id_data);
+        id_data = NULL;
+    } else {
+        LOGERROR("Failed to get %s intraday data for %s\n", interval, stk);
+    }
+}
+
+/**
  *  Return the last datetime for which intraday data is available for
  *  a list of stocks.
  */
@@ -718,46 +757,6 @@ void ana_intraday_data(char* stk_list) {
 /*     PQclear(res); */
 
 /* } */
-
-/**
- *  Get intraday data for a stock for a custom time interval, starting
- *  at startts and until now
- */
-void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
-    struct timespec spec;
-    clock_gettime(CLOCK_REALTIME, &spec);
-    unsigned long endts = spec.tv_sec;
-#ifdef DEBUG_ID_QUOTE
-    char parsed_date[20];
-    struct tm *ts;
-    ts = localtime(&startts);
-    strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
-    printf("startts = %s\n", parsed_date);
-    ts = localtime(&endts);
-    strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
-    printf("endts = %s\n", parsed_date);
-#endif
-    int num_recs;
-    id_ptr id_data = net_get_intraday_data(stk, startts, endts, interval,
-                                           &num_recs);
-    if (id_data != NULL) {
-        char id_date[20];
-        struct tm *ts;
-        for (int ix = 0; ix < num_recs; ix++) {
-            ts = localtime(&(id_data[ix].timestamp));
-            strftime(id_date, 20, "%Y-%m-%d %H:%M", ts);
-            /* fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp, */
-            fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open,
-                    id_data[ix].high, id_data[ix].low, id_data[ix].close,
-                    id_data[ix].volume);
-        }
-        free(id_data);
-        id_data = NULL;
-    } else {
-        LOGERROR("Failed to get %s intraday data for %s\n", interval, stk);
-    }
-}
-
 /**
  *  Method to get intraday data in real-time.  For now, just print
  *  data on screen.
