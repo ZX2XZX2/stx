@@ -704,59 +704,6 @@ void ana_intraday_data(char* stk_list) {
     }
 }
 
-/* cJSON* ana_get_intraday_dt(char *stk_list) { */
-/*     cJSON *last_intraday_date_list = cJSON_CreateArray(); */
-/*     if (last_intraday_date_list == NULL) { */
-/*         LOGERROR("Failed to create last_intraday_date_list cJSON Array.\n"); */
-/*         return NULL; */
-/*     } */
-/*     char sql_cmd[1024]; */
-/*     sprintf(sql_cmd, "SELECT stk, MAX(dt) FROM intraday WHERE stk IN " */
-/*             "(%s) group by stk", stk_list); */
-/*     PGresult* res = db_query(sql_cmd); */
-/*     int rows = PQntuples(res); */
-/*     if (rows == 0) { */
-/*         /\** */
-/*          *  If there is no last setup analysis date in the DB, find */
-/*          *  first date (d1) when EOD is available for the stock.  Then */
-/*          *  move back a year from the analysis date (d2).  Start */
-/*          *  analysis from the most recent date among d1 and d2. */
-/*          *\/ */
-/*         PQclear(res); */
-/*         sprintf(sql_cmd, "SELECT min(dt) FROM eods WHERE stk='%s'", stk); */
-/*         res = db_query(sql_cmd); */
-/*         rows = PQntuples(res); */
-/*         if (rows == 0) { */
-/*             PQclear(res); */
-/*             LOGERROR("Could not find EOD data for stock %s, exit\n", stk); */
-/*             return NULL; */
-/*         } */
-/*         setup_date = PQgetvalue(res, 0, 0); */
-/*         cal_move_bdays(setup_date, 45, &setup_date); */
-/*         char *setup_date_1 = NULL; */
-/*         cal_move_bdays(ana_date, -252, &setup_date_1); */
-/*         if (strcmp(setup_date, setup_date_1) < 0) */
-/*             setup_date = setup_date_1; */
-/*     } else { */
-/*         /\** */
-/*          *  Found last setup analysis date in DB. Start analysis from */
-/*          *  the next business day. */
-/*          *\/ */
-/*         setup_date = PQgetvalue(res, 0, 0); */
-/*         cal_next_bday(cal_ix(setup_date), &setup_date); */
-/*     } */
-
-/*     char* stk = strtok(stk_list, ","); */
-/*     while (stk != NULL) { */
-/*         /\** look for stk in json document *\/ */
-
-/*         token = strtok(NULL, ","); */
-/*     } */
-
-/*     return 0; */
-/*     PQclear(res); */
-
-/* } */
 /**
  *  Method to get intraday data in real-time.  For now, just print
  *  data on screen.
