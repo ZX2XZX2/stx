@@ -674,10 +674,9 @@ void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
 }
 
 /**
- *  Return the last datetime for which intraday data is available for
- *  a list of stocks.
+ *  Method to get intraday data in real-time.  For now, just print
+ *  data on screen.
  */
-
 void ana_intraday_data(char* stk_list) {
     char sql_cmd[1024];
     sprintf(sql_cmd, "SELECT stk, MAX(dt) FROM intraday WHERE stk IN "
@@ -703,32 +702,6 @@ void ana_intraday_data(char* stk_list) {
         stk = strtok(NULL, ",");
     }
 }
-
-/**
- *  Method to get intraday data in real-time.  For now, just print
- *  data on screen.
- */
-/* void ana_intraday_data(char *stk, char *range, char *interval) { */
-/*     int num_recs; */
-/*     id_ptr id_data = net_get_intraday_data(stk, range, interval, &num_recs); */
-/*     if (id_data != NULL) { */
-/*         char id_date[20]; */
-/*         struct tm *ts; */
-/*         for (int ix = 0; ix < num_recs; ix++) { */
-/*             ts = localtime(&(id_data[ix].timestamp)); */
-/*             strftime(id_date, 20, "%Y-%m-%d %H:%M", ts); */
-/*             /\* fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp, *\/ */
-/*             fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open, */
-/*                     id_data[ix].high, id_data[ix].low, id_data[ix].close, */
-/*                     id_data[ix].volume); */
-/*         } */
-/*         free(id_data); */
-/*         id_data = NULL; */
-/*     } else { */
-/*         LOGERROR("Failed to get %s %s intraday data for %s\n", */
-/*                  range, interval, stk); */
-/*     } */
-/* } */
 
 /**
  *  Find out the business day from which to start setup analysis for a
