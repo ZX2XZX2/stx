@@ -698,6 +698,8 @@ void ana_intraday_data(char* stk_list) {
             LOGINFO("Could not find last date for %s\n", stk);
         } else {
             LOGINFO("Last date for %s is %s\n", stk, last_date->val.str);
+            unsigned long startts = cal_tsfromdt(last_date->val.str);
+            ana_stk_intraday_data(stk, startts, "5m");
         }
         stk = strtok(NULL, ",");
     }
