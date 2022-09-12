@@ -639,9 +639,9 @@ void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
  *  at startts and until now
  */
 void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
-    struct timespec spec;
-    clock_gettime(CLOCK_REALTIME, &spec);
-    unsigned long endts = spec.tv_sec;
+    /* struct timespec spec; */
+    /* clock_gettime(CLOCK_REALTIME, &spec); */
+    /* unsigned long endts = spec.tv_sec; */
 #ifdef DEBUG_ID_QUOTE
     char parsed_date[20];
     struct tm *ts;
@@ -652,6 +652,7 @@ void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
     strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
     printf("endts = %s\n", parsed_date);
 #endif
+    time_t endts = time(NULL);
     int num_recs;
     id_ptr id_data = net_get_intraday_data(stk, startts, endts, interval,
                                            &num_recs);
@@ -685,24 +686,28 @@ void ana_intraday_data(char* stk_list) {
 /* #ifdef DEBUG */
     LOGDEBUG("Found %d intraday last dates for %s\n", PQntuples(res), stk_list);
 /* #endif */
-    hashtable_ptr result = ht_strings(res);
-    PQclear(res);
+    hashtable_ptr lastdate_ht = ht_strings(res);
     char* stk = strtok(stk_list, ",");
-    ht_item hti;
-    memset(&hti, 0, sizeof(ht_item));
+    ht_print(lastdate_ht);
     while (stk != NULL) {
         *stk++ = '\0';
         *(stk + strlen(stk) - 1) = '\0';
-        ht_item_ptr last_date = ht_get(result, stk);
+        LOGINFO("*** stk = %s\n", stk);
+        ht_print(lastdate_ht);
+        ht_item_ptr last_date = ht_get(lastdate_ht, stk);
         if (last_date == NULL) {
             LOGINFO("Could not find last date for %s\n", stk);
         } else {
             LOGINFO("Last date for %s is %s\n", stk, last_date->val.str);
             unsigned long startts = cal_tsfromdt(last_date->val.str);
             ana_stk_intraday_data(stk, startts, "5m");
+            LOGINFO("### stk = %s\n", stk);
+            ht_print(lastdate_ht);
         }
         stk = strtok(NULL, ",");
     }
+    PQclear(res);
+    ht_free(lastdate_ht);
 }
 
 /**
