@@ -14,23 +14,9 @@
 /** LOGGING Used this: https://stackoverflow.com/questions/7411301/ **/
 /* Get current time in format YYYY-MM-DD HH:MM:SS.mms */
 char* crt_timestamp() {
-    /* long milliseconds; */
-    time_t seconds;
-    /* struct timespec spec; */
-    /* char buff[20]; */
-    seconds = time(NULL);
-    
-    /* clock_gettime(CLOCK_REALTIME, &spec); */
-    /* seconds = spec.tv_sec; */
-    /* milliseconds = round(spec.tv_nsec / 1.0e6); */
-    /* if (milliseconds > 999) { */
-    /*     seconds++; */
-    /*     milliseconds = 0; */
-    /* } */
+    time_t seconds = time(NULL);
     static char _retval[24];
     strftime(_retval, 24, "%Y-%m-%d %H:%M:%S", localtime(&seconds));
-    /* strftime(buff, 24, "%Y-%m-%d %H:%M:%S", localtime(&seconds)); */
-    /* snprintf(_retval, 32, "%s.%03u", buff, (unsigned short) milliseconds); */
     return _retval;
 }
 
@@ -682,10 +668,7 @@ int cal_exp_bday(int exp_ix, char** exp_bdate) {
 
 char* cal_current_busdate(int hr) {
     time_t seconds = time(NULL);
-    /* struct timespec spec; */
     char *res;
-    /* clock_gettime(CLOCK_REALTIME, &spec); */
-    /* seconds = spec.tv_sec; */
     struct tm *ts = localtime(&seconds);
     int hours = ts->tm_hour;
     char crt_date[12];
@@ -705,10 +688,7 @@ char* cal_current_busdate(int hr) {
  * holiday, the cron job will */
 bool cal_is_today_busday() {
     time_t seconds = time(NULL);
-    /* struct timespec spec; */
     char *res;
-    /* clock_gettime(CLOCK_REALTIME, &spec); */
-    /* seconds = spec.tv_sec; */
     struct tm *ts = localtime(&seconds);
     int hours = ts->tm_hour;
     char crt_date[12];
@@ -758,9 +738,6 @@ char* cal_setup_time(bool eod, bool tomorrow) {
             strcpy(_setup_time_retval, "20:00");
     } else {
         time_t seconds = time(NULL);
-        /* struct timespec spec; */
-        /* clock_gettime(CLOCK_REALTIME, &spec); */
-        /* seconds = spec.tv_sec; */
         struct tm *ts = localtime(&seconds);
         strftime(_setup_time_retval, 8, "%H:%M", ts);
     }
@@ -796,7 +773,7 @@ hashtable_ptr ht_jl(const char* factor) {
 }
 
 /**
- *  Cannot reference strptime(), so I got to do this :(
+ *  Generate timestamp from intraday date
  */
 unsigned long cal_tsfromdt(char *dt) {
     struct tm result;
@@ -807,29 +784,6 @@ unsigned long cal_tsfromdt(char *dt) {
     }
     time_t ts = mktime(&result);
     return ts;
-    
-    /* char *year_str, *mth_str, *day_str, *hrs_str, *mins_str, dt_copy[20]; */
-    /* struct timespec spec; */
-    /* clock_gettime(CLOCK_REALTIME, &spec); */
-    /* unsigned long endts = spec.tv_sec; */
-    /* struct tm *ts; */
-    /* ts = localtime(&endts); */
-    /* hrs_str = strchr(dt, ' '); */
-    /* *hrs_str++ = '\0'; */
-    /* mins_str = strchr(hrs_str, ':'); */
-    /* *mins_str++ = '\0'; */
-    /* year_str = dt; */
-    /* mth_str = strchr(dt, '-'); */
-    /* *mth_str++ = '\0'; */
-    /* day_str = strchr(mth_str, '-'); */
-    /* *day_str++ = '\0'; */
-    /* ts->tm_year = atoi(year_str) - 1900; */
-    /* ts->tm_mon = atoi(mth_str) - 1; */
-    /* ts->tm_mday = atoi(day_str); */
-    /* ts->tm_hour = atoi(hrs_str); */
-    /* ts->tm_min = atoi(mins_str); */
-    /* unsigned long startts = mktime(ts); */
-    /* return startts; */
 }
 
 #endif
