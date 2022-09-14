@@ -639,9 +639,8 @@ void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
  *  at startts and until now
  */
 void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
-    /* struct timespec spec; */
-    /* clock_gettime(CLOCK_REALTIME, &spec); */
-    /* unsigned long endts = spec.tv_sec; */
+    time_t endts = time(NULL);
+    int num_recs;
 #ifdef DEBUG_ID_QUOTE
     char parsed_date[20];
     struct tm *ts;
@@ -652,8 +651,6 @@ void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
     strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
     printf("endts = %s\n", parsed_date);
 #endif
-    time_t endts = time(NULL);
-    int num_recs;
     id_ptr id_data = net_get_intraday_data(stk, startts, endts, interval,
                                            &num_recs);
     if (id_data != NULL) {
@@ -688,12 +685,9 @@ void ana_intraday_data(char* stk_list) {
 /* #endif */
     hashtable_ptr lastdate_ht = ht_strings(res);
     char* stk = strtok(stk_list, ",");
-    ht_print(lastdate_ht);
     while (stk != NULL) {
         *stk++ = '\0';
         *(stk + strlen(stk) - 1) = '\0';
-        LOGINFO("*** stk = %s\n", stk);
-        ht_print(lastdate_ht);
         ht_item_ptr last_date = ht_get(lastdate_ht, stk);
         if (last_date == NULL) {
             LOGINFO("Could not find last date for %s\n", stk);
@@ -701,8 +695,6 @@ void ana_intraday_data(char* stk_list) {
             LOGINFO("Last date for %s is %s\n", stk, last_date->val.str);
             unsigned long startts = cal_tsfromdt(last_date->val.str);
             ana_stk_intraday_data(stk, startts, "5m");
-            LOGINFO("### stk = %s\n", stk);
-            ht_print(lastdate_ht);
         }
         stk = strtok(NULL, ",");
     }
