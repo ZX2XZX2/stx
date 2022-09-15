@@ -126,14 +126,24 @@ bool db_transaction(char* sql_cmd) {
     return success;
 }
 
-bool db_upsert_from_file(char *sql_create_tmp_table, char *copy_csv,
-                         char *sql_upsert) {
+bool db_upsert_from_file(char *sql_remove_tmp_table, char *sql_create_tmp_table,
+                         char *copy_csv, char *sql_upsert) {
     bool success = true;
     db_connect();
     /**
+     *  Delete temporary table; if one exists already
+     */
+    PGresult *res = PQexec(conn, sql_remove_tmp_table);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        printf("%s failed: %s\n", sql_remove_tmp_table,
+               PQresultErrorMessage(res));
+    }
+    PQclear(res);
+    
+    /**
      *  Create temporary table; load file data into temp table
      */
-    PGresult *res = PQexec(conn, sql_create_tmp_table);
+    res = PQexec(conn, sql_create_tmp_table);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         printf("%s failed: %s\n", sql_create_tmp_table,
                PQresultErrorMessage(res));
