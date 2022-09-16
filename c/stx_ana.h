@@ -263,6 +263,7 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
     LOGINFO("%s: analyzed %5d/%5d stocks\n", dt, rows, rows);
     PQclear(res);
 
+    char* remove_tmp_ldrs = "DROP TABLE IF EXISTS tmp_leaders";
     char* create_tmp_ldrs = "CREATE TEMPORARY TABLE tmp_leaders( " \
         "expiry DATE NOT NULL,"                                    \
         "stk VARCHAR(16) NOT NULL, "                               \
@@ -278,8 +279,8 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
         "expiry, stk, activity, range, opt_spread, atm_price"        \
         ") SELECT * FROM tmp_leaders ON CONFLICT ON CONSTRAINT "     \
         "leaders_pkey DO UPDATE SET range=EXCLUDED.range";
-    bool result = db_upsert_from_file(create_tmp_ldrs, copy_csv_ldrs,
-                                      upsert_sql);
+    bool result = db_upsert_from_file(remove_tmp_ldrs, create_tmp_ldrs,
+                                      copy_csv_ldrs, upsert_sql);
     LOGINFO("%s uploading %d leaders in the DB for expiry %s\n",
             result? "Success": "Failed", rows, exp);
     if (rows > 0) {
