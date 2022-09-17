@@ -639,7 +639,8 @@ void get_quotes(cJSON *ohlc_leaders, cJSON *opt_leaders, char *dt,
  *  Get intraday data for a stock for a custom time interval, starting
  *  at startts and until now
  */
-void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
+void ana_stk_intraday_data(FILE *id_fp, char *stk, unsigned long startts,
+                           char *interval) {
     time_t endts = time(NULL);
     int num_recs;
 #ifdef DEBUG_ID_QUOTE
@@ -661,9 +662,14 @@ void ana_stk_intraday_data(char *stk, unsigned long startts, char *interval) {
             ts = localtime(&(id_data[ix].timestamp));
             strftime(id_date, 20, "%Y-%m-%d %H:%M", ts);
             /* fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp, */
-            fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open,
-                    id_data[ix].high, id_data[ix].low, id_data[ix].close,
-                    id_data[ix].volume);
+            if (id_fp != NULL)
+                fprintf(id_fp, "%s\t%s\t%d\t%d\t%d\t%d\t%d\t1\n", stk, id_date,
+                        id_data[ix].open, id_data[ix].high, id_data[ix].low,
+                        id_data[ix].close, id_data[ix].volume);
+            else
+                fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open,
+                        id_data[ix].high, id_data[ix].low, id_data[ix].close,
+                        id_data[ix].volume);
         }
         free(id_data);
         id_data = NULL;
@@ -682,8 +688,15 @@ void ana_intraday_data(char* stk_list) {
             "(%s) group by stk", stk_list);
     PGresult *res = db_query(sql_cmd);
 /* #ifdef DEBUG */
-    LOGDEBUG("Found %d intraday last dates for %s\n", PQntuples(res), stk_list);
+    /* LOGDEBUG("Found %d intraday last dates for %s\n", PQntuples(res), */
+    /*          stk_list); */
 /* #endif */
+    FILE *fp = NULL;
+    char *id_filename = "/tmp/id.csv";
+    if ((fp = fopen(id_filename, "w")) == NULL) {
+        LOGERROR("Failed to open file %s for writing\n", id_filename);
+        return;
+    }
     hashtable_ptr lastdate_ht = ht_strings(res);
     char* stk = strtok(stk_list, ",");
     while (stk != NULL) {
@@ -695,12 +708,14 @@ void ana_intraday_data(char* stk_list) {
         } else {
             LOGINFO("Last date for %s is %s\n", stk, last_date->val.str);
             unsigned long startts = cal_tsfromdt(last_date->val.str);
-            ana_stk_intraday_data(stk, startts, "5m");
+            ana_stk_intraday_data(fp, stk, startts, "5m");
         }
         stk = strtok(NULL, ",");
     }
     PQclear(res);
     ht_free(lastdate_ht);
+    fclose(fp);
+    fp = NULL;
 }
 
 /**
