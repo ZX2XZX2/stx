@@ -659,6 +659,8 @@ void ana_stk_intraday_data(FILE *id_fp, char *stk, unsigned long startts,
         char id_date[20];
         struct tm *ts;
         for (int ix = 0; ix < num_recs; ix++) {
+            if (id_data[ix].volume == 0)
+                continue;
             ts = localtime(&(id_data[ix].timestamp));
             strftime(id_date, 20, "%Y-%m-%d %H:%M", ts);
             /* fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp, */
