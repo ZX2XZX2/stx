@@ -718,6 +718,31 @@ void ana_intraday_data(char* stk_list) {
     ht_free(lastdate_ht);
     fclose(fp);
     fp = NULL;
+
+    char* remove_tmp_intraday = "DROP TABLE IF EXISTS tmp_intraday";
+    char* create_tmp_intraday = "CREATE TEMPORARY TABLE tmp_intraday( " \
+        "stk VARCHAR(16) NOT NULL, "                                    \
+        "dt TIMESTAMP NOT NULL, "                                       \
+        "o INTEGER NOT NULL, "                                          \
+        "hi INTEGER NOT NULL, "                                         \
+        "lo INTEGER NOT NULL, "                                         \
+        "c INTEGER NOT NULL, "                                          \
+        "v INTEGER, "                                                   \
+        "oi INTEGER, "                                                  \
+        "PRIMARY KEY(stk, dt))";
+    char* copy_csv_intraday = "COPY tmp_intraday("                  \
+        "stk, dt, o, hi, lo, c, v, oi"                              \
+        ") FROM '/tmp/intraday.csv'";
+    char* upsert_sql = "INSERT INTO intraday (stk, dt, o, hi, lo, c, v, oi) " \
+        "SELECT stk, dt, o, hi, lo, c, v, oi "                          \
+        "FROM tmp_intraday ON CONFLICT (stk, dt) DO "                   \
+        "UPDATE SET o = EXCLUDED.o, hi = EXCLUDED.hi, "                 \
+        "lo = EXCLUDED.lo, c = EXCLUDED.c, v = EXCLUDED.v, "            \
+        "oi = EXCLUDED.oi";
+    bool result = db_upsert_from_file(remove_tmp_intraday, create_tmp_intraday,
+                                      copy_csv_intraday, upsert_sql);
+    LOGINFO("%s uploading intraday data in the DB\n",
+            result? "Success": "Failed");
 }
 
 /**
