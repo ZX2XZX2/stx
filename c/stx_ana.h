@@ -732,7 +732,7 @@ void ana_intraday_data(char* stk_list) {
         "PRIMARY KEY(stk, dt))";
     char* copy_csv_intraday = "COPY tmp_intraday("                  \
         "stk, dt, o, hi, lo, c, v, oi"                              \
-        ") FROM '/tmp/intraday.csv'";
+        ") FROM '/tmp/id.csv'";
     char* upsert_sql = "INSERT INTO intraday (stk, dt, o, hi, lo, c, v, oi) " \
         "SELECT stk, dt, o, hi, lo, c, v, oi "                          \
         "FROM tmp_intraday ON CONFLICT (stk, dt) DO "                   \
