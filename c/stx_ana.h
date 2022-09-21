@@ -866,6 +866,12 @@ void ana_indicators(cJSON *leaders, char *ana_date) {
     indicators_candle_strength(leaders, ana_date, 45);
 }
 
+cJSON* ana_get_id_leaders(cJSON *stp_leaders, char *ind_name,
+                          int short_ind_bound, int long_ind_bound) {
+    return NULL;
+}
+
+
 /**
  * Main daily analysis method
  */
@@ -887,16 +893,18 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
      *  intraday).  Setups is a subset of indicators.
      */
     cJSON *ldr = NULL, *stp_leaders = stx, *ind_leaders = stx,
-        *opt_leaders = stx;
+        *opt_leaders = stx, *id_leaders = stx;
+    char *ind_name = "CS_45";
+    int short_ind_bound = 10, long_ind_bound = 90;
     if (ind_leaders == NULL)
         ind_leaders = ana_get_leaders(exp_date, -1, -1, min_ind_activity,
                                       -1, 0);
     if (stp_leaders == NULL)
         stp_leaders = ana_get_leaders(exp_date, -1, -1, min_stp_activity,
                                       max_stp_range, 0);
-    if (stp_leaders == NULL)
-        stp_leaders = ana_get_leaders(exp_date, -1, -1, min_stp_activity,
-                                      max_stp_range, 0);
+    if (id_leaders == NULL)
+        id_leaders = ana_get_id_leaders(stp_leaders, ind_name, short_ind_bound,
+                                        long_ind_bound);
     if (eod && opt_leaders == NULL)
         opt_leaders = ana_get_leaders(exp_date, max_atm_price, max_opt_spread,
                                       -1, -1, 0);
@@ -953,6 +961,7 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
        cJSON_Delete(ind_leaders);
        cJSON_Delete(stp_leaders);
        cJSON_Delete(opt_leaders);
+       cJSON_Delete(id_leaders);
     }
     LOGINFO("ana_stx_analysis(): done\n");
 }
