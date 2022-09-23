@@ -869,6 +869,33 @@ void ana_indicators(cJSON *leaders, char *ana_date) {
 cJSON* ana_get_id_leaders(cJSON *stp_leaders, char *ind_date, char *ind_name,
                           int short_ind_bound, int long_ind_bound) {
     cJSON *leader_list = cJSON_CreateArray();
+    if (leader_list == NULL) {
+        LOGERROR("Failed to create leader_list cJSON Array.\n");
+        return NULL;
+    }
+    char sql[256];
+    memset(sql, 0, 256);
+    sprintf(sql, "SELECT ticker FROM indicators_1 WHERE dt='%s' AND name='%s'"
+            " AND (bucket_rank <= %d OR bucket_rank >= %d) AND "
+            "ticker NOT IN (SELECT * FROM excludes)",
+            ind_date, ind_name, short_ind_bound, long_ind_bound);
+    /* LOGINFO("ana_get_leaders():\n  sql_cmd %s\n", sql_cmd); */
+    /* PGresult *res = db_query(sql_cmd); */
+    /* int rows = PQntuples(res); */
+    /* LOGINFO("  returned %d leaders\n", rows); */
+    /* cJSON *ldr_name = NULL; */
+    /* char* stk = NULL; */
+    /* for (int ix = 0; ix < rows; ix++) { */
+    /*     stk = PQgetvalue(res, ix, 0); */
+    /*     ldr_name = cJSON_CreateString(stk); */
+    /*     if (ldr_name == NULL) { */
+    /*         LOGERROR("Failed to create cJSON string for %s\n", stk); */
+    /*         continue; */
+    /*     } */
+    /*     cJSON_AddItemToArray(leader_list, ldr_name); */
+    /* } */
+    /* PQclear(res); */
+    LOGINFO("Generated JSON Array with leaders\n");
     return leader_list;
 }
 
