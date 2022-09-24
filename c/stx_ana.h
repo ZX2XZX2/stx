@@ -986,8 +986,9 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     else
         cal_prev_bday(dt_ix, &ind_date);
     if (id_leaders == NULL)
-        id_leaders = ana_get_id_leaders(stp_leaders, ind_date, ind_name,
-                                        short_ind_bound, long_ind_bound);
+        id_leaders = ana_get_id_leaders(exp_date, ind_date, ind_name,
+                                        short_ind_bound, long_ind_bound,
+                                        min_stp_activity, max_stp_range);
     LOGINFO("Freeing the memory\n");
     if (stx == NULL) {
        cJSON_Delete(ind_leaders);
