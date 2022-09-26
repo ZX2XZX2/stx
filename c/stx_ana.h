@@ -868,7 +868,7 @@ void ana_indicators(cJSON *leaders, char *ana_date) {
 
 cJSON* ana_get_id_leaders(char *exp_date, char *ind_date, char *ind_name,
                           int short_ind_bound, int long_ind_bound,
-                          int min_sto_activity, int max_stp_range) {
+                          int min_stp_activity, int max_stp_range) {
     cJSON *leader_list = cJSON_CreateArray();
     if (leader_list == NULL) {
         LOGERROR("Failed to create leader_list cJSON Array.\n");
@@ -876,7 +876,7 @@ cJSON* ana_get_id_leaders(char *exp_date, char *ind_date, char *ind_name,
     }
     char sql_cmd[512];
     memset(sql_cmd, 0, 512);
-    sprintf(sql_cmd, "SELECT ticker, bucket_rank FROM indicators_1 WHERE "
+    sprintf(sql_cmd, "SELECT ticker FROM indicators_1 WHERE "
             "dt='%s' AND name='%s' "
             "AND (bucket_rank <= %d OR bucket_rank >= %d) AND "
             "ticker NOT IN (SELECT * FROM excludes) AND "
@@ -926,7 +926,7 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
      *  intraday).  Setups is a subset of indicators.
      */
     cJSON *ldr = NULL, *stp_leaders = stx, *ind_leaders = stx,
-        *opt_leaders = stx, *id_leaders = stx;
+        *opt_leaders = stx;
     if (ind_leaders == NULL)
         ind_leaders = ana_get_leaders(exp_date, -1, -1, min_ind_activity,
                                       -1, 0);
@@ -984,24 +984,51 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
                 ind_total, ana_date);
         ana_indicators(ind_leaders, ana_date);
     }
-    char *ind_name = "CS_45", *ind_date = NULL;
-    int short_ind_bound = 10, long_ind_bound = 90, dt_ix = cal_ix(ana_date);
-    if (eod)
-        ind_date = ana_date;
-    else
-        cal_prev_bday(dt_ix, &ind_date);
-    if (id_leaders == NULL)
-        id_leaders = ana_get_id_leaders(exp_date, ind_date, ind_name,
-                                        short_ind_bound, long_ind_bound,
-                                        min_stp_activity, max_stp_range);
     LOGINFO("Freeing the memory\n");
     if (stx == NULL) {
        cJSON_Delete(ind_leaders);
        cJSON_Delete(stp_leaders);
        cJSON_Delete(opt_leaders);
-       cJSON_Delete(id_leaders);
     }
     LOGINFO("ana_stx_analysis(): done\n");
+}
+
+/**
+ *  Day trading main analysis method
+ */
+void ana_daytrade(char *ana_date, char *ana_time, char *exp_date, cJSON *stx,
+                  char *ind_name, char *ind_date, char *setups,
+                  int max_long, int max_short, bool realtime) {
+    char sql_cmd[512];
+    memset(sql_cmd, 0, 512);
+    sprintf(sql_cmd, "SELECT ticker, bucket_rank, setup, direction "
+            "FROM indicators_1 i, time_setups s WHERE ticker=stk AND "
+            "i.dt='%s' AND s.dt='%s' AND direction='U' AND name='%s' "
+            "AND setup in (%s) ORDER BY bucket_rank DESC LIMIT %d",
+            ind_date, ana_date, ind_name, setups, max_long);
+    sprintf(sql_cmd, "SELECT ticker, bucket_rank, setup, direction "
+            "FROM indicators_1 i, time_setups s WHERE ticker=stk AND "
+            "i.dt='%s' AND s.dt='%s' AND direction='U' AND name='%s' "
+            "AND setup in (%s) ORDER BY bucket_rank LIMIT %d",
+            ind_date, ana_date, ind_name, setups, max_short);
+
+
+    /* cJSON *id_leaders = stx; */
+    /* char *ind_date = NULL; */
+
+
+
+    /* if (id_leaders == NULL) */
+    /*     id_leaders = ana_get_id_leaders(exp_date, ind_date, ind_name, */
+    /*                                     short_ind_bound, long_ind_bound, */
+    /*                                     min_stp_activity, max_stp_range); */
+
+    /* LOGINFO("Freeing the memory\n"); */
+    /* if (stx == NULL) { */
+    /*    cJSON_Delete(id_leaders); */
+    /* } */
+    LOGINFO("Done\n");
+
 }
 
 #endif
