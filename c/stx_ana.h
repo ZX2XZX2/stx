@@ -998,19 +998,21 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
  */
 void ana_daytrade(char *ana_date, char *ana_time, char *exp_date, cJSON *stx,
                   char *ind_name, char *ind_date, char *setups,
-                  int max_long, int max_short, bool realtime) {
+                  int max_long, int max_short, bool eod, bool realtime) {
     char sql_cmd[512];
     memset(sql_cmd, 0, 512);
     sprintf(sql_cmd, "SELECT ticker, bucket_rank, setup, direction "
             "FROM indicators_1 i, time_setups s WHERE ticker=stk AND "
             "i.dt='%s' AND s.dt='%s' AND direction='U' AND name='%s' "
-            "AND setup in (%s) ORDER BY bucket_rank DESC LIMIT %d",
-            ind_date, ana_date, ind_name, setups, max_long);
+            "AND setup in (%s) %s ORDER BY bucket_rank DESC LIMIT %d",
+            ind_date, ana_date, ind_name, setups,
+            (eod? "", "AND triggered='t'"), max_long);
     sprintf(sql_cmd, "SELECT ticker, bucket_rank, setup, direction "
             "FROM indicators_1 i, time_setups s WHERE ticker=stk AND "
-            "i.dt='%s' AND s.dt='%s' AND direction='U' AND name='%s' "
-            "AND setup in (%s) ORDER BY bucket_rank LIMIT %d",
-            ind_date, ana_date, ind_name, setups, max_short);
+            "i.dt='%s' AND s.dt='%s' AND direction='D' AND name='%s' "
+            "AND setup in (%s) %s ORDER BY bucket_rank LIMIT %d",
+            ind_date, ana_date, ind_name, setups,
+            (eod? "", "AND triggered='t'"), max_short);
 
 
     /* cJSON *id_leaders = stx; */
