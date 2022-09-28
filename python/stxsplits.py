@@ -25,6 +25,12 @@ class StxGetSplits:
 
     def getsplits(self):
         logging.info(f'Getting splits as of {self.dt}')
+        day_of_week = datetime.strptime(self.dt, '%Y-%m-%d').strftime('%a')
+        if day_of_week not in ['Thu', 'Fri']:
+            logging.info(f'Not getting splits on {day_of_week}, {self.dt}')
+            return
+        else:
+            logging.info(f'Getting splits as of {day_of_week}, {self.dt}')
         fname = os.path.join(
             os.getenv('HOME'),
             'Downloads',
