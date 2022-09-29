@@ -1006,14 +1006,14 @@ void ana_daytrade(char *ana_date, char *ana_time, char *exp_date, cJSON *stx,
             "i.dt='%s' AND s.dt='%s' AND direction='U' AND name='%s' "
             "AND setup in (%s) %s ORDER BY bucket_rank DESC LIMIT %d",
             ind_date, ana_date, ind_name, setups,
-            (eod? "", "AND triggered='t'"), max_long);
+            ((realtime && !eod)? "AND triggered='t'": ""), max_long);
     sprintf(sql_cmd, "SELECT ticker, bucket_rank, setup, direction "
             "FROM indicators_1 i, time_setups s WHERE ticker=stk AND "
             "i.dt='%s' AND s.dt='%s' AND direction='D' AND name='%s' "
             "AND setup in (%s) %s ORDER BY bucket_rank LIMIT %d",
             ind_date, ana_date, ind_name, setups,
-            (eod? "", "AND triggered='t'"), max_short);
-
+            ((realtime && !eod)? "AND triggered='t'": ""), max_short);
+    
 
     /* cJSON *id_leaders = stx; */
     /* char *ind_date = NULL; */
