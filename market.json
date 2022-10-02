@@ -1,6 +1,55 @@
 {
     "timestamp": "2022-10-01 12:00",
     "portfolio": [
+        {
+            "ticker": "ABCD",
+            "direction": "long",
+            "quantity": 200,
+            "type": "stock",
+            "setup": "JC_1234"
+            "in": {
+                "timestamp": "2022-10-01 12:00",
+                "price": 3495
+            },
+            "stop-loss": {
+                "price": 3300
+            },
+            "out": {
+                "timestamp": "2022-10-02 12:00",
+                "price": 3550,
+                "pnl": 109,
+                "pct-pnl": 0
+            }
+        },
+        {
+            "ticker": "ABCD",
+            "direction": "long",
+            "quantity": 2,
+            "type": "option",
+            "setup": "JC_1234"
+            "expiry": "2022-10-21",
+            "strike": 3400,
+            "in": {
+                "timestamp": "2022-10-01 12:00",
+                "price": 295,
+                "spot": 3495,
+                "range": 210
+            },
+            "stop-loss": {
+                "price": 235,
+                "spot": 3300
+            },
+            "out": {
+                "timestamp": "2022-10-02 12:00",
+                "price": 298,
+                "spot": 3550,
+                "pnl": 200,
+                "spot-pnl": 0,
+                "spot-pct-pnl": 0,
+                "pct-pnl": 0
+            }
+            
+        }
     ],
     "watchlist": [
     ],
