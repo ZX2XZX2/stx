@@ -98,6 +98,38 @@
         }
     ],
     "setups": [
+        {
+            "stk": "ABCD",
+            "cs_45": 98,
+            "setups": [
+                {
+                    "name": "JC_1234",
+                    "direction": "long",
+                    "triggered": true,
+                    "triggered-ts": "2022-10-04 09:45",
+                    "trigger-price": 3580
+                },
+                {
+                    "name": "JC_5DAYS",
+                    "direction": "long",
+                    "triggered": true,
+                    "triggered-ts": "2022-10-04 09:45",
+                    "trigger-price": 3580
+                }
+            ]
+        },
+        {
+            "stk": "DEF",
+            "cs_45": 8,
+            "setups": [
+                {
+                    "name": "JC_1234",
+                    "direction": "short",
+                    "triggered": false,
+                    "trigger-price": 2580
+                }
+            ]
+        }
     ],
     "stx": [
     ],
