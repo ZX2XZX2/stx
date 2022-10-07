@@ -13,10 +13,23 @@ static cJSON *mkt = NULL;
 
 
 /**
+ *  Check the existence (in the markets table) of a market cache with
+ *  the name 'mkt_name'.  If the cache exists, load it in the mkt
+ *  cJSON pointer.  If the cache does not exist, mkt will remain NULL
+ */
+void load_market(char *mkt_name) {
+    if (mkt == NULL) {
+        /** TODO: retrieve the cache from DB here */
+    }
+}
+
+
+/**
  *  Create a new market from scratch, following the schema in
  *  market.json.  TODO: check if market was already saved in DB.
 */
 void create_market(char *mkt_name) {
+    load_market(mkt_name);
     if (mkt == NULL) {
         mkt = cJSON_CreateObject();
         cJSON_AddStringToObject(mkt, "name", mkt_name);
@@ -35,11 +48,6 @@ void create_market(char *mkt_name) {
 
 
 void save_market(char *mkt_name) {
-
-}
-
-
-void load_market(char *mkt_name) {
 
 }
 
