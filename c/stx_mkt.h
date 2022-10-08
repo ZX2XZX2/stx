@@ -52,8 +52,16 @@ void save_market(char *mkt_name) {
 }
 
 
+/**
+ *  Print the contents of a market
+ */
 void print_market(char *mkt_name, char *mkt_subset) {
-
+    if (mkt == NULL) {
+        LOGWARN("Nothing to print, mkt is empty\n");
+        return;
+    }
+    char *string = cJSON_Print(mkt);
+    LOGINFO("The market is:\n%s\n", string);
 }
 
 #endif
