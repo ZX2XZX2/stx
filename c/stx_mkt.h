@@ -33,15 +33,15 @@ void create_market(char *mkt_name) {
     if (mkt == NULL) {
         mkt = cJSON_CreateObject();
         cJSON_AddStringToObject(mkt, "name", mkt_name);
-        portfolio = cJSON_CreateArray();
+        cJSON *portfolio = cJSON_CreateArray();
         cJSON_AddItemToObject(mkt, "portfolio", portfolio);
-        watchlist = cJSON_CreateArray();
+        cJSON *watchlist = cJSON_CreateArray();
         cJSON_AddItemToObject(mkt, "watchlist", watchlist);
-        setups = cJSON_CreateArray();
+        cJSON *setups = cJSON_CreateArray();
         cJSON_AddItemToObject(mkt, "setups", setups);
-        stx = cJSON_CreateArray();
+        cJSON *stx = cJSON_CreateArray();
         cJSON_AddItemToObject(mkt, "stx", stx);
-        stats = cJSON_CreateObject();
+        cJSON *stats = cJSON_CreateObject();
         cJSON_AddItemToObject(mkt, "stats", stats);
     }
 }
@@ -61,7 +61,13 @@ void print_market(char *mkt_name, char *mkt_subset) {
         return;
     }
     char *string = cJSON_Print(mkt);
+    if (string == NULL) {
+        LOGERROR("Could not print the market\n");
+        return;
+    }
     LOGINFO("The market is:\n%s\n", string);
+    free(string);
+    string = NULL;
 }
 
 #endif
