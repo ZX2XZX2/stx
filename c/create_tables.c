@@ -375,21 +375,31 @@ int main() {
     /**
      *  This table stores intraday data
      */
-        char* create_intraday = "CREATE TABLE intraday( "    \
-        "stk VARCHAR(16) NOT NULL, "             \
-        "dt TIMESTAMP NOT NULL,"                 \
-        "o INTEGER NOT NULL, "                   \
-        "hi INTEGER NOT NULL, "                  \
-        "lo INTEGER NOT NULL, "                  \
-        "c INTEGER NOT NULL, "                   \
-        "v INTEGER, "                            \
-        "oi INTEGER, "                           \
+    char* create_intraday = "CREATE TABLE intraday( "        \
+        "stk VARCHAR(16) NOT NULL, "                         \
+        "dt TIMESTAMP NOT NULL,"                             \
+        "o INTEGER NOT NULL, "                               \
+        "hi INTEGER NOT NULL, "                              \
+        "lo INTEGER NOT NULL, "                              \
+        "c INTEGER NOT NULL, "                               \
+        "v INTEGER, "                                        \
+        "oi INTEGER, "                                       \
         "PRIMARY KEY(stk, dt))";
     create_table_if_missing(cnx, "intraday", create_intraday);
-    char* create_intraday_dt_idx = "CREATE INDEX intraday_dt_idx "\
+    char* create_intraday_dt_idx = "CREATE INDEX intraday_dt_idx "  \
         "ON intraday(dt)";
     create_index_if_missing(cnx, "intraday", "intraday_dt_idx",
                             create_intraday_dt_idx);
+
+    /**
+     *  This table stores the market caches
+     */
+    char* create_market_caches = "CREATE TABLE market_caches( "      \
+        "mkt_name VARCHAR(128) NOT NULL, "                           \
+        "mkt_cache JSONB NOT NULL, "                                 \
+        "PRIMARY KEY(mkt_name))";
+    create_table_if_missing(cnx, "market_caches", create_market_caches);
+
     PQfinish(cnx);
     return 0;
 }
