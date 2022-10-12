@@ -26,27 +26,44 @@ void load_market(char *mkt_name) {
 
 /**
  *  Create a new market from scratch, following the schema in
- *  market.json.  TODO: check if market was already saved in DB.
+ *  market.json.
 */
 void create_market(char *mkt_name) {
-    load_market(mkt_name);
-    if (mkt == NULL) {
-        mkt = cJSON_CreateObject();
-        cJSON_AddStringToObject(mkt, "name", mkt_name);
-        cJSON *portfolio = cJSON_CreateArray();
-        cJSON_AddItemToObject(mkt, "portfolio", portfolio);
-        cJSON *watchlist = cJSON_CreateArray();
-        cJSON_AddItemToObject(mkt, "watchlist", watchlist);
-        cJSON *setups = cJSON_CreateArray();
-        cJSON_AddItemToObject(mkt, "setups", setups);
-        cJSON *stx = cJSON_CreateArray();
-        cJSON_AddItemToObject(mkt, "stx", stx);
-        cJSON *stats = cJSON_CreateObject();
-        cJSON_AddItemToObject(mkt, "stats", stats);
-    }
+    LOGINFO("Creating new market %s\n");
+    mkt = cJSON_CreateObject();
+    cJSON_AddStringToObject(mkt, "name", mkt_name);
+    cJSON *portfolio = cJSON_CreateArray();
+    cJSON_AddItemToObject(mkt, "portfolio", portfolio);
+    cJSON *watchlist = cJSON_CreateArray();
+    cJSON_AddItemToObject(mkt, "watchlist", watchlist);
+    cJSON *setups = cJSON_CreateArray();
+    cJSON_AddItemToObject(mkt, "setups", setups);
+    cJSON *stx = cJSON_CreateArray();
+    cJSON_AddItemToObject(mkt, "stx", stx);
+    cJSON *stats = cJSON_CreateObject();
+    cJSON_AddItemToObject(mkt, "stats", stats);
+    LOGINFO("Market %s created\n", mkt_name);
 }
 
 
+/**
+ *  Start using a market cache.  If the mkt was previously loaded, do
+ *  nothing.  If market was already cached in DB, load it from there.
+ *  If no such market exists, create a new one.
+ */
+void enter_market(char *mkt_name) {
+    LOGINFO("Enter market %s\n", mkt_name);
+    if (mkt == NULL)
+        load_market(mkt_name);
+    if (mkt == NULL)
+        create_market(mkt_name);
+}
+
+
+/**
+ *  Store the market cache in the database.  In case of market name
+ *  conflict, overwrite the contents previously stored.
+ **/
 void save_market(char *mkt_name) {
 
 }
