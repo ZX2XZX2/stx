@@ -19,7 +19,14 @@ static cJSON *mkt = NULL;
  */
 void load_market(char *mkt_name) {
     if (mkt == NULL) {
-        /** TODO: retrieve the cache from DB here */
+        char sql_cmd[1024];
+        sprintf(sql_cmd, "SELECT mkt_name, mkt_cache FROM market_caches "
+                "WHERE mkt_name='%s'", mkt_name);
+        PGresult *res = db_query(sql_cmd);
+        int rows = PQntuples(res);
+        if (rows == 1) {
+            /** TODO: retrieve the cache from DB here */
+        }
     }
 }
 
@@ -29,7 +36,7 @@ void load_market(char *mkt_name) {
  *  market.json.
 */
 void create_market(char *mkt_name) {
-    LOGINFO("Creating new market %s\n");
+    LOGINFO("Creating new market %s\n", mkt_name);
     mkt = cJSON_CreateObject();
     cJSON_AddStringToObject(mkt, "name", mkt_name);
     cJSON *portfolio = cJSON_CreateArray();
@@ -65,7 +72,25 @@ void enter_market(char *mkt_name) {
  *  conflict, overwrite the contents previously stored.
  **/
 void save_market(char *mkt_name) {
-
+    if (mkt == NULL) {
+        LOGWARN("Nothing to save, mkt is empty\n");
+        return;
+    }
+    char *string = cJSON_Print(mkt);
+    if (string == NULL) {
+        LOGERROR("Could not print the market\n");
+        return;
+    }
+    char *sql_cmd = (char *) calloc(strlen(string) + 512, sizeof(char));
+    sprintf(sql_cmd, "INSERT INTO market_caches VALUES ('%s', '%s') "
+            "ON CONFLICT ON CONSTRAINT market_caches_pkey DO UPDATE SET mkt_cache=EXCLUDED.mkt_cache",
+            mkt_name, string); 
+   db_transaction(sql_cmd);
+    LOGINFO("Saved market %s to database\n", mkt_name);
+    free(string);
+    free(sql_cmd);
+    sql_cmd = NULL;
+    string = NULL;
 }
 
 
