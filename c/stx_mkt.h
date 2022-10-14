@@ -22,11 +22,17 @@ void load_market(char *mkt_name) {
         char sql_cmd[1024];
         sprintf(sql_cmd, "SELECT mkt_name, mkt_cache FROM market_caches "
                 "WHERE mkt_name='%s'", mkt_name);
+        LOGINFO("sql_cmd = %s\n", sql_cmd);
         PGresult *res = db_query(sql_cmd);
         int rows = PQntuples(res);
-        if (rows == 1) {
-            /** TODO: retrieve the cache from DB here */
+        LOGINFO("rows = %d\n", rows);
+        if (rows > 0) {
+            LOGINFO("Loading market %s from database\n", mkt_name);
+            char *mkt_cache_db = PQgetvalue(res, 0, 1);
+            mkt = cJSON_Parse(mkt_cache_db);
+            PQclear(res);
         }
+        
     }
 }
 
