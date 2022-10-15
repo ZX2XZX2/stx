@@ -22,10 +22,8 @@ void load_market(char *mkt_name) {
         char sql_cmd[1024];
         sprintf(sql_cmd, "SELECT mkt_name, mkt_cache FROM market_caches "
                 "WHERE mkt_name='%s'", mkt_name);
-        LOGINFO("sql_cmd = %s\n", sql_cmd);
         PGresult *res = db_query(sql_cmd);
         int rows = PQntuples(res);
-        LOGINFO("rows = %d\n", rows);
         if (rows > 0) {
             LOGINFO("Loading market %s from database\n", mkt_name);
             char *mkt_cache_db = PQgetvalue(res, 0, 1);
@@ -89,9 +87,9 @@ void save_market(char *mkt_name) {
     }
     char *sql_cmd = (char *) calloc(strlen(string) + 512, sizeof(char));
     sprintf(sql_cmd, "INSERT INTO market_caches VALUES ('%s', '%s') "
-            "ON CONFLICT ON CONSTRAINT market_caches_pkey DO UPDATE SET mkt_cache=EXCLUDED.mkt_cache",
-            mkt_name, string); 
-   db_transaction(sql_cmd);
+            "ON CONFLICT ON CONSTRAINT market_caches_pkey DO "
+            "UPDATE SET mkt_cache=EXCLUDED.mkt_cache", mkt_name, string); 
+    db_transaction(sql_cmd);
     LOGINFO("Saved market %s to database\n", mkt_name);
     free(string);
     free(sql_cmd);
@@ -118,4 +116,14 @@ void print_market(char *mkt_name, char *mkt_subset) {
     string = NULL;
 }
 
+
+void exit_market(char *mkt_name) {
+    if (mkt == NULL) {
+        LOGWARN("Market %s already exited, mkt is NULL\n", mkt_name);
+        return;
+    }
+    save_market(mkt_name);
+    cJSON_Delete(mkt);
+    LOGINFO("Exited market %s\n", mkt_name);
+}
 #endif
