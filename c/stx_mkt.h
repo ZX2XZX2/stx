@@ -29,8 +29,7 @@ void load_market(char *mkt_name) {
             char *mkt_cache_db = PQgetvalue(res, 0, 1);
             mkt = cJSON_Parse(mkt_cache_db);
             PQclear(res);
-        }
-        
+        }        
     }
 }
 
@@ -99,9 +98,12 @@ void save_market(char *mkt_name) {
 
 
 /**
- *  Print the contents of a market
+ *  Print the contents of a market.  The parameter mkt_path is a '/'
+ *  separated path in the json market state.  For a list, a particular
+ *  index is specified within square brackets.  For example, to
+ *  display the first portfolio position, 'mkt_path=portfolio[0]'
  */
-void print_market(char *mkt_name, char *mkt_subset) {
+void print_market(char *mkt_name, char *mkt_path) {
     if (mkt == NULL) {
         LOGWARN("Nothing to print, mkt is empty\n");
         return;
@@ -117,6 +119,10 @@ void print_market(char *mkt_name, char *mkt_subset) {
 }
 
 
+/**
+ *  Exit market - save internal state to database and free the memory
+ *  allocated to the mkt json pointer
+ */
 void exit_market(char *mkt_name) {
     if (mkt == NULL) {
         LOGWARN("Market %s already exited, mkt is NULL\n", mkt_name);
