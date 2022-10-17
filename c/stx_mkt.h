@@ -132,4 +132,14 @@ void exit_market(char *mkt_name) {
     cJSON_Delete(mkt);
     LOGINFO("Exited market %s\n", mkt_name);
 }
+
+
+/**
+ *  Generate a new market cache at the end of the day
+ */
+void gen_eod_market_cache(char *mkt_name) {
+    enter_market(mkt_name);
+    /** TODO: Update market here */
+    exit_market(mkt_name);
+}
 #endif
