@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE
 #include <cjson/cJSON.h>
 #include <libpq-fe.h>
 #include <stdbool.h>
