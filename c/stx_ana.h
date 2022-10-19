@@ -982,7 +982,8 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
     if (eod == true) {
         LOGINFO("Calculating the indicators for %d stocks as of %s\n",
                 ind_total, ana_date);
-        ana_indicators(ind_leaders, ana_date);
+        if (stx == NULL)
+            ana_indicators(ind_leaders, ana_date);
     }
     LOGINFO("Freeing the memory\n");
     if (stx == NULL) {
@@ -1015,6 +1016,8 @@ void ana_daytrade(char *ana_date, char *ana_time, char *exp_date, cJSON *stx,
             ind_date, ana_date, ind_name, setups,
             ((realtime && !eod)? "AND triggered='t'": ""), max_short);
     
+    PGresult *res = db_query(sql_cmd_up);
+    int rows = PQntuples(res);
 
     /* cJSON *id_leaders = stx; */
     /* char *ind_date = NULL; */
