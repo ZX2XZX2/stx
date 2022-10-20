@@ -746,7 +746,8 @@ void stp_insert_setups_in_database(cJSON *setups, char *dt, char *stk,
                     cJSON_GetObjectItem(setup, "triggered")->valuestring,
                     setup_time, info_string);
             db_transaction(sql_cmd);
-            free(info_string);
+            if (strcmp(info_string, "{}"))
+                free(info_string);
         }
     }
 }
