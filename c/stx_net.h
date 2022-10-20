@@ -217,13 +217,13 @@ int net_parse_options(FILE* opt_fp, cJSON* options, char* opt_type,
     cJSON *opts = cJSON_GetObjectItemCaseSensitive(options, opt_type);
     char err_msg[80];
     if (opts == NULL) {
-        sprintf(err_msg, "No '%s' found in 'options'", opt_type);
-        net_print_json_err(options, err_msg);
+        /* sprintf(err_msg, "No '%s' found in 'options'", opt_type); */
+        /* net_print_json_err(options, err_msg); */
         return -1;
     }
     if (!cJSON_IsArray(opts)) {
-        sprintf(err_msg, "'options'/'%s' is not an array", opt_type);
-        net_print_json_err(options, err_msg);
+        /* sprintf(err_msg, "'options'/'%s' is not an array", opt_type); */
+        /* net_print_json_err(options, err_msg); */
         return -1;
     }
     cJSON *opt = NULL, *crs = NULL;
@@ -394,7 +394,7 @@ void net_get_eod_data(FILE *eod_fp, char* stk, char* dt) {
 void net_get_option_data(FILE *eod_fp, FILE *opt_fp, char* und, char* dt, 
                          char* exp, long exp_ms) {
     static int num = 0;
-    LOGINFO("%d %s: Get %s option data for expiry %s\n", num, dt, und, exp);
+    /* LOGINFO("%d %s: Get %s option data for expiry %s\n", num, dt, und, exp); */
     /* sleep(1); */
     char url[512];
     int crumb_ix = num / 250;
@@ -431,11 +431,11 @@ void net_get_option_data(FILE *eod_fp, FILE *opt_fp, char* und, char* dt,
         goto end;
     cJSON *opt_arr = cJSON_GetObjectItemCaseSensitive(opt_quote, "options");
     if (opt_arr == NULL) {
-        net_print_json_err(opt_quote, "No 'options' found in options quote");
+        /* net_print_json_err(opt_quote, "No 'options' found in options quote"); */
         goto end;
     }
     if (!cJSON_IsArray(opt_arr)) {
-        net_print_json_err(json, "'options' is not an array");
+        /* net_print_json_err(json, "'options' is not an array"); */
         goto end;
     }
     cJSON *options = cJSON_GetArrayItem(opt_arr, 0);
