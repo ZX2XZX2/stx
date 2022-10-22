@@ -28,11 +28,11 @@ class DBbackup():
         db_backup_dir = os.path.join(os.getenv('HOME'), 'db_backup', db_name)
         try:
             os.makedirs(db_backup_dir)
-            logging.info('Creating directory {0:s}'.format(db_backup_dir))
+            logging.info(f'Creating directory {db_backup_dir}')
         except OSError as e:
             if e.errno != errno.EEXIST:
-                logging.error('Exception while creating {0:s}: {1:s}'.
-                              format(db_backup_dir, str(e)))
+                logging.error(f'Exception while creating {db_backup_dir}: '
+                              f'{str(e)}')
                 raise
         db_bkp_dirs = sorted(os.listdir(db_backup_dir))
         db_bkp_dirs_str = '\n  '.join(db_bkp_dirs)
@@ -54,25 +54,23 @@ class DBbackup():
                     elif os.path.isdir(file_path):
                         shutil.rmtree(file_path)
                 except Exception as e:
-                    print('Failed to delete %s. Reason: %s' % (file_path, e))
+                    logging.error(f'Failed to delete {file_path}: {str(e)}')
         else:
             crt_date = datetime.datetime.now()
             db_bkp_dir = os.path.join(db_backup_dir,
                                       crt_date.strftime('%Y-%m-%d_%H%M%S'))
             try:
                 os.makedirs(db_bkp_dir)
-                logging.info('Created directory {0:s}'.format(db_bkp_dir))
+                logging.info(f'Created directory {db_bkp_dir}')
             except OSError as e:
                 if e.errno != errno.EEXIST:
-                    logging.error('Exception while creating {0:s}: {1:s}'.
-                                  format(db_bkp_dir, str(e)))
+                    logging.error('Failed to create {db_bkp_dir}: {str(e)}')
                     raise
         logging.info(f'Backing up DB {db_name} in {db_bkp_dir}')
         '''launch the subprocesses that back up the database'''
         try:
-            cmd1 = 'sudo -u postgres pg_dump -Fc {0:s}'.format(db_name)
-            cmd2 = 'split -b 1000m - {0:s}/{1:s}'.format(db_bkp_dir,
-                                                         db_name)
+            cmd1 = f'sudo -u postgres pg_dump -Fc {db_name}'
+            cmd2 = f'split -b 1000m - {db_bkp_dir}/{db_name}'
             p1 = subprocess.Popen(shlex.split(cmd1),
                                   stdout=subprocess.PIPE,
                                   cwd=db_bkp_dir)
@@ -96,11 +94,10 @@ class DBbackup():
         db_backup_dir = os.path.join(os.getenv('HOME'), 'db_backup', db_name)
         try:
             os.makedirs(db_backup_dir)
-            logging.info('Creating directory {0:s}'.format(db_backup_dir))
+            logging.info(f'Creating directory {db_backup_dir}')
         except OSError as e:
             if e.errno != errno.EEXIST:
-                logging.error('Exception while creating {0:s}: {1:s}'.
-                              format(db_backup_dir, str(e)))
+                logging.error(f'Failed to create {db_backup_dir}: {str(e)}')
                 raise
         db_bkp_dirs = sorted(os.listdir(db_backup_dir))
         if not db_bkp_dirs:
@@ -123,7 +120,7 @@ class DBbackup():
             usb_backup_dir = os.path.join(usb, 'db_backup', db_name)
             try:
                 os.makedirs(usb_backup_dir)
-                logging.info('Creating directory {0:s}'.format(usb_backup_dir))
+                logging.info(f'Creating directory {usb_backup_dir}')
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     logging.error(
