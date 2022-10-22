@@ -86,6 +86,8 @@ class DBbackup():
                 shutil.rmtree(db_bkp_dir)
             except OSError as e:
                 logging.error(f"Error: {e.filename} - {e.strerror}")
+        '''list all DB backups on machine disk'''
+        self.list_db_backup_files(db_backup_dir)
 
     def usb_backup_database(self, overwrite):
         logging.info('Starting USB backup')
@@ -146,6 +148,15 @@ class DBbackup():
                     f'Copying DB backup from {db_bkp_dir_path} '
                     f'to {usb_db_bkp_dir_path}')
                 shutil.copytree(db_bkp_dir_path, usb_db_bkp_dir_path)
+            '''list all DB backups on USB disk'''
+            self.list_db_backup_files(usb_backup_dir)
+
+    def list_db_backup_files(self, db_bkp_dir):
+        cmd = f'ls -lR {db_bkp_dir}'
+        p1 = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+        output = subprocess.check_output(shlex.split(cmd), stdin=p1.stdout)
+        logging.info(f"DB backup files at {db_bkp_dir}:\n"
+                     f"{output.decode('utf-8')}")
 
 '''
 
