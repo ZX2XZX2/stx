@@ -745,6 +745,7 @@ void ana_intraday_data(char* stk_list) {
             result? "Success": "Failed");
 }
 
+
 /**
  *  Find out the business day from which to start setup analysis for a
  *  given stock.
@@ -904,6 +905,13 @@ cJSON* ana_get_id_leaders(char *exp_date, char *ind_date, char *ind_name,
     return leader_list;
 }
 
+void ana_eod_get_intraday_data() {
+
+/* cJSON* ana_get_id_leaders(char *exp_date, char *ind_date, char *ind_name, */
+/*                           int short_ind_bound, int long_ind_bound, */
+/*                           int min_stp_activity, int max_stp_range) { */
+    ana_intraday_data(intraday_leader_list);
+}
 
 /**
  * Main daily analysis method
@@ -984,6 +992,12 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
                 ind_total, ana_date);
         if (stx == NULL)
             ana_indicators(ind_leaders, ana_date);
+        /**
+         *  Reuse download_spots flag to determine if intraday data
+         *  download is needed.
+         */
+        if (download_spots)
+            ana_eod_get_intraday_data();
     }
     LOGINFO("Freeing the memory\n");
     if (stx == NULL) {
