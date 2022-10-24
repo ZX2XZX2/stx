@@ -745,7 +745,6 @@ void ana_intraday_data(char* stk_list) {
             result? "Success": "Failed");
 }
 
-
 /**
  *  Find out the business day from which to start setup analysis for a
  *  given stock.
@@ -905,12 +904,64 @@ cJSON* ana_get_id_leaders(char *exp_date, char *ind_date, char *ind_name,
     return leader_list;
 }
 
-void ana_eod_get_intraday_data() {
-
-/* cJSON* ana_get_id_leaders(char *exp_date, char *ind_date, char *ind_name, */
-/*                           int short_ind_bound, int long_ind_bound, */
-/*                           int min_stp_activity, int max_stp_range) { */
-    ana_intraday_data(intraday_leader_list);
+/**
+ *  Get the watchlist for the next day.  Fixed length (watch_len) long
+ *  and short watchlists selected; stocks exhibiting certain setups
+ *  are sorted based on their indicator rank (usually for CS_45).
+ *  TODO: use watchlist to keep stocks from the previous days in the
+ *  intraday watchlist.
+ */
+void ana_intraday_watchlist(char *eod_date, char *indicator_name,
+                            char *setups, int watch_len, cJSON *watchlist) {
+    /** Get next business day when setups might be triggered */
+    char* setup_date = NULL;
+    cal_next_bday(cal_ix(eod_date), &setup_date);
+    char sql_cmd_up[512], sql_cmd_down[512];
+    memset(sql_cmd_up, 0, 512);
+    memset(sql_cmd_down, 0, 512);
+    sprintf(sql_cmd_up, "SELECT DISTINCT ticker, bucket_rank, rank "
+            "FROM indicators_1 i, time_setups s WHERE ticker=stk AND "
+            "i.dt='%s' AND s.dt='%s' AND direction='U' AND name='%s' "
+            "AND setup IN (%s) ORDER BY rank DESC LIMIT %d",
+            eod_date, setup_date, indicator_name, setups, watch_len);
+    sprintf(sql_cmd_down, "SELECT DISTINCT ticker, bucket_rank, rank "
+            "FROM indicators_1 i, time_setups s WHERE ticker=stk AND "
+            "i.dt='%s' AND s.dt='%s' AND direction='D' AND name='%s' "
+            "AND setup IN (%s) ORDER BY rank LIMIT %d",
+            eod_date, setup_date, indicator_name, setups, watch_len);
+    char long_watchlist[512], short_watchlist[512];
+    memset(long_watchlist, 0, 512);
+    memset(short_watchlist, 0, 512);
+    char* stk = NULL;
+    int bucket_rank;
+    PGresult *res = db_query(sql_cmd_up);
+    int rows = PQntuples(res);
+    LOGINFO("Long watchlist has %d stocks:\n", rows);
+    for (int ix = 0; ix < rows; ix++) {
+        stk = PQgetvalue(res, ix, 0);
+        bucket_rank = atoi(PQgetvalue(res, ix, 1));
+        if (ix > 0)
+            strcat(long_watchlist, ",");
+        strcat(long_watchlist, stk);
+        printf(" %2d. %5s CS_45 = %2d\n", (ix + 1), stk, bucket_rank);
+    }
+    PQclear(res);
+    res = db_query(sql_cmd_down);
+    rows = PQntuples(res);
+    LOGINFO("Short watchlist has %d stocks:\n", rows);
+    for (int ix = 0; ix < rows; ix++) {
+        stk = PQgetvalue(res, ix, 0);
+        bucket_rank = atoi(PQgetvalue(res, ix, 1));
+        if (ix > 0)
+            strcat(short_watchlist, ",");
+        strcat(short_watchlist, stk);
+        printf(" %2d. %5s CS_45 = %2d\n", (ix + 1), stk, bucket_rank);
+    }
+    PQclear(res);
+    printf("long_watchlist = %s\n", long_watchlist);
+    printf("short_watchlist = %s\n", short_watchlist);
+    /* ana_intraday_data(long_watchlist); */
+    /* ana_intraday_data(short_watchlist); */
 }
 
 /**
@@ -996,8 +1047,8 @@ void ana_stx_analysis(char *ana_date, cJSON *stx, int max_atm_price,
          *  Reuse download_spots flag to determine if intraday data
          *  download is needed.
          */
-        if (download_spots)
-            ana_eod_get_intraday_data();
+        /* if (download_spots) */
+        /*     ana_eod_get_intraday_data(); */
     }
     LOGINFO("Freeing the memory\n");
     if (stx == NULL) {
