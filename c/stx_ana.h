@@ -911,8 +911,8 @@ cJSON* ana_get_id_leaders(char *exp_date, char *ind_date, char *ind_name,
  *  TODO: use watchlist to keep stocks from the previous days in the
  *  intraday watchlist.
  */
-void ana_intraday_watchlist(char *eod_date, char *indicator_name,
-                            char *setups, int watch_len, cJSON *watchlist) {
+void ana_eod_intraday_watchlist(char *eod_date, char *indicator_name,
+                                char *setups, int watch_len, cJSON *watchlist) {
     /** Get next business day when setups might be triggered */
     char* setup_date = NULL;
     cal_next_bday(cal_ix(eod_date), &setup_date);
@@ -942,7 +942,9 @@ void ana_intraday_watchlist(char *eod_date, char *indicator_name,
         bucket_rank = atoi(PQgetvalue(res, ix, 1));
         if (ix > 0)
             strcat(long_watchlist, ",");
+        strcat(long_watchlist, "'");
         strcat(long_watchlist, stk);
+        strcat(long_watchlist, "'");
         printf(" %2d. %5s CS_45 = %2d\n", (ix + 1), stk, bucket_rank);
     }
     PQclear(res);
@@ -954,7 +956,9 @@ void ana_intraday_watchlist(char *eod_date, char *indicator_name,
         bucket_rank = atoi(PQgetvalue(res, ix, 1));
         if (ix > 0)
             strcat(short_watchlist, ",");
+        strcat(short_watchlist, "'");
         strcat(short_watchlist, stk);
+        strcat(short_watchlist, "'");
         printf(" %2d. %5s CS_45 = %2d\n", (ix + 1), stk, bucket_rank);
     }
     PQclear(res);
