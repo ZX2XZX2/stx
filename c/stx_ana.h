@@ -962,10 +962,10 @@ void ana_eod_intraday_watchlist(char *eod_date, char *indicator_name,
         printf(" %2d. %5s CS_45 = %2d\n", (ix + 1), stk, bucket_rank);
     }
     PQclear(res);
-    printf("long_watchlist = %s\n", long_watchlist);
-    printf("short_watchlist = %s\n", short_watchlist);
-    /* ana_intraday_data(long_watchlist); */
-    /* ana_intraday_data(short_watchlist); */
+    /* printf("long_watchlist = %s\n", long_watchlist); */
+    /* printf("short_watchlist = %s\n", short_watchlist); */
+    ana_intraday_data(long_watchlist);
+    ana_intraday_data(short_watchlist);
 }
 
 /**
