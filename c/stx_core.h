@@ -187,7 +187,7 @@ typedef struct daily_record_t {
     int low;
     int close;
     int volume;
-    char date[16];
+    char date[20];
 } daily_record, *daily_record_ptr;
 
 typedef struct id_t {
