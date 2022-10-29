@@ -65,7 +65,7 @@ void stp_add_to_setups(cJSON *setups, jl_data_ptr jl, char *setup_name,
     cJSON_AddItemToArray(setups, res);
 }
 
-bool stp_jc_1234(daily_record_ptr data, int ix, char trend) {
+bool stp_jc_1234(ohlcv_record_ptr data, int ix, char trend) {
     bool result = false;
     int inside_days = 0, ixx;
     if (trend == 'U') {
@@ -98,7 +98,7 @@ bool stp_jc_1234(daily_record_ptr data, int ix, char trend) {
     return result;
 }
 
-bool stp_jc_5days(daily_record_ptr data, int ix, char trend) {
+bool stp_jc_5days(ohlcv_record_ptr data, int ix, char trend) {
     float min = 1000000000, max = 0;
     if (ix < JC_5D_DAYS - 1)
         return false;
@@ -136,7 +136,7 @@ void stp_jl_breaks(cJSON *setups, jl_data_ptr jl) {
      *  find the extremes for today's price either the high/low for
      *  the day, or yesterday's close
      */
-    daily_record_ptr r = &(jl->data->data[ix]), r_1 = &(jl->data->data[ix - 1]);
+    ohlcv_record_ptr r = &(jl->data->data[ix]), r_1 = &(jl->data->data[ix - 1]);
     int ub = (r->high > r_1->close)? r->high: r_1->close;
     int lb = (r->low < r_1->close)? r->low: r_1->close;
     /** get the average volume for the last 20 (JL window) days */
@@ -221,7 +221,7 @@ void stp_jl_support_resistance(cJSON *setups, jl_data_ptr jl) {
     jl_record_ptr jlr = &(jl->recs[i]);
     jl_pivot_ptr last_pivot = pivots + num_pivots - 2;
     int last_pivot_ix = ts_find_date_record(jl->data, last_pivot->date, 0);
-    daily_record_ptr last_pivot_r = &(jl->data->data[last_pivot_ix]);
+    ohlcv_record_ptr last_pivot_r = &(jl->data->data[last_pivot_ix]);
     jl_record_ptr jlr_pivot = &(jl->recs[last_pivot_ix]);
     int last_piv_volume = (last_pivot_r->volume == 0)? 1: last_pivot_r->volume;
     int last_piv_avg_volume = (jlr_pivot->volume == 0)? 1: jlr_pivot->volume;
@@ -450,7 +450,7 @@ void stp_jl_pullbacks(cJSON *setups, jl_data_ptr jl_050, jl_data_ptr jl_100,
  *  - engulfing harami
  */
 void stp_candlesticks(cJSON *setups, jl_data_ptr jl) {
-    daily_record_ptr r[6];
+    ohlcv_record_ptr r[6];
     cJSON *info = cJSON_CreateObject();
     int ix_0 = jl->data->pos - 1;
     for(int ix = 0; ix < 6; ix++)
@@ -647,7 +647,7 @@ void stp_candlesticks(cJSON *setups, jl_data_ptr jl) {
 }
 
 void stp_daily_setups(cJSON *setups, jl_data_ptr jl) {
-    daily_record_ptr r[2];
+    ohlcv_record_ptr r[2];
     jl_record_ptr jlr[2];
     int ix_0 = jl->data->pos;
     for(int ix = 0; ix < 2; ix++) {
