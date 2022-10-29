@@ -181,14 +181,14 @@ typedef struct cal_info_t {
     bool is_busday;
 } cal_info, *cal_info_ptr;
 
-typedef struct daily_record_t {
+typedef struct ohlcv_record_t {
     int open;
     int high;
     int low;
     int close;
     int volume;
     char date[20];
-} daily_record, *daily_record_ptr;
+} ohlcv_record, *ohlcv_record_ptr;
 
 typedef struct id_t {
     long timestamp;
@@ -203,7 +203,7 @@ struct hashtable_t;
 /* struct hashtable, *hashtable_ptr; */
 
 typedef struct stx_data_t {
-    daily_record_ptr data;
+    ohlcv_record_ptr data;
     int num_recs;
     struct hashtable_t* splits;
     int pos;
