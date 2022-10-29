@@ -427,7 +427,7 @@ void ana_triggered_setups(cJSON* setups, char* stk, char* dt, bool eod) {
         LOGERROR("No data for %s as of %s, skipping\n", stk, dt);
         return;
     }
-    daily_record_ptr dr = ts->data;
+    ohlcv_record_ptr dr = ts->data;
     int ix = ts->pos, trigrd = 1;
     bool res;
     if ((trend == UT1 || trend == UT2) && (dr[ix].high > dr[ix - 1].high)) {
@@ -460,7 +460,7 @@ void ana_setups_tomorrow(cJSON* setups, char* stk, char* dt, char* next_dt) {
         LOGERROR("No data for %s as of %s, skipping\n", stk, dt);
         return;
     }
-    daily_record_ptr dr = ts->data;
+    ohlcv_record_ptr dr = ts->data;
     int ix = ts->pos, trigrd = 0;
     bool res;
     if (trend == UT1 || trend == UT2) {
