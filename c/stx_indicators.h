@@ -185,7 +185,7 @@ int strong_close_score(jl_data_ptr jld, int ix) {
      *  Pointers to current daily record, and previous JL record
      */
     jl_record_ptr jlr = &(jld->recs[ix - 1]);
-    daily_record_ptr dr = &(jld->data->data[ix]);
+    ohlcv_record_ptr dr = &(jld->data->data[ix]);
 #ifdef DEBUG_CANDLE_STRENGTH
     fprintf(stderr, "SC %s %s: ", jld->data->stk, dr->date);
 #endif
@@ -253,7 +253,7 @@ int gap_score(jl_data_ptr jld, int gap_ix, int end) {
      *  Pointers to current, previous daily record, and previous JL record
      */
     jl_record_ptr jlr = &(jld->recs[gap_ix - 1]);
-    daily_record_ptr dr = &(jld->data->data[gap_ix]),
+    ohlcv_record_ptr dr = &(jld->data->data[gap_ix]),
         dr_1 = &(jld->data->data[gap_ix - 1]);
 #ifdef DEBUG_CANDLE_STRENGTH
     fprintf(stderr, "GAP %s %s: ", jld->data->stk, dr->date);
