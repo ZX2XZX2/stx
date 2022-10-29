@@ -27,7 +27,7 @@ int ts_true_range(stx_data_ptr data, int ix) {
     return res;
 }
 
-int ts_strong_close(daily_record_ptr dr) {
+int ts_strong_close(ohlcv_record_ptr dr) {
     int sc_dir = 0;
     if (dr->high == dr->low)
         return sc_dir;
@@ -41,7 +41,7 @@ int ts_strong_close(daily_record_ptr dr) {
 int ts_gap(stx_data_ptr data, int ix) {
     if (ix < 1)
         return 0;
-    daily_record_ptr r = data->data + ix, r_1 = data->data + ix - 1;
+    ohlcv_record_ptr r = data->data + ix, r_1 = data->data + ix - 1;
     if (r->open == r_1->close)
         return 0;
     if (r->open > r_1->high)
@@ -101,7 +101,7 @@ stx_data_ptr ts_load_stk(char* stk) {
 #ifdef DEBUG
     LOGDEBUG("Found %d records for %s\n", num, stk);
 #endif
-    data->data = (daily_record_ptr) calloc(b_days, sizeof(daily_record));
+    data->data = (ohlcv_record_ptr) calloc(b_days, sizeof(ohlcv_record));
     int ts_idx = 0;
     int calix = cal_ix(sd);
     char* dt;
@@ -245,7 +245,7 @@ void ts_print(stx_data_ptr data, char* s_date, char* e_date) {
                 data->data[ix].close, data->data[ix].volume);
 }
 
-void ts_print_record(daily_record_ptr record) {
+void ts_print_record(ohlcv_record_ptr record) {
     fprintf(stderr, "%s %7d %7d %7d %7d %7d", record->date, record->open, 
             record->high, record->low, record->close, record->volume);
 }
