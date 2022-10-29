@@ -222,8 +222,8 @@ int jl_calc_obv(jl_data_ptr jl, char* start_date, int start_state, int end) {
     jl_record_ptr jls = &(jl->recs[start]), jle = &(jl->recs[end]);
     if (jls->volume == 0)
         return 0;
-    daily_record_ptr srs = &(jl->data->data[start]);
-    daily_record_ptr sre = &(jl->data->data[end]);
+    ohlcv_record_ptr srs = &(jl->data->data[start]);
+    ohlcv_record_ptr sre = &(jl->data->data[end]);
     bool hi_b4_lo = ((2 * srs->close) < (srs->high + srs->low));
     if ((jl_up(start_state) && hi_b4_lo) || 
         (jl_down(start_state) && !hi_b4_lo))
@@ -462,7 +462,7 @@ char* jl_state_to_string(int state) {
 }
 
 void jl_set_obv(jl_data_ptr jl, int ix) {
-    daily_record_ptr sr = &(jl->data->data[ix]);
+    ohlcv_record_ptr sr = &(jl->data->data[ix]);
     int prev_close = (ix > 0)? jl->data->data[ix - 1].close: sr->open;
     jl_record_ptr jlr = &(jl->recs[ix]);
     bool hi_b4_lo = ((2 * sr->close) < (sr->high + sr->low));
@@ -480,7 +480,7 @@ void jl_set_obv(jl_data_ptr jl, int ix) {
 
 void jl_rec_day(jl_data_ptr jl, int ix, int upstate, int downstate) {
     jl_init_rec(jl, ix);
-    daily_record_ptr sr = &(jl->data->data[ix]);
+    ohlcv_record_ptr sr = &(jl->data->data[ix]);
     jl_record_ptr jlr = &(jl->recs[ix]);
 #ifdef DDEBUGG
     fprintf(stderr, "%s: upstate = %d, downstate = %d\n", 
@@ -613,7 +613,7 @@ void jl_split_adjust(jl_data_ptr jl, ht_item_ptr split) {
 }
 
 void jl_sra(jl_data_ptr jl, int factor) {
-    daily_record_ptr sr = &(jl->data->data[jl->pos]);
+    ohlcv_record_ptr sr = &(jl->data->data[jl->pos]);
     int sh = NONE, sl = NONE;
     if (jl->lp[UPTREND] < sr->high)
         sh = UPTREND;
@@ -644,7 +644,7 @@ void jl_sra(jl_data_ptr jl, int factor) {
 }
 
 void jl_nra(jl_data_ptr jl, int factor) {
-    daily_record_ptr sr = &(jl->data->data[jl->pos]);
+    ohlcv_record_ptr sr = &(jl->data->data[jl->pos]);
     int sh = NONE, sl = NONE;
     if ((jl->lp[UPTREND] < sr->high) || (jl->lp[M_RALLY] + factor < sr->high))
         sh = UPTREND;
@@ -665,7 +665,7 @@ void jl_nra(jl_data_ptr jl, int factor) {
 }
 
 void jl_ut(jl_data_ptr jl, int factor) {
-    daily_record_ptr sr = &(jl->data->data[jl->pos]);
+    ohlcv_record_ptr sr = &(jl->data->data[jl->pos]);
     int sh = NONE, sl = NONE;
     if (jl->lp[UPTREND] < sr->high)
         sh = UPTREND;
@@ -678,7 +678,7 @@ void jl_ut(jl_data_ptr jl, int factor) {
 }
 
 void jl_sre(jl_data_ptr jl, int factor) {
-    daily_record_ptr sr = &(jl->data->data[jl->pos]);
+    ohlcv_record_ptr sr = &(jl->data->data[jl->pos]);
     int sh = NONE, sl = NONE;
     if (sr->low < jl->lp[DOWNTREND])
         sl = DOWNTREND;
@@ -709,7 +709,7 @@ void jl_sre(jl_data_ptr jl, int factor) {
 }
 
 void jl_dt(jl_data_ptr jl, int factor) {
-    daily_record_ptr sr = &(jl->data->data[jl->pos]);
+    ohlcv_record_ptr sr = &(jl->data->data[jl->pos]);
     int sh = NONE, sl = NONE;
     if (jl->lp[DOWNTREND] > sr->low)
         sl = DOWNTREND;
@@ -722,7 +722,7 @@ void jl_dt(jl_data_ptr jl, int factor) {
 }
 
 void jl_nre(jl_data_ptr jl, int factor) {
-    daily_record_ptr sr = &(jl->data->data[jl->pos]);
+    ohlcv_record_ptr sr = &(jl->data->data[jl->pos]);
     int sh = NONE, sl = NONE;
     if ((jl->lp[DOWNTREND] > sr->low) || 
         (jl->lp[M_REACTION] - factor > sr->low))
@@ -911,7 +911,7 @@ bool jl_same_pivot(jl_pivot_ptr p1, jl_pivot_ptr p2) {
 void jl_init_channel_boundary(jl_data_ptr jld, jl_piv_ptr pivs, int offset,
                               jl_channel_boundary_ptr jlcb) {
     int ix = jld->data->pos, num = pivs->num;
-    daily_record_ptr r = &(jld->data->data[ix]);
+    ohlcv_record_ptr r = &(jld->data->data[ix]);
     jlcb->d1 = cal_num_busdays(pivs->pivots[num - 4 - offset].date, r->date);
     jlcb->d2 = cal_num_busdays(pivs->pivots[num - 2 - offset].date, r->date);
     jlcb->px1 = pivs->pivots[num - 4 - offset].price;
@@ -954,7 +954,7 @@ int jl_get_channel(jl_data_ptr jld, jl_channel_ptr jlc) {
     jl_update_channel_width(jld, jlc);
 #ifdef JL_CHANNEL_DEBUG
     int pos = jld->data->pos;    
-    daily_record_ptr r = &(jld->data->data[pos]);
+    ohlcv_record_ptr r = &(jld->data->data[pos]);
     LOGDEBUG("stk = %s, date = %s, factor = %.2f\n", jld->data->stk, r->date,
              jld->factor);
     LOGDEBUG("U: d1=%s(%d) d2=%s(%d) px1=%d px2=%d ipx=%d slope=%.3f\n",
