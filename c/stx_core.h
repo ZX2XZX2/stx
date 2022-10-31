@@ -190,15 +190,6 @@ typedef struct ohlcv_record_t {
     char date[20];
 } ohlcv_record, *ohlcv_record_ptr;
 
-typedef struct id_t {
-    long timestamp;
-    int open;
-    int high;
-    int low;
-    int close;
-    int volume;
-} id, *id_ptr;
-
 struct hashtable_t;
 /* struct hashtable, *hashtable_ptr; */
 
