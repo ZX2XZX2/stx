@@ -653,25 +653,21 @@ void ana_stk_intraday_data(FILE *id_fp, char *stk, unsigned long startts,
     strftime(parsed_date, 20, "%Y-%m-%d %H:%M", ts);
     printf("endts = %s\n", parsed_date);
 #endif
-    id_ptr id_data = net_get_intraday_data(stk, startts, endts, interval,
-                                           &num_recs);
+    ohlcv_record_ptr id_data = net_get_intraday_data(stk, startts, endts,
+                                                     interval, &num_recs);
     if (id_data != NULL) {
         char id_date[20];
-        struct tm *ts;
         for (int ix = 0; ix < num_recs; ix++) {
             if (id_data[ix].volume == 0)
                 continue;
-            ts = localtime(&(id_data[ix].timestamp));
-            strftime(id_date, 20, "%Y-%m-%d %H:%M", ts);
-            /* fprintf(stderr, "%ld %d %d %d %d %d\n", id_data[ix].timestamp, */
             if (id_fp != NULL)
-                fprintf(id_fp, "%s\t%s\t%d\t%d\t%d\t%d\t%d\t1\n", stk, id_date,
+                fprintf(id_fp, "%s\t%s\t%d\t%d\t%d\t%d\t%d\t1\n", stk,
+                        id_data[ix].date, id_data[ix].open, id_data[ix].high,
+                        id_data[ix].low, id_data[ix].close, id_data[ix].volume);
+            else
+                fprintf(stderr, "%s %s %d %d %d %d %d\n", stk, id_data[ix].date,
                         id_data[ix].open, id_data[ix].high, id_data[ix].low,
                         id_data[ix].close, id_data[ix].volume);
-            else
-                fprintf(stderr, "%s %d %d %d %d %d\n", id_date, id_data[ix].open,
-                        id_data[ix].high, id_data[ix].low, id_data[ix].close,
-                        id_data[ix].volume);
         }
         free(id_data);
         id_data = NULL;
