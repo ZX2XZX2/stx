@@ -274,11 +274,11 @@ cJSON* net_get_sub_array(cJSON *parent, char* sub_array_name) {
  *  symbol=NERV&period1=1660929571&period2=1662225571&useYfid=true&interval=15m
  */
 
-id_ptr net_get_intraday_data(char* stk, unsigned long startts,
-                             unsigned long endts, char* interval,
-                             int* num_records) {
+ohlcv_record_ptr net_get_intraday_data(char* stk, unsigned long startts,
+                                       unsigned long endts, char* interval,
+                                       int* num_records) {
     char url[256];
-    id_ptr id_data = NULL;
+    ohlcv_record_ptr id_data = NULL;
     *num_records = 0;
     sprintf(url, "%s%s?symbol=%s&period1=%lu&period2=%lu&useYfid=true&"
             "interval=%s&lang=en-US&region=US&crumb=fqU.nRgWHiq&"
@@ -331,10 +331,14 @@ id_ptr net_get_intraday_data(char* stk, unsigned long startts,
         goto end;
     }
     int total = cJSON_GetArraySize(timestamps), num = 0;
-    id_data = (id_ptr) calloc((size_t) total, sizeof(id));
+    id_data = (ohlcv_record_ptr) calloc((size_t) total, sizeof(ohlcv_record));
     *num_records = total;
-    cJSON_ArrayForEach(crs, timestamps)
-        id_data[num++].timestamp = (long)(crs->valuedouble);
+    struct tm *ts;
+    cJSON_ArrayForEach(crs, timestamps) {
+        long time_stamp = (long)(crs->valuedouble);
+        ts = localtime(&time_stamp);
+        strftime(id_data[num++].date, 20, "%Y-%m-%d %H:%M", ts);
+    }
     num = 0;
     cJSON_ArrayForEach(crs, lows)
         id_data[num++].low = (int)(100 * crs->valuedouble);
