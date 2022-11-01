@@ -200,6 +200,7 @@ typedef struct stx_data_t {
     int pos;
     int last_adj;
     char stk[16];
+    int intraday;
 } stx_data, *stx_data_ptr;
 
 typedef enum { DIVI_HT, CAL_HT, DATA_HT, STR_HT } ht_type;
