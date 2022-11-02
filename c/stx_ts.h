@@ -76,8 +76,7 @@ hashtable_ptr ts_load_splits(char* stk) {
     return result;
 }
 
-
-stx_data_ptr ts_load_stk(char* stk) {
+stx_data_ptr ts_load_eod_stk(char* stk) {
 #ifdef DEBUG
     LOGDEBUG("Loading data for %s\n", stk);
 #endif
@@ -145,6 +144,13 @@ stx_data_ptr ts_load_stk(char* stk) {
 #ifdef DEBUG
     LOGDEBUG("Done loading %s\n", stk);
 #endif
+    return data;
+}
+
+stx_data_ptr ts_load_stk(char* stk, bool intraday) {
+    stx_data_ptr data = NULL;
+    if (!intraday)
+        data = ts_load_eod_stk(stk);
     return data;
 }
 
@@ -257,7 +263,7 @@ stx_data_ptr ts_get_ts(char *stk, char* dt, int rel_pos) {
     ht_item_ptr data_ht = ht_get(ht_data(), stk);
     stx_data_ptr data = NULL;
     if (data_ht == NULL) {
-        data = ts_load_stk(stk);
+        data = ts_load_stk(stk, false);
         if (data == NULL)
             return data;
         ts_set_day(data, dt, rel_pos);
