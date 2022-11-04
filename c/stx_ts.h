@@ -76,7 +76,7 @@ hashtable_ptr ts_load_splits(char* stk) {
     return result;
 }
 
-stx_data_ptr ts_load_eod_stk(char* stk) {
+stx_data_ptr ts_load_eod_stk(char *stk, char *eod_dt, int num_days) {
 #ifdef DEBUG
     LOGDEBUG("Loading data for %s\n", stk);
 #endif
@@ -147,10 +147,83 @@ stx_data_ptr ts_load_eod_stk(char* stk) {
     return data;
 }
 
-stx_data_ptr ts_load_stk(char* stk, bool intraday) {
+stx_data_ptr ts_load_id_stk(char *stk, char *dt, int num_days) {
+#ifdef DEBUG
+    LOGDEBUG("Loading intraday data for %s\n", stk);
+#endif
+    stx_data_ptr data = (stx_data_ptr) malloc(sizeof(stx_data));
+/*     data->data = NULL; */
+/*     data->num_recs = 0; */
+/*     data->pos = 0; */
+/*     data->last_adj = -1; */
+/*     char sql_cmd[128]; */
+/*     sprintf(sql_cmd, "select o, hi, lo, c, v, dt from eods where stk='%s' " */
+/*             "and dt>'1985-01-01'order by dt", stk); */
+/*     PGresult *res = db_query(sql_cmd); */
+/*     if((data->num_recs = PQntuples(res)) <= 0)  */
+/*         return data; */
+/*     int num = data->num_recs; */
+/*     char sd[16], ed[16]; */
+/*     strcpy(sd, PQgetvalue(res, 0, 5)); */
+/*     strcpy(ed, PQgetvalue(res, num - 1, 5)); */
+/*     int b_days = cal_num_busdays(sd, ed); */
+/*     data->num_recs = b_days; */
+/* #ifdef DEBUG */
+/*     LOGDEBUG("Found %d records for %s\n", num, stk); */
+/* #endif */
+/*     data->data = (ohlcv_record_ptr) calloc(b_days, sizeof(ohlcv_record)); */
+/*     int ts_idx = 0; */
+/*     int calix = cal_ix(sd); */
+/*     char* dt; */
+/*     calix = cal_prev_bday(calix, &dt); */
+/*     for(int ix = 0; ix < num; ix++) { */
+/*         calix = cal_next_bday(calix, &dt); */
+/*         char* db_date = PQgetvalue(res, ix, 5); */
+/*         if (strcmp(dt, db_date) > 0) { */
+/*             LOGERROR("%s: Something is very wrong: dt = %s, db_date = %s\n", */
+/*                      stk, dt, db_date); */
+/*             return NULL; */
+/*         } */
+/*         while (strcmp(dt, db_date) < 0) { */
+/* #ifdef DEBUG */
+/*             LOGDEBUG("Adding data for %s, not found in %s data\n", dt, stk); */
+/* #endif */
+/*             data->data[ts_idx].open = data->data[ts_idx - 1].close; */
+/*             data->data[ts_idx].high = data->data[ts_idx - 1].close; */
+/*             data->data[ts_idx].low = data->data[ts_idx - 1].close; */
+/*             data->data[ts_idx].close = data->data[ts_idx - 1].close; */
+/*             data->data[ts_idx].volume = 0; */
+/*             strcpy(data->data[ts_idx].date, dt);  */
+/*             calix = cal_next_bday(calix, &dt); */
+/*             ts_idx++; */
+/*         }    */
+/*         data->data[ts_idx].open = atoi(PQgetvalue(res, ix, 0)); */
+/*         data->data[ts_idx].high = atoi(PQgetvalue(res, ix, 1)); */
+/*         data->data[ts_idx].low = atoi(PQgetvalue(res, ix, 2)); */
+/*         data->data[ts_idx].close = atoi(PQgetvalue(res, ix, 3)); */
+/*         data->data[ts_idx].volume = atoi(PQgetvalue(res, ix, 4)); */
+/*         strcpy(data->data[ts_idx].date, PQgetvalue(res, ix, 5));  */
+/*         ts_idx++; */
+/*     } */
+/*     data->pos = b_days - 1; */
+/*     PQclear(res); */
+/* #ifdef DEBUG */
+/*     LOGDEBUG("Loading the splits for %s\n", stk); */
+/* #endif */
+/*     data->splits = ts_load_splits(stk); */
+/*     strcpy(data->stk, stk); */
+/* #ifdef DEBUG */
+/*     LOGDEBUG("Done loading %s\n", stk); */
+/* #endif */
+    return data;
+}
+
+stx_data_ptr ts_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     stx_data_ptr data = NULL;
     if (!intraday)
-        data = ts_load_eod_stk(stk);
+        data = ts_load_eod_stk(stk, dt, num_days);
+    else
+        data = ts_load_id_stk(stk, dt, num_days);
     return data;
 }
 
@@ -263,7 +336,7 @@ stx_data_ptr ts_get_ts(char *stk, char* dt, int rel_pos) {
     ht_item_ptr data_ht = ht_get(ht_data(), stk);
     stx_data_ptr data = NULL;
     if (data_ht == NULL) {
-        data = ts_load_stk(stk, false);
+        data = ts_load_stk(stk, NULL, 0, false);
         if (data == NULL)
             return data;
         ts_set_day(data, dt, rel_pos);
