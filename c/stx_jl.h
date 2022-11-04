@@ -977,7 +977,7 @@ jl_data_ptr jl_get_jl(char* stk, char* dt, const char* label, float factor) {
     ht_item_ptr jl_ht = ht_get(ht_jl(label), stk);
     jl_data_ptr jl_recs = NULL;
     if (jl_ht == NULL) {
-        stx_data_ptr data = ts_load_stk(stk, false);
+        stx_data_ptr data = ts_load_stk(stk, NULL, 0, false);
         if (data == NULL) {
             LOGERROR("Could not load JL_%s for %s, skipping...\n", label, stk);
             return NULL;
