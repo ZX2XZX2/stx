@@ -76,18 +76,36 @@ hashtable_ptr ts_load_splits(char* stk) {
     return result;
 }
 
-stx_data_ptr ts_load_eod_stk(char *stk, char *eod_dt, int num_days) {
+stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
 #ifdef DEBUG
-    LOGDEBUG("Loading data for %s\n", stk);
+    LOGDEBUG("Loading EOD data for %s\n", stk);
 #endif
-    stx_data_ptr data = (stx_data_ptr) malloc(sizeof(stx_data));
+    stx_data_ptr data = (stx_data_ptr) calloc((size_t)1, sizeof(stx_data));
     data->data = NULL;
     data->num_recs = 0;
     data->pos = 0;
     data->last_adj = -1;
+    data->intraday = 0;
     char sql_cmd[128];
-    sprintf(sql_cmd, "select o, hi, lo, c, v, dt from eods where stk='%s' "
-            "and dt>'1985-01-01'order by dt", stk);
+    memset(sql_cmd, 0, 128 * sizeof(char));
+    sprintf(sql_cmd, "SELECT o, hi, lo, c, v, dt FROM eods WHERE stk='%s'",
+            stk);
+    if (end_dt != NULL) {
+        char end_dt_sql[32];
+        memset(end_dt_sql, 0, 32 * sizeof(char));
+        sprintf(end_dt_sql, " AND dt<='%s'", end_dt);
+        strcat(sql_cmd, end_dt_sql);
+    }
+    if (num_days > 0) {
+        if (end_dt == NULL) {
+            /** TODO: use cal_current_trading_day() to init end_dt */
+        }
+        /** TODO: use cal_move_busdays to init start_dt */
+    }
+    strcat(sql_cmd, " ORDER BY dt");
+
+    /* sprintf(sql_cmd, "select o, hi, lo, c, v, dt from eods where stk='%s' " */
+    /*         "and dt>'1985-01-01' order by dt", stk); */
     PGresult *res = db_query(sql_cmd);
     if((data->num_recs = PQntuples(res)) <= 0) 
         return data;
