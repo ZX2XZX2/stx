@@ -668,6 +668,27 @@ int cal_exp_bday(int exp_ix, char** exp_bdate) {
     return res;
 }
 
+/**
+ *  Get the current trading date: current date if a business day and
+ *  time is later than 9:30AM EST; previous business day otherwise
+ */
+char* cal_current_trading_date() {
+    time_t seconds = time(NULL);
+    char *res;
+    struct tm *ts = localtime(&seconds);
+    int hours = ts->tm_hour, minutes = ts->tm_min;
+    char crt_date[12];
+    strftime(crt_date, 12, "%Y-%m-%d", ts);
+    int ix = cal_ix(crt_date);
+    if ((hours < 9) || ((hours == 9) && (minutes < 30)))
+        ix--;
+    if(!cal_get()->list[ix].val.cal->is_busday)
+        cal_prev_bday(ix, &res);
+    else
+        res = &(cal_get()->list[ix].key[0]);
+    return res;
+}
+
 char* cal_current_busdate(int hr) {
     time_t seconds = time(NULL);
     char *res;
