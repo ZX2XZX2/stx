@@ -86,8 +86,9 @@ stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
     data->pos = 0;
     data->last_adj = -1;
     data->intraday = 0;
-    char sql_cmd[128];
+    char sql_cmd[128], start_dt_sql[32];
     memset(sql_cmd, 0, 128 * sizeof(char));
+    memset(start_dt_sql, 0, 32 * sizeof(char));
     sprintf(sql_cmd, "SELECT o, hi, lo, c, v, dt FROM eods WHERE stk='%s'",
             stk);
     if (end_dt != NULL) {
@@ -97,15 +98,15 @@ stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
         strcat(sql_cmd, end_dt_sql);
     }
     if (num_days > 0) {
-        if (end_dt == NULL) {
-            /** TODO: use cal_current_trading_day() to init end_dt */
-        }
-        /** TODO: use cal_move_busdays to init start_dt */
-    }
+        char *start_dt = NULL;
+        if (end_dt == NULL)
+            end_dt = cal_current_trading_date();
+        cal_move_bdays(end_dt, -num_days, &start_dt);
+        sprintf(start_dt_sql, " AND dt>='%s'", start_dt);
+    } else
+        sprintf(start_dt_sql, " AND dt>='%s'", "1985-01-01");
+    strcat(sql_cmd, start_dt_sql);
     strcat(sql_cmd, " ORDER BY dt");
-
-    /* sprintf(sql_cmd, "select o, hi, lo, c, v, dt from eods where stk='%s' " */
-    /*         "and dt>'1985-01-01' order by dt", stk); */
     PGresult *res = db_query(sql_cmd);
     if((data->num_recs = PQntuples(res)) <= 0) 
         return data;
