@@ -166,22 +166,40 @@ stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
     return data;
 }
 
-stx_data_ptr ts_load_id_stk(char *stk, char *dt, int num_days) {
+stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
 #ifdef DEBUG
     LOGDEBUG("Loading intraday data for %s\n", stk);
 #endif
-    stx_data_ptr data = (stx_data_ptr) malloc(sizeof(stx_data));
-/*     data->data = NULL; */
-/*     data->num_recs = 0; */
-/*     data->pos = 0; */
-/*     data->last_adj = -1; */
-/*     char sql_cmd[128]; */
-/*     sprintf(sql_cmd, "select o, hi, lo, c, v, dt from eods where stk='%s' " */
-/*             "and dt>'1985-01-01'order by dt", stk); */
-/*     PGresult *res = db_query(sql_cmd); */
-/*     if((data->num_recs = PQntuples(res)) <= 0)  */
-/*         return data; */
-/*     int num = data->num_recs; */
+    stx_data_ptr data = (stx_data_ptr) calloc((size_t)1, sizeof(stx_data));
+    data->data = NULL;
+    data->num_recs = 0;
+    data->pos = 0;
+    data->last_adj = -1;
+    data->intraday = 1;
+    char sql_cmd[128], start_dt_sql[32];
+    memset(sql_cmd, 0, 128 * sizeof(char));
+    memset(start_dt_sql, 0, 32 * sizeof(char));
+    sprintf(sql_cmd, "SELECT o, hi, lo, c, v, dt FROM intraday WHERE stk='%s'",
+            stk);
+    if (end_dt != NULL) {
+        char end_dt_sql[32];
+        memset(end_dt_sql, 0, 32 * sizeof(char));
+        sprintf(end_dt_sql, " AND DATE(dt)<='%s'", end_dt);
+        strcat(sql_cmd, end_dt_sql);
+    }
+    if (num_days <= 0)
+        num_days = 20;
+    char *start_dt = NULL;
+    if (end_dt == NULL)
+        end_dt = cal_current_trading_date();
+    cal_move_bdays(end_dt, -num_days, &start_dt);
+    sprintf(start_dt_sql, " AND DATE(dt)>='%s'", start_dt);
+    strcat(sql_cmd, start_dt_sql);
+    strcat(sql_cmd, " ORDER BY dt");
+    PGresult *res = db_query(sql_cmd);
+    if((data->num_recs = PQntuples(res)) <= 0) 
+        return data;
+    int num = data->num_recs;
 /*     char sd[16], ed[16]; */
 /*     strcpy(sd, PQgetvalue(res, 0, 5)); */
 /*     strcpy(ed, PQgetvalue(res, num - 1, 5)); */
