@@ -767,6 +767,35 @@ char* cal_setup_time(bool eod, bool tomorrow) {
     return _setup_time_retval;
 }
 
+/**
+ *  Get the number of 5 minute ticks between two dates.  end_dt cannot
+ *  be later than current trading date.  If end_dt is earlier than
+ *  current trading date, then we are looking at historical data, and
+ *  there should be 78 * (number of business days between start and
+ *  end dates) records.  If end_dt and current trading date are the
+ *  same, then we might be looking at real-time data, and if we during
+ *  the trading hours, then only a subset of the 78 daily 5-minute
+ *  ticks will be available.
+ */
+int cal_5min_ticks(char *start_dt, char *end_dt) {
+    char *current_trading_date = cal_current_trading_date();
+    int b_days = cal_num_busdays(start_dt, end_dt), num_recs = 0;
+    if (!strcmp(end_dt, current_trading_date)) {
+        time_t seconds = time(NULL);
+        struct tm *ts = localtime(&seconds);
+        if ((ts->tm_hour >= 16) || (ts->tm_hour < 9) ||
+            ((ts->tm_hour == 9) && (ts->tm_min < 30)))
+            num_recs = 78 * b_days;
+        else {
+            int minutes = 5 * (ts->tm_min / 5);
+            num_recs = 78 * (b_days) - 12 * (15 - ts->tm_hour) -
+                (55 - minutes) / 5;
+        }
+    } else
+        num_recs = 78 * b_days;
+    return num_recs;
+}
+
 /** These two hashtables keep in memory data or JL records calculated
  *  for various equities
  */
