@@ -170,6 +170,7 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
 #ifdef DEBUG
     LOGDEBUG("Loading intraday data for %s\n", stk);
 #endif
+    char *current_trading_date = cal_current_trading_date();
     stx_data_ptr data = (stx_data_ptr) calloc((size_t)1, sizeof(stx_data));
     data->data = NULL;
     data->num_recs = 0;
@@ -191,7 +192,7 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         num_days = 20;
     char *start_dt = NULL;
     if (end_dt == NULL)
-        end_dt = cal_current_trading_date();
+        end_dt = current_trading_date;
     cal_move_bdays(end_dt, -num_days, &start_dt);
     sprintf(start_dt_sql, " AND DATE(dt)>='%s'", start_dt);
     strcat(sql_cmd, start_dt_sql);
@@ -199,7 +200,8 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
     PGresult *res = db_query(sql_cmd);
     if((data->num_recs = PQntuples(res)) <= 0) 
         return data;
-    int num = data->num_recs;
+    int num_db_recs = data->num_recs;
+    int num_recs = cal_5min_ticks(start_dt, end_dt);
 /*     char sd[16], ed[16]; */
 /*     strcpy(sd, PQgetvalue(res, 0, 5)); */
 /*     strcpy(ed, PQgetvalue(res, num - 1, 5)); */
