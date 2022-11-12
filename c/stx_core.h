@@ -796,6 +796,30 @@ int cal_5min_ticks(char *start_dt, char *end_dt) {
     return num_recs;
 }
 
+
+/**
+ *  Get the current 5-minute trading timestamp, in the format
+ *  YYYY-mm-dd HH:MM:ss.
+ */
+char* cal_current_trading_datetime() {
+    static char _crt_trade_retval[20];
+    time_t seconds = time(NULL);
+    struct tm *ts = localtime(&seconds);
+    char crt_date[12];
+    strftime(crt_date, 12, "%Y-%m-%d", ts);
+    char *current_trading_date = cal_current_trading_date();
+    if (!strcmp(crt_date, current_trading_date) &&
+        (ts->tm_hour < 16 &&
+         ((ts->tm_hour > 9) ||
+          (ts->tm_hour == 9 && ts->tm_min>= 30)))) {
+        ts->tm_min = 5 * (ts->tm_min / 5);
+        ts->tm_sec = 0;
+        strftime(_crt_trade_retval, 20, "%Y-%m-%d %H:%M:%S", ts);
+    } else
+        sprintf(_crt_trade_retval, "%s 15:55:00", current_trading_date);
+    return _crt_trade_retval;
+}
+
 /** These two hashtables keep in memory data or JL records calculated
  *  for various equities
  */
