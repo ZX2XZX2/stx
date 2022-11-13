@@ -191,7 +191,8 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
     if (num_days <= 0)
         num_days = 20;
     char *start_dt = NULL;
-    if (end_dt == NULL)
+    if ((end_dt == NULL) ||
+        ((end_dt != NULL) && (strcmp(end_dt, current_trading_date) > 0)))
         end_dt = current_trading_date;
     cal_move_bdays(end_dt, -num_days, &start_dt);
     sprintf(start_dt_sql, " AND DATE(dt)>='%s'", start_dt);
@@ -202,11 +203,13 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         return data;
     int num_db_recs = data->num_recs;
     int num_recs = cal_5min_ticks(start_dt, end_dt);
+    data->num_recs = num_recs;
+    data->data = (ohlcv_record_ptr) calloc(num_recs, sizeof(ohlcv_record));
+
 /*     char sd[16], ed[16]; */
 /*     strcpy(sd, PQgetvalue(res, 0, 5)); */
 /*     strcpy(ed, PQgetvalue(res, num - 1, 5)); */
 /*     int b_days = cal_num_busdays(sd, ed); */
-/*     data->num_recs = b_days; */
 /* #ifdef DEBUG */
 /*     LOGDEBUG("Found %d records for %s\n", num, stk); */
 /* #endif */
