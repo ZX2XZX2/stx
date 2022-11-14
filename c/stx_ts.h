@@ -170,6 +170,7 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
 #ifdef DEBUG
     LOGDEBUG("Loading intraday data for %s\n", stk);
 #endif
+    bool realtime = false;
     char *current_trading_date = cal_current_trading_date();
     stx_data_ptr data = (stx_data_ptr) calloc((size_t)1, sizeof(stx_data));
     data->data = NULL;
@@ -199,22 +200,32 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
     strcat(sql_cmd, start_dt_sql);
     strcat(sql_cmd, " ORDER BY dt");
     PGresult *res = db_query(sql_cmd);
-    if((data->num_recs = PQntuples(res)) <= 0) 
+    int num_db_recs = PQntuples(res);
+#ifdef DEBUG
+    LOGDEBUG("Found %d records for %s\n", num_db_recs, stk);
+#endif
+    if(num_db_recs <= 0) 
         return data;
-    int num_db_recs = data->num_recs;
-    int num_recs = cal_5min_ticks(start_dt, end_dt);
+    char sd[24], ed[24], db_sd[24], db_ed[24];
+    memset(sd, 0, 24 * sizeof(char));
+    memset(ed, 0, 24 * sizeof(char));
+    memset(db_sd, 0, 24 * sizeof(char));
+    memset(db_ed, 0, 24 * sizeof(char));
+    strcpy(sd, PQgetvalue(res, 0, 5));
+    strcpy(db_sd, PQgetvalue(res, 0, 5));
+    strcpy(ed, PQgetvalue(res, num_db_recs - 1, 5));
+    strcpy(db_ed, PQgetvalue(res, num_db_recs - 1, 5));
+    *(strchr(sd, ' ')) = '\0';
+    *(strchr(ed, ' ')) = '\0';
+    int num_recs = 78 * cal_num_busdays(sd, ed);
     data->num_recs = num_recs;
     data->data = (ohlcv_record_ptr) calloc(num_recs, sizeof(ohlcv_record));
+    strcat(sd, " 09:30:00");
+    strcat(ed, " 15:55:00");
+    int ts_idx = 0;
+    while(strcmp(db_sd, sd) > 0) {
 
-/*     char sd[16], ed[16]; */
-/*     strcpy(sd, PQgetvalue(res, 0, 5)); */
-/*     strcpy(ed, PQgetvalue(res, num - 1, 5)); */
-/*     int b_days = cal_num_busdays(sd, ed); */
-/* #ifdef DEBUG */
-/*     LOGDEBUG("Found %d records for %s\n", num, stk); */
-/* #endif */
-/*     data->data = (ohlcv_record_ptr) calloc(b_days, sizeof(ohlcv_record)); */
-/*     int ts_idx = 0; */
+    }
 /*     int calix = cal_ix(sd); */
 /*     char* dt; */
 /*     calix = cal_prev_bday(calix, &dt); */
