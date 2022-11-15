@@ -166,6 +166,19 @@ stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
     return data;
 }
 
+/**
+ *  Get the intraday data for a stock.  If end_dt is NULL, get data
+ *  until the current trading time.  If num_days is zero or negative,
+ *  use a default value of 20.  Start date is num_days business days
+ *  before end date.  TODO: maintain a hashtable with intraday records
+ *  for stocks.  If the stock is not found in hash table, invoke this
+ *  function.  Otherwise, call another function that gets intraday
+ *  data, updates database and the intraday data structure.  The
+ *  intraday hash table should be cleared at the beginning of each
+ *  day.  Then, for each intraday stock, allocate 78 * (num business
+ *  days between start and end dates).  The last 78 records will get
+ *  populated during the trading day.
+ */
 stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
 #ifdef DEBUG
     LOGDEBUG("Loading intraday data for %s\n", stk);
