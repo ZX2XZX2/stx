@@ -820,6 +820,28 @@ char* cal_current_trading_datetime() {
     return _crt_trade_retval;
 }
 
+/**
+ *  Generate timestamp from intraday date
+ */
+unsigned long cal_tsfromdt(char *dt) {
+    struct tm result;
+    time_t tt;
+    if (strptime(dt, "%Y-%m-%d %H:%M:%S", &result) == NULL) {
+        LOGERROR("strptime failed for datetime %s\n", dt);
+        return 0;
+    }
+    time_t ts = mktime(&result);
+    return ts;
+}
+
+/**
+ *  Move 5 minutes ahead (if dir is 1) or behind (dir is -1) in time.
+ */
+char *cal_move_5mins(char *dt, int dir) {
+    char *res = NULL;
+    return res;
+}
+
 /** These two hashtables keep in memory data or JL records calculated
  *  for various equities
  */
@@ -846,20 +868,6 @@ hashtable_ptr ht_jl(const char* factor) {
     } else
         jl_factor_ht = (hashtable_ptr) jlht->val.data;
     return jl_factor_ht;
-}
-
-/**
- *  Generate timestamp from intraday date
- */
-unsigned long cal_tsfromdt(char *dt) {
-    struct tm result;
-    time_t tt;
-    if (strptime(dt, "%Y-%m-%d %H:%M:%S", &result) == NULL) {
-        LOGERROR("strptime failed for datetime %s\n", dt);
-        return 0;
-    }
-    time_t ts = mktime(&result);
-    return ts;
 }
 
 #endif
