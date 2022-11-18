@@ -839,8 +839,8 @@ unsigned long cal_tsfromdt(char *dt) {
  */
 char *cal_move_5mins(char *dt, int dir) {
     char *res = NULL, tmp_dt[20];
-    struct tm *ts;
-    memset(ts, 0, sizeof(struct tm));
+    time_t seconds = time(NULL);
+    struct tm *ts = localtime(&seconds);
     memset(tmp_dt, 0, 20 * sizeof(char));
     strcpy(tmp_dt, dt);
     if (strptime(dt, "%Y-%m-%d %H:%M:%S", ts) == NULL) {
