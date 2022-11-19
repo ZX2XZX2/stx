@@ -216,6 +216,20 @@ class StxDatafeed:
             except Exception as ex:
                 print(f'Failed to upload split {stk}, {dt}, error {str(ex)}')
         print(f'Uploaded {num} out of {len(lines)} stock splits')
+        q = sql.Composed([
+            sql.SQL("INSERT INTO analysis VALUES ("),
+            sql.SQL(',').join([
+                sql.Literal("splits"),
+                sql.Literal(splits_date)
+            ]),
+            sql.SQL(") ON CONFLICT(dt, analysis) DO UPDATE SET dt="),
+            sql.Literal(splits_date)
+        ])
+        try:
+            res = stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+            logging.info(f"Updated splits analysis date to {splits_date}")
+        except:
+            logging.error(f'Failed to update splits analysis date')
 
     def get_available_dates(self, file_pattern, last_date):
         file_list = glob.glob(os.path.join(self.in_dir, file_pattern))
