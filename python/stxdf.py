@@ -217,15 +217,11 @@ class StxDatafeed:
                 print(f'Failed to upload split {stk}, {dt}, error {str(ex)}')
         print(f'Uploaded {num} out of {len(lines)} stock splits')
         q = sql.Composed([
-            sql.SQL("INSERT INTO analyses VALUES ("),
-            sql.SQL(',').join([
-                sql.Literal(splits_date),
-                sql.Literal("splits")
-            ]),
-            sql.SQL(") ON CONFLICT(dt, analysis) DO UPDATE SET dt="),
-            sql.Literal(splits_date)
+            sql.SQL("UPDATE analyses SET dt="),
+            sql.Literal(splits_date),
+            sql.SQL(" WHERE analysis="),
+            sql.Literal("splits")
         ])
-        logging.info(f"{q.as_string(stxdb.db_get_cnx())}")
         try:
             res = stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
             logging.info(f"Updated splits analysis date to {splits_date}")
