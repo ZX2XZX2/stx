@@ -224,63 +224,75 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
     memset(ed, 0, 24 * sizeof(char));
     memset(db_sd, 0, 24 * sizeof(char));
     memset(db_ed, 0, 24 * sizeof(char));
-    strcpy(sd, PQgetvalue(res, 0, 5));
+    strcpy(sd, start_dt);
     strcpy(db_sd, PQgetvalue(res, 0, 5));
-    strcpy(ed, PQgetvalue(res, num_db_recs - 1, 5));
+    strcpy(ed, end_dt);
     strcpy(db_ed, PQgetvalue(res, num_db_recs - 1, 5));
-    *(strchr(sd, ' ')) = '\0';
-    *(strchr(ed, ' ')) = '\0';
+    /* *(strchr(sd, ' ')) = '\0'; */
+    /* *(strchr(ed, ' ')) = '\0'; */
     int num_recs = 78 * cal_num_busdays(sd, ed);
     data->num_recs = num_recs;
     data->data = (ohlcv_record_ptr) calloc(num_recs, sizeof(ohlcv_record));
     strcat(sd, " 09:30:00");
     strcat(ed, " 15:55:00");
     int ts_idx = 0;
+    int o_db = atoi(PQgetvalue(res, 0, 0));
     while(strcmp(db_sd, sd) > 0) {
-
+        data->data[ts_idx].open = o_db;
+        data->data[ts_idx].high = o_db;
+        data->data[ts_idx].low = o_db;
+        data->data[ts_idx].close = o_db;
+        data->data[ts_idx].volume = 0;
+        strcpy(data->data[ts_idx].date, sd);
+        printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd);
+        cal_move_5mins(sd, 1);
+        ts_idx++;
     }
-/*     int calix = cal_ix(sd); */
-/*     char* dt; */
-/*     calix = cal_prev_bday(calix, &dt); */
-/*     for(int ix = 0; ix < num; ix++) { */
-/*         calix = cal_next_bday(calix, &dt); */
-/*         char* db_date = PQgetvalue(res, ix, 5); */
-/*         if (strcmp(dt, db_date) > 0) { */
-/*             LOGERROR("%s: Something is very wrong: dt = %s, db_date = %s\n", */
-/*                      stk, dt, db_date); */
-/*             return NULL; */
-/*         } */
-/*         while (strcmp(dt, db_date) < 0) { */
-/* #ifdef DEBUG */
-/*             LOGDEBUG("Adding data for %s, not found in %s data\n", dt, stk); */
-/* #endif */
-/*             data->data[ts_idx].open = data->data[ts_idx - 1].close; */
-/*             data->data[ts_idx].high = data->data[ts_idx - 1].close; */
-/*             data->data[ts_idx].low = data->data[ts_idx - 1].close; */
-/*             data->data[ts_idx].close = data->data[ts_idx - 1].close; */
-/*             data->data[ts_idx].volume = 0; */
-/*             strcpy(data->data[ts_idx].date, dt);  */
-/*             calix = cal_next_bday(calix, &dt); */
-/*             ts_idx++; */
-/*         }    */
-/*         data->data[ts_idx].open = atoi(PQgetvalue(res, ix, 0)); */
-/*         data->data[ts_idx].high = atoi(PQgetvalue(res, ix, 1)); */
-/*         data->data[ts_idx].low = atoi(PQgetvalue(res, ix, 2)); */
-/*         data->data[ts_idx].close = atoi(PQgetvalue(res, ix, 3)); */
-/*         data->data[ts_idx].volume = atoi(PQgetvalue(res, ix, 4)); */
-/*         strcpy(data->data[ts_idx].date, PQgetvalue(res, ix, 5));  */
-/*         ts_idx++; */
-/*     } */
-/*     data->pos = b_days - 1; */
-/*     PQclear(res); */
-/* #ifdef DEBUG */
-/*     LOGDEBUG("Loading the splits for %s\n", stk); */
-/* #endif */
-/*     data->splits = ts_load_splits(stk); */
-/*     strcpy(data->stk, stk); */
-/* #ifdef DEBUG */
-/*     LOGDEBUG("Done loading %s\n", stk); */
-/* #endif */
+    for (int db_ix = 0; db_ix < num_db_recs; db_ix++) {
+        strcpy(db_sd, PQgetvalue(res, db_ix, 5));
+        while(strcmp(db_sd, sd) > 0) {
+            int prev_close = data->data[ts_idx - 1].close;
+            data->data[ts_idx].open = prev_close;
+            data->data[ts_idx].high = prev_close;
+            data->data[ts_idx].low = prev_close;
+            data->data[ts_idx].close = prev_close;
+            data->data[ts_idx].volume = 0;
+            strcpy(data->data[ts_idx].date, sd);
+            printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd);
+            cal_move_5mins(sd, 1);
+            ts_idx++;
+        }
+        data->data[ts_idx].open = atoi(PQgetvalue(res, 0, 0));
+        data->data[ts_idx].high = atoi(PQgetvalue(res, 0, 1));
+        data->data[ts_idx].low = atoi(PQgetvalue(res, 0, 2));
+        data->data[ts_idx].close = atoi(PQgetvalue(res, 0, 3));
+        data->data[ts_idx].volume = atoi(PQgetvalue(res, 0, 4));
+        strcpy(data->data[ts_idx].date, PQgetvalue(res, 0, 5));
+        printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd);
+        cal_move_5mins(sd, 1);
+        ts_idx++;
+    }
+    int last_close = atoi(PQgetvalue(res, num_db_recs - 1, 3));
+    while(strcmp(sd, ed) <= 0) {
+        printf("%3d sd = %s ed = %s\n", ts_idx, sd, ed);
+        data->data[ts_idx].open = last_close;
+        data->data[ts_idx].high = last_close;
+        data->data[ts_idx].low = last_close;
+        data->data[ts_idx].close = last_close;
+        data->data[ts_idx].volume = 0;
+        strcpy(data->data[ts_idx].date, sd);
+        cal_move_5mins(sd, 1);
+        ts_idx++;
+    }
+    PQclear(res);
+#ifdef DEBUG
+    LOGDEBUG("Loading the splits for %s\n", stk);
+#endif
+    data->splits = ts_load_splits(stk);
+    strcpy(data->stk, stk);
+#ifdef DEBUG
+    LOGDEBUG("Done loading %s\n", stk);
+#endif
     return data;
 }
 
