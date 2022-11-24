@@ -244,7 +244,7 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         data->data[ts_idx].close = o_db;
         data->data[ts_idx].volume = 0;
         strcpy(data->data[ts_idx].date, sd);
-        printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd);
+        /* printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd); */
         cal_move_5mins(sd, 1);
         ts_idx++;
     }
@@ -258,17 +258,17 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
             data->data[ts_idx].close = prev_close;
             data->data[ts_idx].volume = 0;
             strcpy(data->data[ts_idx].date, sd);
-            printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd);
+            /* printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd); */
             cal_move_5mins(sd, 1);
             ts_idx++;
         }
-        data->data[ts_idx].open = atoi(PQgetvalue(res, 0, 0));
-        data->data[ts_idx].high = atoi(PQgetvalue(res, 0, 1));
-        data->data[ts_idx].low = atoi(PQgetvalue(res, 0, 2));
-        data->data[ts_idx].close = atoi(PQgetvalue(res, 0, 3));
-        data->data[ts_idx].volume = atoi(PQgetvalue(res, 0, 4));
-        strcpy(data->data[ts_idx].date, PQgetvalue(res, 0, 5));
-        printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd);
+        data->data[ts_idx].open = atoi(PQgetvalue(res, db_ix, 0));
+        data->data[ts_idx].high = atoi(PQgetvalue(res, db_ix, 1));
+        data->data[ts_idx].low = atoi(PQgetvalue(res, db_ix, 2));
+        data->data[ts_idx].close = atoi(PQgetvalue(res, db_ix, 3));
+        data->data[ts_idx].volume = atoi(PQgetvalue(res, db_ix, 4));
+        strcpy(data->data[ts_idx].date, PQgetvalue(res, db_ix, 5));
+        /* printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd); */
         cal_move_5mins(sd, 1);
         ts_idx++;
     }
@@ -284,11 +284,16 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         cal_move_5mins(sd, 1);
         ts_idx++;
     }
-    PQclear(res);
+    printf("before PQclear\n");
+    /* PQclear(res); */
+    printf("after PQclear\n");
+    data->pos = data->num_recs - 1;
 #ifdef DEBUG
     LOGDEBUG("Loading the splits for %s\n", stk);
 #endif
-    data->splits = ts_load_splits(stk);
+    printf("before ts_load_splits\n");    
+    /* data->splits = ts_load_splits(stk); */
+    printf("after ts_load_splits\n");    
     strcpy(data->stk, stk);
 #ifdef DEBUG
     LOGDEBUG("Done loading %s\n", stk);
@@ -392,19 +397,27 @@ void ts_free_data(stx_data_ptr data) {
     free(data);
 }
 
-void ts_print(stx_data_ptr data, char* s_date, char* e_date) {
-    int s_ix = ts_find_date_record(data, s_date, 1);
-    int e_ix = ts_find_date_record(data, e_date, -1);
-    for(int ix = s_ix; ix <= e_ix; ix++)
-        fprintf(stderr, "%s %7d %7d %7d %7d %7d\n", 
-                data->data[ix].date, data->data[ix].open, 
-                data->data[ix].high, data->data[ix].low, 
-                data->data[ix].close, data->data[ix].volume);
+void ts_print_record(ohlcv_record_ptr record) {
+    fprintf(stderr, "%s %7d %7d %7d %7d %7d\n", record->date, record->open, 
+            record->high, record->low, record->close, record->volume);
 }
 
-void ts_print_record(ohlcv_record_ptr record) {
-    fprintf(stderr, "%s %7d %7d %7d %7d %7d", record->date, record->open, 
-            record->high, record->low, record->close, record->volume);
+void ts_print(stx_data_ptr data, int num_recs) {
+    LOGINFO("Data for stock %s\n", data->stk);
+    fprintf(stderr, "%s %s has %d records, current record: %d, last adj: %d\n",
+            data->stk, (data->intraday? "intraday": "eod"), data->num_recs,
+            data->pos, data->last_adj);
+    /* ht_print(data->splits); */
+    if (data->pos < 2 * num_recs) {
+        for (int ix = 0; ix < data->pos; ix++)
+            ts_print_record(data->data + ix);
+    } else {
+        for (int ix = 0; ix < num_recs; ix++)
+            ts_print_record(data->data + ix);
+        fprintf(stderr, ".  .  .\n");
+        for (int ix = data->pos - num_recs + 1; ix <= data->pos; ix++)
+            ts_print_record(data->data + ix);
+    }
 }
 
 /** Return daily records for a stock.  Use static stx hashtable,
