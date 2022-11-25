@@ -219,11 +219,11 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
 #endif
     if(num_db_recs <= 0) 
         return data;
-    char sd[24], ed[24], db_sd[24], db_ed[24];
-    memset(sd, 0, 24 * sizeof(char));
-    memset(ed, 0, 24 * sizeof(char));
-    memset(db_sd, 0, 24 * sizeof(char));
-    memset(db_ed, 0, 24 * sizeof(char));
+    char sd[20], ed[20], db_sd[20], db_ed[20];
+    memset(sd, 0, 20 * sizeof(char));
+    memset(ed, 0, 20 * sizeof(char));
+    memset(db_sd, 0, 20 * sizeof(char));
+    memset(db_ed, 0, 20 * sizeof(char));
     strcpy(sd, start_dt);
     strcpy(db_sd, PQgetvalue(res, 0, 5));
     strcpy(ed, end_dt);
@@ -284,16 +284,12 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         cal_move_5mins(sd, 1);
         ts_idx++;
     }
-    printf("before PQclear\n");
-    /* PQclear(res); */
-    printf("after PQclear\n");
+    PQclear(res);
     data->pos = data->num_recs - 1;
 #ifdef DEBUG
     LOGDEBUG("Loading the splits for %s\n", stk);
 #endif
-    printf("before ts_load_splits\n");    
-    /* data->splits = ts_load_splits(stk); */
-    printf("after ts_load_splits\n");    
+    data->splits = ts_load_splits(stk);
     strcpy(data->stk, stk);
 #ifdef DEBUG
     LOGDEBUG("Done loading %s\n", stk);
@@ -407,7 +403,7 @@ void ts_print(stx_data_ptr data, int num_recs) {
     fprintf(stderr, "%s %s has %d records, current record: %d, last adj: %d\n",
             data->stk, (data->intraday? "intraday": "eod"), data->num_recs,
             data->pos, data->last_adj);
-    /* ht_print(data->splits); */
+    ht_print(data->splits);
     if (data->pos < 2 * num_recs) {
         for (int ix = 0; ix < data->pos; ix++)
             ts_print_record(data->data + ix);
