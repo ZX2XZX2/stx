@@ -518,6 +518,13 @@ hashtable_ptr cal_get() {
     return cal;
 }
 
+void cal_free() {
+    if (cal != NULL) {
+        ht_free(cal);
+        cal = NULL;
+    }
+}
+
 int cal_num_busdays(char* start_date, char* end_date) {
     ht_item_ptr d1 = ht_get(cal_get(), start_date);
     ht_item_ptr d2 = ht_get(cal_get(), end_date);
