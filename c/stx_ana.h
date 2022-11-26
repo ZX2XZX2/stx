@@ -242,7 +242,7 @@ int ana_expiry_analysis(char* dt, bool use_eod_spots, bool download_spots,
         ht_item_ptr data_ht = ht_get(ht_data(), stk);
         stx_data_ptr data = NULL;
         if (data_ht == NULL) {
-            data = ts_load_stk(stk);
+            data = ts_load_stk(stk, false);
             if (data == NULL)
                 continue;
             data_ht = ht_new_data(stk, (void*)data);
