@@ -60,20 +60,28 @@ int ts_weighted_price(stx_data_ptr data, int ix) {
         / 3;
 }
 
-hashtable_ptr ts_load_splits(char* stk) {
-    char sql_cmd[80];
-    sprintf(sql_cmd, "select ratio, dt from dividends where stk='%s' "
-            "order by dt", stk);
+void ts_load_splits(stx_data_ptr data) {
+    char sql_cmd[256], start_date[20], end_date[20];
+    strcpy(start_date, data->data[0].date);
+    strcpy(end_date, data->data[data->num_recs - 1].date);
+    if (data->intraday) {
+        *(strchr(start_date, ' ')) = '\0';
+        *(strchr(end_date, ' ')) = '\0';
+    }
+    sprintf(sql_cmd, "SELECT ratio, dt FROM dividends WHERE stk='%s' AND "
+            "dt BETWEEN '%s' AND '%s' ORDER BY dt", data->stk, start_date,
+            end_date);
     PGresult *res = db_query(sql_cmd);
 #ifdef DEBUG
-    LOGDEBUG("Found %d splits for %s\n", PQntuples(res), stk);
+    LOGDEBUG("Found %d splits for %s between %s and %s\n",
+             PQntuples(res), data->stk, start_date, end_date);
 #endif
-    hashtable_ptr result = ht_divis(res);
+    data->splits = ht_divis(res);
 #ifdef DEBUG
-    LOGDEBUG("Loaded splits for %s\n", stk);
+    LOGDEBUG("Loaded splits for %s between %s and %s\n", data->stk, start_date,
+             end_date);
 #endif
     PQclear(res);
-    return result;
 }
 
 stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
@@ -158,8 +166,8 @@ stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
 #ifdef DEBUG
     LOGDEBUG("Loading the splits for %s\n", stk);
 #endif
-    data->splits = ts_load_splits(stk);
     strcpy(data->stk, stk);
+    ts_load_splits(data);
 #ifdef DEBUG
     LOGDEBUG("Done loading %s\n", stk);
 #endif
@@ -274,7 +282,6 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
     }
     int last_close = atoi(PQgetvalue(res, num_db_recs - 1, 3));
     while(strcmp(sd, ed) <= 0) {
-        printf("%3d sd = %s ed = %s\n", ts_idx, sd, ed);
         data->data[ts_idx].open = last_close;
         data->data[ts_idx].high = last_close;
         data->data[ts_idx].low = last_close;
@@ -289,8 +296,8 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
 #ifdef DEBUG
     LOGDEBUG("Loading the splits for %s\n", stk);
 #endif
-    data->splits = ts_load_splits(stk);
     strcpy(data->stk, stk);
+    ts_load_splits(data);
 #ifdef DEBUG
     LOGDEBUG("Done loading %s\n", stk);
 #endif
@@ -403,7 +410,9 @@ void ts_print(stx_data_ptr data, int num_recs) {
     fprintf(stderr, "%s %s has %d records, current record: %d, last adj: %d\n",
             data->stk, (data->intraday? "intraday": "eod"), data->num_recs,
             data->pos, data->last_adj);
+    fprintf(stderr, "Splits: \n");
     ht_print(data->splits);
+    fprintf(stderr, "First %d, last %d OHLCV records:\n", num_recs, num_recs);
     if (data->pos < 2 * num_recs) {
         for (int ix = 0; ix < data->pos; ix++)
             ts_print_record(data->data + ix);
