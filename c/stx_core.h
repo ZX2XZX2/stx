@@ -844,8 +844,10 @@ unsigned long cal_tsfromdt(char *dt) {
 
 /**
  *  Move 5 minutes ahead (if dir is 1) or behind (dir is -1) in time.
+ *  dt contains both the intial datetime and the datetime after moving
+ *  5 minutes.
  */
-char *cal_move_5mins(char *dt, int dir) {
+void cal_move_5mins(char *dt, int dir) {
     char *res = NULL, tmp_dt[20];
     time_t seconds = time(NULL);
     struct tm *ts = localtime(&seconds);
@@ -853,18 +855,16 @@ char *cal_move_5mins(char *dt, int dir) {
     strcpy(tmp_dt, dt);
     if (strptime(dt, "%Y-%m-%d %H:%M:%S", ts) == NULL) {
         LOGERROR("strptime failed for datetime %s\n", dt);
-        return NULL;
+        return;
     }
     time_t tt = mktime(ts);
     if (dir == 1 && ts->tm_hour == 15 && ts->tm_min == 55) {
-        char *hhmm = strchr(tmp_dt, ' ');
-        *hhmm = '\0';
+        *(strchr(tmp_dt, ' ')) = '\0';
         char *next_dt = NULL;
         cal_next_bday(cal_ix(tmp_dt), &next_dt);
         sprintf(dt, "%s 09:30:00", next_dt);
     } else if (dir == -1 && ts->tm_hour == 9 && ts->tm_min == 30) {
-        char *hhmm = strchr(tmp_dt, ' ');
-        *hhmm = '\0';
+        *(strchr(tmp_dt, ' ')) = '\0';
         char *prev_dt = NULL;
         cal_prev_bday(cal_ix(tmp_dt), &prev_dt);
         sprintf(dt, "%s 15:55:00", prev_dt);
@@ -874,7 +874,6 @@ char *cal_move_5mins(char *dt, int dir) {
         ts = localtime(&tt);
         strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts);
     }
-    return dt;
 }
 
 /** These two hashtables keep in memory data or JL records calculated
