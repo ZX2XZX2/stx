@@ -848,31 +848,52 @@ unsigned long cal_tsfromdt(char *dt) {
  *  5 minutes.
  */
 void cal_move_5mins(char *dt, int dir) {
-    char *res = NULL, tmp_dt[20];
     time_t seconds = time(NULL);
     struct tm *ts = localtime(&seconds);
-    memset(tmp_dt, 0, 20 * sizeof(char));
-    strcpy(tmp_dt, dt);
     if (strptime(dt, "%Y-%m-%d %H:%M:%S", ts) == NULL) {
         LOGERROR("strptime failed for datetime %s\n", dt);
         return;
     }
-    time_t tt = mktime(ts);
-    if (dir == 1 && ts->tm_hour == 15 && ts->tm_min == 55) {
-        *(strchr(tmp_dt, ' ')) = '\0';
-        char *next_dt = NULL;
-        cal_next_bday(cal_ix(tmp_dt), &next_dt);
-        sprintf(dt, "%s 09:30:00", next_dt);
-    } else if (dir == -1 && ts->tm_hour == 9 && ts->tm_min == 30) {
-        *(strchr(tmp_dt, ' ')) = '\0';
-        char *prev_dt = NULL;
-        cal_prev_bday(cal_ix(tmp_dt), &prev_dt);
-        sprintf(dt, "%s 15:55:00", prev_dt);
-    }
-    else {
-        tt += (dir * 300);
-        ts = localtime(&tt);
-        strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts);
+    char tmp_dt[20], *hhmm = NULL, *move_date = NULL;
+    memset(tmp_dt, 0, 20 * sizeof(char));
+    strcpy(tmp_dt, dt);
+    hhmm = strchr(tmp_dt, ' ');
+    *hhmm = '\0';
+    if (!cal_is_busday(tmp_dt)) {
+        if (dir == 1) {
+            cal_next_bday(cal_ix(tmp_dt), &move_date);
+            sprintf(dt, "%s 09:30:00", move_date);
+        } else {
+            cal_prev_bday(cal_ix(tmp_dt), &move_date);
+            sprintf(dt, "%s 15:55:00", move_date);
+        }
+    } else {
+        if (dir == 1) {
+            if (ts->tm_hour < 9 || (ts->tm_hour == 9 && ts->tm_min < 30))
+                sprintf(dt, "%s 09:30:00", tmp_dt);
+            else if (ts->tm_hour > 15 ||
+                     (ts->tm_hour == 15 && ts->tm_min == 55)) {
+                cal_next_bday(cal_ix(tmp_dt), &move_date);
+                sprintf(dt, "%s 09:30:00", move_date);
+            } else { /** advance 5 mins during the trading day */
+                time_t tt = mktime(ts);
+                tt += 300;
+                ts = localtime(&tt);
+                strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts);
+            }
+        } else { /** dir == -1 */
+            if (ts->tm_hour < 9 || (ts->tm_hour == 9 && ts->tm_min == 30)) {
+                cal_prev_bday(cal_ix(tmp_dt), &move_date);
+                sprintf(dt, "%s 15:55:00", move_date);
+            } else if (ts->tm_hour > 15)
+                sprintf(dt, "%s 15:55:00", tmp_dt);
+            else { /** go back 5 mins during the trading day */
+                time_t tt = mktime(ts);
+                tt -= 300;
+                ts = localtime(&tt);
+                strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts);
+            }
+        }
     }
 }
 
