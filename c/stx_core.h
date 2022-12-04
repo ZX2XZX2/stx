@@ -587,6 +587,18 @@ char* cal_move_to_bday(char* dt, bool next_bday) {
     return res;
 }
 
+/**
+ *  Return the calendar pointer to the date portion of'dt', if 'dt' is
+ *  a datetime in the format 'YYYY-mm-dd'.
+ */
+char* cal_get_date_from_dt(char* dt) {
+    char *hhmm = strchr(dt, ' ');
+    *hhmm = '\0';
+    int ix = cal_ix(dt);
+    *hhmm = ' ';
+    return &(cal_get()->list[ix].key[0]);
+}
+
 /** Move 'num_days' business days away from the input date 'crt_date'
  * If 'num_days' is 0, return a pointer to the current date, if it is a
  * business day. Otherwise, return the previous business day.
