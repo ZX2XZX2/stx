@@ -119,3 +119,6 @@ dkms.conf
 
 # Ignore "scratch" C file t.c
 t.c
+
+# ignore VSCode files
+.vscode
