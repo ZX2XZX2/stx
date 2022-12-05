@@ -11,7 +11,7 @@
                 "/usr/include/postgresql",
                 "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}",
+                "${fileDirname}/${fileBasenameNoExtension}.exe",
                 "-lpq",
                 "-lm",
                 "-lcjson",
