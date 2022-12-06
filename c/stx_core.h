@@ -587,18 +587,6 @@ char* cal_move_to_bday(char* dt, bool next_bday) {
     return res;
 }
 
-/**
- *  Return the calendar pointer to the date portion of'dt', if 'dt' is
- *  a datetime in the format 'YYYY-mm-dd'.
- */
-char* cal_get_date_from_dt(char* dt) {
-    char *hhmm = strchr(dt, ' ');
-    *hhmm = '\0';
-    int ix = cal_ix(dt);
-    *hhmm = ' ';
-    return &(cal_get()->list[ix].key[0]);
-}
-
 /** Move 'num_days' business days away from the input date 'crt_date'
  * If 'num_days' is 0, return a pointer to the current date, if it is a
  * business day. Otherwise, return the previous business day.
@@ -788,34 +776,17 @@ char* cal_setup_time(bool eod, bool tomorrow) {
 }
 
 /**
- *  Get the number of 5 minute ticks between two dates.  end_dt cannot
- *  be later than current trading date.  If end_dt is earlier than
- *  current trading date, then we are looking at historical data, and
- *  there should be 78 * (number of business days between start and
- *  end dates) records.  If end_dt and current trading date are the
- *  same, then we might be looking at real-time data, and if we during
- *  the trading hours, then only a subset of the 78 daily 5-minute
- *  ticks will be available.
+ *  Return the calendar pointer to the date portion of'dt', if 'dt' is
+ *  a datetime in the format 'YYYY-mm-dd'.
  */
-int cal_5min_ticks(char *start_dt, char *end_dt) {
-    char *current_trading_date = cal_current_trading_date();
-    int b_days = cal_num_busdays(start_dt, end_dt), num_recs = 0;
-    if (!strcmp(end_dt, current_trading_date)) {
-        time_t seconds = time(NULL);
-        struct tm *ts = localtime(&seconds);
-        if ((ts->tm_hour >= 16) || (ts->tm_hour < 9) ||
-            ((ts->tm_hour == 9) && (ts->tm_min < 30)))
-            num_recs = 78 * b_days;
-        else {
-            int minutes = 5 * (ts->tm_min / 5);
-            num_recs = 78 * (b_days) - 12 * (15 - ts->tm_hour) -
-                (55 - minutes) / 5;
-        }
-    } else
-        num_recs = 78 * b_days;
-    return num_recs;
+char* cal_get_date_from_dt(char* dt) {
+    char copy_dt[20];
+    memset(copy_dt, 0, 20);
+    strcpy(copy_dt, dt);
+    *(strchr(copy_dt, ' ')) = '\0';
+    int ix = cal_ix(copy_dt);
+    return &(cal_get()->list[ix].key[0]);
 }
-
 
 /**
  *  Get the current 5-minute trading timestamp, in the format
