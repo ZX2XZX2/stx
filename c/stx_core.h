@@ -789,6 +789,21 @@ char* cal_get_date_from_dt(char* dt) {
 }
 
 /**
+ *  Get the number of 5 minute ticks between two datetimes.
+ */
+int cal_5min_ticks(char *start_dt, char *end_dt) {
+    char *start_date = cal_get_date_from_dt(start_dt);
+    char *end_date = cal_get_date_from_dt(end_dt);
+    int b_days = cal_num_busdays(start_date, end_date) - 1, num_recs = 0;
+    struct tm end_ts;
+    memset(&end_ts, 0, sizeof(struct tm));
+    strptime(end_dt, "%Y-%m-%d %H:%M:%S", &end_ts);
+    int mins = (end_ts.tm_hour - 9) * 60 + end_ts.tm_min - 30;
+    num_recs = 1 + 78 * b_days + mins / 5;
+    return num_recs;
+}
+
+/**
  *  Get the current 5-minute trading timestamp, in the format
  *  YYYY-mm-dd HH:MM:ss.
  */
