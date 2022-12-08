@@ -252,7 +252,6 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         data->data[ts_idx].close = o_db;
         data->data[ts_idx].volume = 0;
         strcpy(data->data[ts_idx].date, sd);
-        /* printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd); */
         cal_move_5mins(sd, 1);
         ts_idx++;
     }
@@ -266,7 +265,6 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
             data->data[ts_idx].close = prev_close;
             data->data[ts_idx].volume = 0;
             strcpy(data->data[ts_idx].date, sd);
-            /* printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd); */
             cal_move_5mins(sd, 1);
             ts_idx++;
         }
@@ -276,7 +274,6 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         data->data[ts_idx].close = atoi(PQgetvalue(res, db_ix, 3));
         data->data[ts_idx].volume = atoi(PQgetvalue(res, db_ix, 4));
         strcpy(data->data[ts_idx].date, PQgetvalue(res, db_ix, 5));
-        /* printf("%3d sd = %s db_sd = %s\n", ts_idx, sd, db_sd); */
         cal_move_5mins(sd, 1);
         ts_idx++;
     }
@@ -313,22 +310,28 @@ stx_data_ptr ts_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     return data;
 }
 
-int ts_find_date_record(stx_data_ptr data, char* date, int rel_pos) {
-    /** rel_pos is a parameter that can take the following values:
-     *  0 - do an exact search
-     *  1 - return date, or next business day, if date not found
-     * -1 - return date, or previous business day, if date not found
-     **/
-    char* first_date = data->data[0].date;
-    int n = cal_num_busdays(first_date, date) - 1;
+/**
+ * Find the index corresponding to a datetime.  For non-intraday,
+ * rel_pos is a parameter that can take the following values:
+ *  0 - do an exact search
+ *  1 - return date, or next business day, if date not found
+ * -1 - return date, or previous business day, if date not found
+ **/
+int ts_find_date_record(stx_data_ptr data, char* dt, int rel_pos) {
+    char* first_dt = data->data[0].date;
+    if (data->intraday == 1) {
+        int ix = cal_5min_ticks(first_dt, dt) - 1;
+        return ix;
+    }
+    int n = cal_num_busdays(first_dt, dt) - 1;
     if (n < 0) {
         if (rel_pos > 0)
             return 0;
     } else if (n >= data->num_recs) {
         if (rel_pos < 0)
-            return data->num_recs - 1;;
+            return data->num_recs - 1;
     } else {
-        if (strcmp(data->data[n].date, date) == 0)
+        if (strcmp(data->data[n].date, dt) == 0)
             return n;
         else {
             if (rel_pos < 0)
