@@ -672,9 +672,9 @@ def next_intraday(dt):
     pddt = pd.Timestamp(npdt)
     pddt_str = str(pddt)
     pd_date, pd_time = pddt_str.split(' ')
-    if pddt.hour == 16 and pddt.minute == 5:
+    if pddt.hour == 16 and pddt.minute == 0:
         next_date = next_busday(pd_date)
-        next_time = '09:35'
+        next_time = '09:30'
     else:
         next_date = pd_date
         next_time = pd_time[:-3]
