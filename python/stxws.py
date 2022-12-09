@@ -118,7 +118,7 @@ def idcharts():
                 end_dt = f'{end_date} {end_time}'                
             stk_list = stks.split(' ')
             start_date = stxcal.move_busdays(end_date, -num_days + 1)
-            start_dt = f'{start_date} 09:35'
+            start_dt = f'{start_date} 09:30'
             frequency = int(freq[:-3])
             for stk in stk_list:
                 sp = StxPlotID(None, start_dt, end_dt, stk, frequency)
