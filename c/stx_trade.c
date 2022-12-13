@@ -54,6 +54,20 @@ int main(int argc, char** argv) {
      *  Same thing for simulation, but two cases, either resuming a
      *  previous simulation, or starting a new one.
      */
+    if (realtime) {
+        
+    } else {
+        if (!strcmp(mkt_name, "") && start_date == NULL) {
+            fprintf(stderr, "To launch a realtime run use the '-r' or "
+                    "'--realtime' flags\n");
+            fprintf(stderr, "To launch a simulation either: \n"
+                    " - load an existing simulation, using the '-m' or "
+                    "the '--market-name' flag, or \n"
+                    " - start a new simulation, using the '-s' or "
+                    "'--start-date' flag to specify the start date \n");
+            exit(0);
+        }
+    }
     while (keep_running) {
         fprintf(stderr, "Still running ...\n");
         sleep(sleep_interval);
