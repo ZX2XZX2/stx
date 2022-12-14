@@ -899,25 +899,49 @@ void cal_move_5mins(char *dt, int dir) {
  *  for various equities
  */
 static hashtable_ptr stx = NULL;
+static hashtable_ptr id_stx = NULL;
 static hashtable_ptr jl = NULL;
+static hashtable_ptr id_jl = NULL;
 
 /** Return the hash table with EOD stock data. */
 hashtable_ptr ht_data() {
     if (stx == NULL) 
-        stx = ht_new(NULL, 20000);
+        stx = ht_new(NULL, 10000);
     return stx;
 }
 
-/** Return the hash table with JL stock data for a given factor */
+/** Return the hash table with intraday stock data. */
+hashtable_ptr ht_id_data() {
+    if (id_stx == NULL) 
+        id_stx = ht_new(NULL, 10000);
+    return id_stx;
+}
+
+/** Return the hash table with JL EOD stock data for a given factor */
 hashtable_ptr ht_jl(const char* factor) {
     if (jl == NULL) 
         jl = ht_new(NULL, 5);
     ht_item_ptr jlht = ht_get(jl, factor);
     hashtable_ptr jl_factor_ht = NULL;
     if (jlht == NULL) {
-        jl_factor_ht = ht_new(NULL, 20000);
+        jl_factor_ht = ht_new(NULL, 10000);
         jlht = ht_new_data(factor, (void *) jl_factor_ht);
         ht_insert(jl, jlht);
+    } else
+        jl_factor_ht = (hashtable_ptr) jlht->val.data;
+    return jl_factor_ht;
+}
+
+/** Return hash table with JL intraday stock data for a factor */
+hashtable_ptr ht_id_jl(const char* factor) {
+    if (id_jl == NULL) 
+        id_jl = ht_new(NULL, 5);
+    ht_item_ptr jlht = ht_get(id_jl, factor);
+    hashtable_ptr jl_factor_ht = NULL;
+    if (jlht == NULL) {
+        jl_factor_ht = ht_new(NULL, 10000);
+        jlht = ht_new_data(factor, (void *) jl_factor_ht);
+        ht_insert(id_jl, jlht);
     } else
         jl_factor_ht = (hashtable_ptr) jlht->val.data;
     return jl_factor_ht;
