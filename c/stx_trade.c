@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "stx_core.h"
+#include "stx_trade.h"
 
 static volatile bool keep_running = true;
 
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
      *  previous simulation, or starting a new one.
      */
     if (realtime) {
-        
+        load_market();
     } else {
         if (!strcmp(mkt_name, "") && start_date == NULL) {
             fprintf(stderr, "To launch a realtime run use the '-r' or "
@@ -69,8 +69,9 @@ int main(int argc, char** argv) {
         }
     }
     while (keep_running) {
-        fprintf(stderr, "Still running ...\n");
+        LOGINFO("Still running ...\n");
         sleep(sleep_interval);
     }
-    fprintf(stderr, "Saving the market before exiting\n");
+    LOGINFO("Saving the market before exiting\n");
+    save_market();
 }
