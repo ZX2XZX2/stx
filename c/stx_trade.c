@@ -54,24 +54,14 @@ int main(int argc, char** argv) {
      *  Same thing for simulation, but two cases, either resuming a
      *  previous simulation, or starting a new one.
      */
-    if (realtime) {
-        load_market();
-    } else {
-        if (!strcmp(mkt_name, "") && start_date == NULL) {
-            fprintf(stderr, "To launch a realtime run use the '-r' or "
-                    "'--realtime' flags\n");
-            fprintf(stderr, "To launch a simulation either: \n"
-                    " - load an existing simulation, using the '-m' or "
-                    "the '--market-name' flag, or \n"
-                    " - start a new simulation, using the '-s' or "
-                    "'--start-date' flag to specify the start date \n");
-            exit(0);
-        }
+    if (trd_load_market(mkt_name, start_date, realtime) != 0) {
+        LOGERROR("Failed to load market, exiting ...\n" );
+        exit(1);
     }
     while (keep_running) {
         LOGINFO("Still running ...\n");
         sleep(sleep_interval);
     }
     LOGINFO("Saving the market before exiting\n");
-    save_market();
+    trd_save_market(mkt_name, realtime);
 }
