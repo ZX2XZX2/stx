@@ -6,6 +6,8 @@
 #include "stx_core.h"
 
 
+
+
 cJSON* trd_get_id_leaders(char *exp_date, char *ind_date, char *ind_name,
                           int short_ind_bound, int long_ind_bound,
                           int min_stp_activity, int max_stp_range) {
@@ -151,12 +153,24 @@ void trd_daytrade(char *ana_date, char *ana_time, char *exp_date, cJSON *stx,
 
 }
 
-void load_market() {
-
+int trd_load_market(char *mkt_name, char *start_date, bool realtime) {
+    if (!realtime) {
+        if (!strcmp(mkt_name, "") && start_date == NULL) {
+            fprintf(stderr, "To launch a realtime run use the '-r' or "
+                    "'--realtime' flags\n");
+            fprintf(stderr, "To launch a simulation either: \n"
+                    " - load an existing simulation, using the '-m' or "
+                    "the '--market-name' flag, or \n"
+                    " - start a new simulation, using the '-s' or "
+                    "'--start-date' flag to specify the start date \n");
+            exit(1);
+        }
+    }
+    return 0;
 }
 
-void save_market() {
-
+int trd_save_market(char *mkt_name, bool realtime) {
+    return 0;
 }
 
 #endif
