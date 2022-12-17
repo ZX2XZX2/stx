@@ -305,8 +305,14 @@ stx_data_ptr ts_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     stx_data_ptr data = NULL;
     if (!intraday)
         data = ts_load_eod_stk(stk, dt, num_days);
-    else
-        data = ts_load_id_stk(stk, dt, num_days);
+    else {
+        char load_date[20], *hhmm = NULL;
+        strcpy(load_date, dt);
+        hhmm = strchr(load_date, ' ');
+        if (hhmm != NULL)
+            *hhmm = '\0';
+        data = ts_load_id_stk(stk, load_date, num_days);
+    }
     return data;
 }
 
