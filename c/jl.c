@@ -42,14 +42,12 @@ int main(int argc, char** argv) {
             *hhmm = '\0';
     }
     LOGINFO("ed = %s\n", ed);
-    stx_data_ptr data = ts_load_stk(stk, NULL, 0, intraday);
+    stx_data_ptr data = ts_load_stk(stk, ed, 0, intraday);
     LOGINFO("Loaded %d records for %s\n", data->num_recs, data->stk);
     jl_data_ptr jl = jl_jl(data, ed, factor);
     jl_print(jl, print_pivots_only, print_nils);
-    for(int ix = jl->pos - num_lines; ix <= jl->pos; ix++) {
+    for(int ix = jl->pos - num_lines; ix <= jl->pos; ix++)
         ts_print_record(&(jl->data->data[ix]));
-        /* fprintf(stderr, "\n"); */
-    }
     int num, ixx;
     jl_print_pivots(jl, num_pivots, &num);
 
