@@ -846,12 +846,13 @@ unsigned long cal_tsfromdt(char *dt) {
  *  5 minutes.
  */
 void cal_move_5mins(char *dt, int dir) {
-    time_t seconds = time(NULL);
-    struct tm *ts = localtime(&seconds);
-    if (strptime(dt, "%Y-%m-%d %H:%M:%S", ts) == NULL) {
+    struct tm ts, *ts_ptr = NULL;
+    memset(&ts, 0, sizeof(struct tm));
+    if (strptime(dt, "%Y-%m-%d %H:%M:%S", &ts) == NULL) {
         LOGERROR("strptime failed for datetime %s\n", dt);
         return;
     }
+    ts.tm_isdst = -1; /** handle DST */
     char tmp_dt[20], *hhmm = NULL, *move_date = NULL;
     memset(tmp_dt, 0, 20 * sizeof(char));
     strcpy(tmp_dt, dt);
@@ -867,29 +868,29 @@ void cal_move_5mins(char *dt, int dir) {
         }
     } else {
         if (dir == 1) {
-            if (ts->tm_hour < 9 || (ts->tm_hour == 9 && ts->tm_min < 30))
+            if (ts.tm_hour < 9 || (ts.tm_hour == 9 && ts.tm_min < 30))
                 sprintf(dt, "%s 09:30:00", tmp_dt);
-            else if (ts->tm_hour > 15 ||
-                     (ts->tm_hour == 15 && ts->tm_min == 55)) {
+            else if (ts.tm_hour > 15 ||
+                     (ts.tm_hour == 15 && ts.tm_min == 55)) {
                 cal_next_bday(cal_ix(tmp_dt), &move_date);
                 sprintf(dt, "%s 09:30:00", move_date);
             } else { /** advance 5 mins during the trading day */
-                time_t tt = mktime(ts);
+                time_t tt = mktime(&ts);
                 tt += 300;
-                ts = localtime(&tt);
-                strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts);
+                ts_ptr = localtime(&tt);
+                strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts_ptr);
             }
         } else { /** dir == -1 */
-            if (ts->tm_hour < 9 || (ts->tm_hour == 9 && ts->tm_min == 30)) {
+            if (ts.tm_hour < 9 || (ts.tm_hour == 9 && ts.tm_min == 30)) {
                 cal_prev_bday(cal_ix(tmp_dt), &move_date);
                 sprintf(dt, "%s 15:55:00", move_date);
-            } else if (ts->tm_hour > 15)
+            } else if (ts.tm_hour > 15)
                 sprintf(dt, "%s 15:55:00", tmp_dt);
             else { /** go back 5 mins during the trading day */
-                time_t tt = mktime(ts);
+                time_t tt = mktime(&ts);
                 tt -= 300;
-                ts = localtime(&tt);
-                strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts);
+                ts_ptr = localtime(&tt);
+                strftime(dt, strlen(dt), "%Y-%m-%d %H:%M:%S", ts_ptr);
             }
         }
     }
