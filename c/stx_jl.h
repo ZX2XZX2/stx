@@ -64,7 +64,7 @@ typedef struct jl_last_t {
 } jl_last, *jl_last_ptr;
 
 typedef struct jl_pivot_t {
-    char date[16];
+    char date[20];
     int state;
     int price;
     int rg;
@@ -525,6 +525,7 @@ void jl_rec_day(jl_data_ptr jl, int ix, int upstate, int downstate) {
         if (jl_primary(upstate) || jl_primary(downstate))
             jl_update_lns_and_pivots(jl, ix);
     }
+
     // jl->pos++;
 #ifdef DDEBUGG
     fprintf(stderr, "%8d lns = %5d, ls = %5d, rg = %6d\n", ix, 
@@ -578,6 +579,7 @@ jl_data_ptr jl_init(stx_data_ptr data, float factor, int window) {
             min_ix = ix;
         }
     }
+    jl->pos = 0;
     for(int ix = 0; ix < window; ix++) {
         jl_rec_day(jl, ix, (ix == max_ix)? RALLY: NONE,
                    (ix == min_ix)? REACTION: NONE);
@@ -843,12 +845,8 @@ void jl_print_rec(char* date, int state, int price, bool pivot, int rg,
 jl_data_ptr jl_jl(stx_data_ptr data, char* end_date, float factor) {
     jl_data_ptr jl = jl_init20(data, factor);
     int res = 0;
-    /*     jl->pos++; */
-    while((strcmp(jl->data->data[jl->pos].date, end_date) < 0) && (res != -1)) {
-        // if (!strcmp(jl->data->data[jl->pos].date, "2020-09-03"))
-        //     LOGINFO("Here we go");
+    while((strcmp(jl->data->data[jl->pos].date, end_date) < 0) && (res != -1))
         res = jl_next(jl);
-    }
     return jl;
 }
 
