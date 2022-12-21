@@ -1,5 +1,6 @@
 {
     "name": "realtime | sim_1 | sim_2",
+    "realtime": true | false
     "timestamp": "2022-10-01 12:00",
     "portfolio": [
         {
@@ -82,17 +83,20 @@
                 "support": [
                     {
                         "ts": "2022-09-01",
-                        "price": 4314
+                        "price": 4314,
+                        "slope": 0
                     },
                     {
                         "ts": "2022-09-17",
-                        "price": 4243
+                        "price": 4243,
+                        "slope": -0.2
                     }
                 ],
                 "resistance": [
                     {
                         "ts": "2022-09-08",
-                        "price": 5364
+                        "price": 5364,
+                        "slope": 0
                     }
                 ]
             }
