@@ -16,6 +16,17 @@
 #define sign( x) (( x> 0)? 1: -1)
 /** END: macros */
 
+typedef struct chart_record_t {
+    char date[20];
+    float open;
+    float high;
+    float low;
+    float close;
+    int volume;
+    float sma_50;
+    float sma_200;
+} chart_record, *chart_record_ptr;
+
 int ts_true_range(stx_data_ptr data, int ix) {
     int res = data->data[ix].high - data->data[ix].low;
     if(ix == 0) 
@@ -406,7 +417,9 @@ int ts_advance(stx_data_ptr data, char* end_date) {
 void ts_free_data(stx_data_ptr data) {
     ht_free(data->splits);
     free(data->data);
+    data->data = NULL;
     free(data);
+    data = NULL;
 }
 
 void ts_print_record(ohlcv_record_ptr record) {
@@ -452,5 +465,45 @@ stx_data_ptr ts_get_ts(char *stk, char* dt, int rel_pos) {
         ts_set_day(data, dt, rel_pos);
     }
     return data;
+}
+
+void ts_serialize(stx_data_ptr data, char *mkt_name, bool realtime) {
+    char file_path[64];
+    sprintf(file_path, "%s/stx/mkt/%s/%s/%s.dat", getenv("HOME"), mkt_name,
+            (data->intraday == 0? "eod": "intraday"), data->stk);
+    FILE *fp = fopen(file_path, "wb");
+    chart_record_ptr chart = (chart_record_ptr) calloc((size_t)data->pos, sizeof(chart_record));
+    float avg_50 = 0, avg_200 = 0;
+    for (int ix = 0; ix < data->pos; ix++) {
+        chart[ix].open = data->data[ix].open / 100.0;
+        chart[ix].high = data->data[ix].high / 100.0;
+        chart[ix].low = data->data[ix].low / 100.0;
+        chart[ix].close = data->data[ix].close / 100.0;
+        chart[ix].volume = data->data[ix].volume * 1000;
+        if (ix < 49) {
+            chart[ix].sma_50 = -1;
+            avg_50 += chart[ix].close;
+        } else if (ix == 49) {
+            chart[ix].sma_50 = avg_50 / 50.0;
+        } else {
+            avg_50 += (chart[ix].close - chart[ix - 50].close);
+            chart[ix].sma_50 = avg_50 / 50.0;
+        }
+        if (ix < 199) {
+            chart[ix].sma_200 = -1;
+            avg_200 += chart[ix].close;
+        } else if (ix == 199) {
+            chart[ix].sma_200 = avg_200 / 200.0;
+        } else {
+            avg_200 += (chart[ix].close - chart[ix - 200].close);
+            chart[ix].sma_200 = avg_200 / 200.0;
+        }
+    }
+    if (fwrite(chart, sizeof(chart_record), data->pos, fp) <= 0) {
+        LOGERROR("Failed to write data");
+    }
+    fclose(fp);
+    free(chart);
+    chart = NULL;
 }
 #endif
