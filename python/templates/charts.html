@@ -1,21 +1,6 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>{% block title %} XTC EOD Charts {% endblock %}</h1>
-  <form method="post">
-    <fieldset>
-      <label for="stocks">Stock(s)</label>
-      <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}"/>
-      <br>
-      <label for="datetime">Date</label>
-      <input type="date" name="datetime" placeholder="Date" value="{{ dt }}"/><br>
-      <label for="days">Timeframe (days)</label>
-      <input type="text" name="num_days" placeholder="Days" value="{{ num_days }}"/><br>
-      <br>
-    </fieldset>
-    <button type="submit" name="action" value="Current">Current</button>
-    <button type="submit" name="action" value="Next">Next</button>
-  </form>
   {% for chart in charts %}
     <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
   {% endfor %}
