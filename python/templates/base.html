@@ -108,7 +108,6 @@
     </style>
   </head>
   <body>
-
     <div class="navbar">
       <a href="/indexes">Indexes</a>
       <div class="dropdown">
@@ -135,7 +134,38 @@
           </form>
         </div>
       </div>
-      <a href="/idcharts">Intraday Charts</a>
+      <div class="dropdown">
+        <button class="dropbtn">Intraday Charts 
+          <i class="fa fa-caret-down"></i>
+        </button>
+        <div class="dropdown-content">
+          <div class="header">
+            <h3>Intraday Charts</h3>
+          </div>
+          <form method="post" action="/idcharts">
+            <fieldset>
+              <label for="stocks">Stock(s)</label>
+              <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}"/>
+              <br>
+              <label for="dt_date">Date</label>
+              <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/>
+              <label for="dt_time">Time</label>
+              <input type="text" name="dt_time" placeholder="Time" value="{{ dt_time }}"/><br>
+              <label for="num_days">Timeframe (1-30 days)</label>
+              <input type="text" name="num_days" placeholder="Days" value="{{ num_days }}"/><br>
+              <label for="frequency">Frequency</label>
+              <select id="frequency" name="frequency">
+                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min'}.items() %}
+                <option value="{{ key }}" {% if (key == freq) %} selected="selected" {% endif %}> {{ value }} </option>
+                {% endfor %}
+              </select>
+              <br>
+            </fieldset>
+            <button type="submit" name="action" value="Current">Current</button>
+            <button type="submit" name="action" value="Next">Next</button>
+          </form>
+        </div>
+      </div>
       <a href="/scanners">Scanner</a>
       <a href="/scanners">RT Scanner</a>
     </div>
