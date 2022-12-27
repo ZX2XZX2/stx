@@ -475,6 +475,7 @@ void ts_serialize(stx_data_ptr data, char *mkt_name, bool realtime) {
     chart_record_ptr chart = (chart_record_ptr) calloc((size_t)data->pos, sizeof(chart_record));
     float avg_50 = 0, avg_200 = 0;
     for (int ix = 0; ix < data->pos; ix++) {
+        strcpy(chart[ix].date, data->data[ix].date);
         chart[ix].open = data->data[ix].open / 100.0;
         chart[ix].high = data->data[ix].high / 100.0;
         chart[ix].low = data->data[ix].low / 100.0;
