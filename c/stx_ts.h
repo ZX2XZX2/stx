@@ -472,9 +472,9 @@ void ts_serialize(stx_data_ptr data, char *mkt_name, bool realtime) {
     sprintf(file_path, "%s/stx/mkt/%s/%s/%s.dat", getenv("HOME"), mkt_name,
             (data->intraday == 0? "eod": "intraday"), data->stk);
     FILE *fp = fopen(file_path, "wb");
-    chart_record_ptr chart = (chart_record_ptr) calloc((size_t)data->pos, sizeof(chart_record));
+    chart_record_ptr chart = (chart_record_ptr) calloc((size_t)(data->pos + 1), sizeof(chart_record));
     float avg_50 = 0, avg_200 = 0;
-    for (int ix = 0; ix < data->pos; ix++) {
+    for (int ix = 0; ix <= data->pos; ix++) {
         strcpy(chart[ix].date, data->data[ix].date);
         chart[ix].open = data->data[ix].open / 100.0;
         chart[ix].high = data->data[ix].high / 100.0;
@@ -500,7 +500,7 @@ void ts_serialize(stx_data_ptr data, char *mkt_name, bool realtime) {
             chart[ix].sma_200 = avg_200 / 200.0;
         }
     }
-    if (fwrite(chart, sizeof(chart_record), data->pos, fp) <= 0) {
+    if (fwrite(chart, sizeof(chart_record), data->pos + 1, fp) <= 0) {
         LOGERROR("Failed to write data");
     }
     fclose(fp);
