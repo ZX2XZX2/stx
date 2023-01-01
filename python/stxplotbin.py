@@ -12,42 +12,39 @@ import sys
 class ChartStruct(ctypes.Structure):
     _fields_ = [
         ('date', ctypes.c_char * 20),
-        ('open', ctypes.c_float),
-        ('high', ctypes.c_float),
-        ('low', ctypes.c_float),
-        ('close', ctypes.c_float),
+        ('open', ctypes.c_int),
+        ('high', ctypes.c_int),
+        ('low', ctypes.c_int),
+        ('close', ctypes.c_int),
         ('volume', ctypes.c_int),
-        ('sma_50', ctypes.c_float),
-        ('sma_200', ctypes.c_float)
+        ('sma_50', ctypes.c_int),
+        ('sma_200', ctypes.c_int)
     ]
 
-# TODO:
-# 1. Remove the -1 values for SMA50 and SMA200
-# 2. Revert to integers for open, high, low, close, sma
 class StxPlotBin:
     def __init__(self, stk, mkt_name, start_dt, end_dt, intraday):
-        bin_file_path = os.path.join(os.getenv('HOME'), 'stx', 'mkt', mkt_name,
-                                     'intraday' if intraday else 'eod', f'{stk}.dat')
+        bin_file_path = os.path.join(
+            os.getenv('HOME'), 'stx', 'mkt', mkt_name,
+            'intraday' if intraday else 'eod', f'{stk}.dat')
         dates, data = [], []
         with open(bin_file_path, 'rb') as file:
             x = ChartStruct()
             while file.readinto(x) == ctypes.sizeof(x):
                 dates.append(datetime.fromisoformat(x.date.decode('utf-8')))
-                data.append((x.open, x.high, x.low, x.close, x.volume, x.sma_50, x.sma_200))
+                data.append((x.open, x.high, x.low, x.close, x.volume,
+                             x.sma_50 if x.sma_50 != -1 else None,
+                             x.sma_200 if x.sma_200 != -1 else None))
         if not dates or not data:
-            print(f'Could not read binary data for stock {stk} in market {mkt_name}')
+            print(f'Couldnt read {stk} binary data in market {mkt_name}')
         idf = pd.DataFrame(
             data=data,
             index=dates,
-            columns=['Open', 'High', 'Low', 'Close', 'Volume', 'SMA50', 'SMA200']) #,
+            columns=['Open','High','Low','Close','Volume','SMA50','SMA200']) #,
             # dtype=[str, float, float, float, float, int, float, float])
-
         idf.index.name = 'Date'
-
         self.plot_df = idf.loc[start_dt:end_dt,:]
         self.intraday = intraday
         self.stk = stk
-
         # resample_map ={'Open' :'first',
         #                'High' :'max'  ,
         #                'Low'  :'min'  ,
