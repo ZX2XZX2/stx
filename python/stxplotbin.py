@@ -11,18 +11,18 @@ import sys
 
 class ChartStruct(ctypes.Structure):
     _fields_ = [
-        ('date', ctypes.c_char * 20),
-        ('open', ctypes.c_int),
-        ('high', ctypes.c_int),
-        ('low', ctypes.c_int),
-        ('close', ctypes.c_int),
-        ('volume', ctypes.c_int),
+        ('dt', ctypes.c_char * 20),
+        ('o', ctypes.c_int),
+        ('hi', ctypes.c_int),
+        ('lo', ctypes.c_int),
+        ('c', ctypes.c_int),
+        ('v', ctypes.c_int),
         ('sma_50', ctypes.c_int),
         ('sma_200', ctypes.c_int)
     ]
 
 class StxPlotBin:
-    def __init__(self, stk, mkt_name, start_dt, end_dt, intraday):
+    def __init__(self, stk, mkt_name, start_dt, end_dt, intraday, period=5):
         bin_file_path = os.path.join(
             os.getenv('HOME'), 'stx', 'mkt', mkt_name,
             'intraday' if intraday else 'eod', f'{stk}.dat')
@@ -30,8 +30,8 @@ class StxPlotBin:
         with open(bin_file_path, 'rb') as file:
             x = ChartStruct()
             while file.readinto(x) == ctypes.sizeof(x):
-                dates.append(datetime.fromisoformat(x.date.decode('utf-8')))
-                data.append((x.open, x.high, x.low, x.close, x.volume,
+                dates.append(datetime.fromisoformat(x.dt.decode('utf-8')))
+                data.append((x.o, x.hi, x.lo, x.c, x.v,
                              x.sma_50 if x.sma_50 != -1 else None,
                              x.sma_200 if x.sma_200 != -1 else None))
         if not dates or not data:
@@ -42,21 +42,23 @@ class StxPlotBin:
             columns=['Open','High','Low','Close','Volume','SMA50','SMA200']) #,
             # dtype=[str, float, float, float, float, int, float, float])
         idf.index.name = 'Date'
+        idf = idf.loc[start_dt:end_dt,:]
+        
         self.plot_df = idf.loc[start_dt:end_dt,:]
         self.intraday = intraday
         self.stk = stk
-        # resample_map ={'Open' :'first',
-        #                'High' :'max'  ,
-        #                'Low'  :'min'  ,
-        #                'Close':'last',
-        #                'Volume':'sum'}
-        # if period > 5:
-        #     resample_period = f'{period}T'
-        #     rs = idf.resample(resample_period).agg(resample_map).dropna()
-        #     self.plot_df = rs
-        # else:
-        #     self.plot_df = idf
-        # self.s = 'yahoo'
+        self.s = 'yahoo'
+        if intraday and period > 5:
+            resample_period = f'{period}T'
+            resample_map = {
+                'Open'  : 'first',
+                'High'  : 'max'  ,
+                'Low'   : 'min'  ,
+                'Close' : 'last',
+                'Volume':'sum'
+            }
+            idf = idf.resample(resample_period).agg(resample_map).dropna()
+        self.plot_df = idf
 
     def drawchart(self):
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
@@ -92,10 +94,10 @@ class StxPlotBin:
         # if not self.trend_lines:
         if not apd:
             mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
-                     axtitle=self.stk)
+                     axtitle=self.stk, warn_too_much_data=10000)
         else:
             mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
-                     axtitle=self.stk, addplot=apd)
+                     axtitle=self.stk, addplot=apd, warn_too_much_data=10000)
         # else:
         #     if not apd:
         #         mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
@@ -133,7 +135,7 @@ if __name__ == '__main__':
                         help='Stock to chart')
     parser.add_argument('-m', '--mkt', type=str, default='test',
                         help='Market for the stock to chart')
-    parser.add_argument('-p', '--period', type=int, default=15,
+    parser.add_argument('-p', '--period', type=int, default=5,
                         help='Time interval covered by one candle, in minutes')
     parser.add_argument('-a', '--sorp', type=str, default='p',
                         help='Save or plot the chart (s)ave, (p)lot')
@@ -145,7 +147,8 @@ if __name__ == '__main__':
                         help="Run Intraday analysis")    
 
     args = parser.parse_args()
-    sp = StxPlotBin(args.stk, args.mkt, args.startdate, args.enddate, args.intraday)
+    sp = StxPlotBin(args.stk, args.mkt, args.startdate, args.enddate,
+                    args.intraday, args.period)
     savefig = args.sorp.startswith('s')
     sp.plotchart(savefig=savefig)
     if not savefig:
