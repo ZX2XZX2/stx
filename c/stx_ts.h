@@ -18,13 +18,13 @@
 
 typedef struct chart_record_t {
     char date[20];
-    float open;
-    float high;
-    float low;
-    float close;
+    int open;
+    int high;
+    int low;
+    int close;
     int volume;
-    float sma_50;
-    float sma_200;
+    int sma_50;
+    int sma_200;
 } chart_record, *chart_record_ptr;
 
 int ts_true_range(stx_data_ptr data, int ix) {
@@ -472,32 +472,33 @@ void ts_serialize(stx_data_ptr data, char *mkt_name, bool realtime) {
     sprintf(file_path, "%s/stx/mkt/%s/%s/%s.dat", getenv("HOME"), mkt_name,
             (data->intraday == 0? "eod": "intraday"), data->stk);
     FILE *fp = fopen(file_path, "wb");
-    chart_record_ptr chart = (chart_record_ptr) calloc((size_t)(data->pos + 1), sizeof(chart_record));
-    float avg_50 = 0, avg_200 = 0;
+    chart_record_ptr chart = (chart_record_ptr) calloc((size_t)(data->pos + 1),
+                                                       sizeof(chart_record));
+    int avg_50 = 0, avg_200 = 0;
     for (int ix = 0; ix <= data->pos; ix++) {
         strcpy(chart[ix].date, data->data[ix].date);
-        chart[ix].open = data->data[ix].open / 100.0;
-        chart[ix].high = data->data[ix].high / 100.0;
-        chart[ix].low = data->data[ix].low / 100.0;
-        chart[ix].close = data->data[ix].close / 100.0;
+        chart[ix].open = data->data[ix].open;
+        chart[ix].high = data->data[ix].high;
+        chart[ix].low = data->data[ix].low;
+        chart[ix].close = data->data[ix].close;
         chart[ix].volume = data->data[ix].volume * 1000;
         if (ix < 49) {
             chart[ix].sma_50 = -1;
             avg_50 += chart[ix].close;
         } else if (ix == 49) {
-            chart[ix].sma_50 = avg_50 / 50.0;
+            chart[ix].sma_50 = avg_50 / 50;
         } else {
             avg_50 += (chart[ix].close - chart[ix - 50].close);
-            chart[ix].sma_50 = avg_50 / 50.0;
+            chart[ix].sma_50 = avg_50 / 50;
         }
         if (ix < 199) {
             chart[ix].sma_200 = -1;
             avg_200 += chart[ix].close;
         } else if (ix == 199) {
-            chart[ix].sma_200 = avg_200 / 200.0;
+            chart[ix].sma_200 = avg_200 / 200;
         } else {
             avg_200 += (chart[ix].close - chart[ix - 200].close);
-            chart[ix].sma_200 = avg_200 / 200.0;
+            chart[ix].sma_200 = avg_200 / 200;
         }
     }
     if (fwrite(chart, sizeof(chart_record), data->pos + 1, fp) <= 0) {
