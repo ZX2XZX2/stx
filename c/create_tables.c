@@ -396,7 +396,10 @@ int main() {
      */
     char* create_market_caches = "CREATE TABLE market_caches( "      \
         "mkt_name VARCHAR(128) NOT NULL, "                           \
+        "mkt_date DATE NOT NULL, "                                   \
+        "mkt_update_dt TIMESTAMP NOT NULL, "                         \
         "mkt_cache JSONB NOT NULL, "                                 \
+        "realtime BOOLEAN NOT NULL, "                                \
         "PRIMARY KEY(mkt_name))";
     create_table_if_missing(cnx, "market_caches", create_market_caches);
 
