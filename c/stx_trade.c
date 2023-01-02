@@ -28,7 +28,7 @@ void sig_handler(int dummy) {
 int main(int argc, char** argv) {
     char mkt_name[32], dir_name[128], *start_date = NULL;
     int sleep_interval = 300;
-    bool realtime = false;
+    bool realtime = false, keep_going_if_no_events = false;
     memset(mkt_name, 0, 32);
     memset(dir_name, 0, 128);
     for (int ix = 1; ix < argc; ix++) {
@@ -44,6 +44,8 @@ int main(int argc, char** argv) {
         else if ((!strcmp(argv[ix], "-s") ||
                   !strcmp(argv[ix], "--start-date")) && (ix++ < argc - 1))
             start_date = cal_move_to_bday(argv[ix], true);
+        else if (!strcmp(argv[ix], "-k") || !strcmp(argv[ix], "--skip"))
+            keep_going_if_no_events = true;
     }
     signal(SIGINT, sig_handler);
     /**
