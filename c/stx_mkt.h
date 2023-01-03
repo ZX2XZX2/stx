@@ -6,7 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libpq-fe.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 #include "stx_core.h"
 
 typedef struct market_t {
@@ -19,7 +22,26 @@ typedef struct market_t {
 
 static market_ptr mkt = NULL;
 
-void mkt_load_data(char *mkt_name) {
+struct stat st = {0};
+
+void mkt_create_dirs(char *mkt_name) {
+    char base_path[128], file_path[144];
+    sprintf(base_path, "%s/stx/mkt/%s", getenv("HOME"), mkt_name);
+    sprintf(file_path, "%s/eod", base_path);
+    if (stat(file_path, &st) == -1)
+        mkdir(file_path, 0700);
+    sprintf(file_path, "%s/intraday", base_path);
+    if (stat(file_path, &st) == -1)
+        mkdir(file_path, 0700);
+    sprintf(file_path, "%s/jl_eod", base_path);
+    if (stat(file_path, &st) == -1)
+        mkdir(file_path, 0700);
+    sprintf(file_path, "%s/jl_intraday", base_path);
+    if (stat(file_path, &st) == -1)
+        mkdir(file_path, 0700);
+}
+
+void mkt_load_mkt(char *mkt_name) {
     char sql_cmd[1024];
     sprintf(sql_cmd, "SELECT mkt_name, mkt_date, mkt_update_dt, mkt_cache,"
             " realtime FROM market_caches WHERE mkt_name='%s'", mkt_name);
@@ -36,6 +58,7 @@ void mkt_load_data(char *mkt_name) {
         mkt->realtime = PQgetvalue(res, 0, 4);
         PQclear(res);
     }
+    mkt_create_dirs(mkt_name);
 }
 
 /**
@@ -94,12 +117,12 @@ void mkt_exit(char *mkt_name) {
  */
 void mkt_load(char *mkt_name) {
     if (mkt == NULL)
-        mkt_load_data(mkt_name);
+        mkt_load_mkt(mkt_name);
     else {
         if (strcmp(mkt->mkt_name, mkt_name)) {
             /** Another market loaded. Exit, and load new market */
             mkt_exit(mkt->mkt_name);
-            mkt_load_data(mkt_name);
+            mkt_load_mkt(mkt_name);
         }
     }
 }
@@ -108,20 +131,14 @@ void mkt_load(char *mkt_name) {
  *  Create a new market from scratch, following the schema in
  *  market.json.
 */
-void mkt_create(char *mkt_name, char *in_mkt_date, bool realtime) {
-    
-    char *mkt_date = cal_current_trading_date(), mkt_update_dt[20];
-    memset(mkt_update_dt, 0, 20 * sizeof(char));
-    char *last_update_dt = cal_move_to_bday("1985-01-31", true);
-    sprintf(mkt_update_dt, "%s 16:00:00", last_update_dt);
-    if (!realtime && in_mkt_date != NULL)
-        mkt_date = in_mkt_date;
+void mkt_create(char *mkt_name, char *mkt_date, bool realtime) {    
     LOGINFO("Creating new %s market %s, as of %s\n",
             realtime? "realtime": "simulation", mkt_name, mkt_date);
     mkt = (market_ptr) calloc((size_t) 1, sizeof(market));
     strcpy(mkt->mkt_name, mkt_name);
     strcpy(mkt->mkt_date, mkt_date);
-    strcpy(mkt->mkt_update_dt, mkt_update_dt);
+    sprintf(mkt->mkt_update_dt, "%s 16:00:00",
+            cal_move_to_bday("1985-01-31", true));
     mkt->realtime = realtime;
     mkt->mkt = cJSON_CreateObject();
     cJSON *portfolio = cJSON_CreateArray();
@@ -134,6 +151,8 @@ void mkt_create(char *mkt_name, char *in_mkt_date, bool realtime) {
     cJSON_AddItemToObject(mkt->mkt, "stx", stx);
     cJSON *stats = cJSON_CreateObject();
     cJSON_AddItemToObject(mkt->mkt, "stats", stats);
+    mkt_save(mkt_name);
+    mkt_create_dirs(mkt_name);
     LOGINFO("%s market %s created\n", realtime? "Realtime": "Simulation",
              mkt_name);
 }
@@ -142,22 +161,40 @@ void mkt_create(char *mkt_name, char *in_mkt_date, bool realtime) {
 /**
  *  Start using a market cache.  If the mkt was previously loaded, do
  *  nothing.  If market was already cached in DB, load it from there.
- *  If no such market exists, create a new one.
+ *  If no such market exists, create a new one.  mkt_name and realtime
+ *  parameters are required.  If realtime is true, mkt_date will be
+ *  set automatically to the current business day, if during trading
+ *  hours, or the next, upcoming trading day if outside of trading
+ *  hours. If in_mkt_date is NULL and realtime is set to false,
+ *  mkt_date will be set to last business day.
  */
-void mkt_enter(char *mkt_name, char *mkt_date, bool realtime) {
-    LOGINFO("Enter market %s\n", mkt_name);
+void mkt_enter(char *mkt_name, char *in_mkt_date, bool realtime) {
+    LOGINFO("Enter %s market %s\n", realtime? "realtime": "simulation",
+            mkt_name);
     if (mkt == NULL)
         mkt_load(mkt_name);
-    /** TODO: fix the parameters passed to this function */
-    if (mkt == NULL)
+    /** Create new market if market could not be loaded. */
+    if (mkt == NULL) {
+        char *mkt_date = NULL;
+        if (realtime)
+            mkt_date = cal_market_date(NULL);
+        else {
+            if (in_mkt_date != NULL)
+                mkt_date = in_mkt_date;
+            else
+                mkt_date = cal_current_trading_date();
+        }
+        LOGINFO("Creating new %s market %s, as of %s\n",
+                realtime? "realtime": "simulation", mkt_name, mkt_date);
         mkt_create(mkt_name, mkt_date, realtime);
+    }
 }
 
 /**
  *  Print the contents of a market.  The parameter mkt_path is a '/'
  *  separated path in the json market state.  For a list, a particular
  *  index is specified within square brackets.  For example, to
- *  display the first portfolio position, 'mkt_path=portfolio[0]'
+ *  display the first portfolio position, 'mkt_path=portfolio[0]'.
  */
 void mkt_print(char *mkt_name, char *mkt_path) {
     if (mkt == NULL) {
