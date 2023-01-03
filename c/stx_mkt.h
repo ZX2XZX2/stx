@@ -194,21 +194,29 @@ void mkt_enter(char *mkt_name, char *in_mkt_date, bool realtime) {
  *  Print the contents of a market.  The parameter mkt_path is a '/'
  *  separated path in the json market state.  For a list, a particular
  *  index is specified within square brackets.  For example, to
- *  display the first portfolio position, 'mkt_path=portfolio[0]'.
+ *  display the first portfolio position, 'mkt_path=portfolio[0]'.  If
+ *  mkt_path is NULL, then display the entire market description.  If
+ *  the parameter short_description is set to true, then display only
+ *  the market name, market date, last update datetime and realtime.
  */
-void mkt_print(char *mkt_name, char *mkt_path) {
+void mkt_print(char *mkt_name, char *mkt_path, bool short_description) {
     if (mkt == NULL) {
         LOGWARN("Nothing to print, mkt is empty\n");
         return;
     }
-    char *string = cJSON_Print(mkt->mkt);
-    if (string == NULL) {
+    LOGINFO("\nmkt_name = %s, mkt_date = %s, last_updated_dt = %s, "
+            "realtime = %s\n", mkt->mkt_name, mkt->mkt_date, mkt->mkt_update_dt,
+            mkt->realtime? "true": "false");
+    if (short_description)
+        return;
+    char *mkt_string = cJSON_Print(mkt->mkt);
+    if (mkt_string == NULL) {
         LOGERROR("Could not print the market\n");
         return;
     }
-    LOGINFO("The market is:\n%s\n", string);
-    free(string);
-    string = NULL;
+    LOGINFO("The market is:\n%s\n", mkt_string);
+    free(mkt_string);
+    mkt_string = NULL;
 }
 
 /**
