@@ -198,6 +198,7 @@ typedef struct stx_data_t {
     int num_recs;
     struct hashtable_t* splits;
     int pos;
+    int ser_pos; /** last index that was serialized */
     int last_adj;
     char stk[16];
     int intraday;
@@ -497,6 +498,7 @@ void ht_free(hashtable_ptr ht) {
     }
     free(ht->items);
     free(ht);
+    ht = NULL;
 }
 
 
@@ -692,6 +694,40 @@ char* cal_current_trading_date() {
         ix--;
     if(!cal_get()->list[ix].val.cal->is_busday)
         cal_prev_bday(ix, &res);
+    else
+        res = &(cal_get()->list[ix].key[0]);
+    return res;
+}
+
+/**
+ *  Get the market date: current date if dt is a business day and time
+ *  is earlier than 5:00PM EST; next business day otherwise.  If dt is
+ *  NULL, then use the current time.
+ */
+char* cal_market_date(char *dt) {
+    char *res, crt_date[20];
+    int hours, minutes;
+    if (dt == NULL) {
+        time_t seconds = time(NULL);
+        struct tm *ts = localtime(&seconds);
+        hours = ts->tm_hour;
+        minutes = ts->tm_min;
+        strftime(crt_date, 20, "%Y-%m-%d", ts);
+        ts = NULL;
+    } else {
+        struct tm ts;
+        memset(&ts, 0, sizeof(struct tm));
+        if (strptime(dt, "%Y-%m-%d %H:%M:%S", &ts) == NULL) {
+            LOGERROR("strptime failed for datetime %s\n", dt);
+            return NULL;
+        }
+        hours = ts.tm_hour;
+        minutes = ts.tm_min;
+        strftime(crt_date, 20, "%Y-%m-%d", &ts);
+    }
+    int ix = cal_ix(crt_date);
+    if(!cal_get()->list[ix].val.cal->is_busday || (hours >= 17))
+        cal_next_bday(ix, &res);
     else
         res = &(cal_get()->list[ix].key[0]);
     return res;
