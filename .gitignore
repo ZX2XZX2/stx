@@ -122,3 +122,6 @@ t.c
 
 # ignore VSCode files
 .vscode
+
+# ignore mkt cache directory
+mkt/
