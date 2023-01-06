@@ -554,6 +554,10 @@ class StxDatafeed:
             return
         logging.info('Reading stooq file, renaming columns, getting intraday '
                      'US stocks data')
+        if os.stat(stooq_file).st_size == 0:
+            logging.error(f'!!! Found empty intraday file {stooq_file}!!!')
+            os.remove(stooq_file)
+            return
         try:
             df = pd.read_csv(stooq_file, dtype={
                 "<TICKER>": "string",
