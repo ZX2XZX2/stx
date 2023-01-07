@@ -932,6 +932,20 @@ void cal_move_5mins(char *dt, int dir) {
     }
 }
 
+/**
+ *  This function returns the last date that has intraday data in the
+ *  database
+ */
+char *cal_last_intraday_date() {
+    char *sql_cmd = "SELECT MAX(DATE(dt)) FROM intraday";
+    PGresult *sql_res = db_query(sql_cmd);
+    char* last_intraday_date = PQgetvalue(sql_res, 0, 0);
+    int calix = cal_ix(last_intraday_date);
+    last_intraday_date = &(cal_get()->list[calix].key[0]);
+    PQclear(sql_res);
+    return last_intraday_date;
+}
+
 /** These two hashtables keep in memory data or JL records calculated
  *  for various equities
  */
