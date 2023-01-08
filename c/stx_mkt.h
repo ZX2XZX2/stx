@@ -22,25 +22,6 @@ typedef struct market_t {
 
 static market_ptr mkt = NULL;
 
-struct stat st = {0};
-
-void mkt_create_dirs(char *mkt_name) {
-    char base_path[128], file_path[144];
-    sprintf(base_path, "%s/stx/mkt/%s", getenv("HOME"), mkt_name);
-    sprintf(file_path, "%s/eod", base_path);
-    if (stat(file_path, &st) == -1)
-        mkdir(file_path, 0700);
-    sprintf(file_path, "%s/intraday", base_path);
-    if (stat(file_path, &st) == -1)
-        mkdir(file_path, 0700);
-    sprintf(file_path, "%s/jl_eod", base_path);
-    if (stat(file_path, &st) == -1)
-        mkdir(file_path, 0700);
-    sprintf(file_path, "%s/jl_intraday", base_path);
-    if (stat(file_path, &st) == -1)
-        mkdir(file_path, 0700);
-}
-
 void mkt_load_mkt(char *mkt_name) {
     char sql_cmd[1024];
     sprintf(sql_cmd, "SELECT mkt_name, mkt_date, mkt_update_dt, mkt_cache,"
@@ -58,7 +39,6 @@ void mkt_load_mkt(char *mkt_name) {
         mkt->realtime = PQgetvalue(res, 0, 4);
         PQclear(res);
     }
-    mkt_create_dirs(mkt_name);
 }
 
 /**
@@ -152,7 +132,6 @@ void mkt_create(char *mkt_name, char *mkt_date, bool realtime) {
     cJSON *stats = cJSON_CreateObject();
     cJSON_AddItemToObject(mkt->mkt, "stats", stats);
     mkt_save(mkt_name);
-    mkt_create_dirs(mkt_name);
     LOGINFO("%s market %s created\n", realtime? "Realtime": "Simulation",
              mkt_name);
 }
