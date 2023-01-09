@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "stx_trade.h"
+#include "stx_mkt.h"
 
 static volatile bool keep_running = true;
 
@@ -20,17 +20,19 @@ void sig_handler(int dummy) {
  *  Realtime runs during trading hours, get the data and analyzes it.
  *  Cannot control the speed; 'sleep_interval' can be used however, to
  *  specify how often to refresh the data and analyze it intraday.
- *  Simulation runs using historical data.  When in simulation mode,
- *  can control how fast it runs, can eliminate sleep altogether and
+ *  'sleep_interval' can only have the following values: 300
+ *  (5-minute, default), 600 (10-minute), 900 (15-minute), 1800
+ *  (30-minute).  Simulation runs using historical data.  When in
+ *  simulation mode, analysis takes place every 5 minutes, and we can
+ *  control how fast it runs, can eliminate sleep altogether and
  *  replace it with command to move from input; also we can skip
  *  certain times if no events happened.
  */
 int main(int argc, char** argv) {
-    char mkt_name[32], dir_name[128], *start_date = NULL;
-    int sleep_interval = 300;
+    char mkt_name[64], *start_date = NULL;
+    int interval = 300, run_times[80];
     bool realtime = false, keep_going_if_no_events = false;
-    memset(mkt_name, 0, 32);
-    memset(dir_name, 0, 128);
+    memset(mkt_name, 0, 64 * sizeof(char));
     for (int ix = 1; ix < argc; ix++) {
         if ((!strcmp(argv[ix], "-m") || !strcmp(argv[ix], "--market-name")) &&
              (ix++ < argc - 1))
@@ -40,7 +42,7 @@ int main(int argc, char** argv) {
             realtime = true;
         } else if ((!strcmp(argv[ix], "-i") ||
                     !strcmp(argv[ix], "--interval")) && (ix++ < argc - 1))
-            sleep_interval = atoi(argv[ix]);
+            interval = atoi(argv[ix]);
         else if ((!strcmp(argv[ix], "-s") ||
                   !strcmp(argv[ix], "--start-date")) && (ix++ < argc - 1))
             start_date = cal_move_to_bday(argv[ix], true);
@@ -49,6 +51,36 @@ int main(int argc, char** argv) {
     }
     signal(SIGINT, sig_handler);
     /**
+     *  Validate the input interval parameter.  If realtime, interval
+     *  can be 300, 600, 900, or 1800 seconds.  If simulation,
+     *  interval can be any number from 0 to 300.
+     */
+    if (realtime) {
+        if ((interval != 300) && (interval != 600) && (interval != 900) &&
+            (interval != 1800)) {
+            LOGERROR("Invalid interval (%d) specified for realtime market.  "
+                     "Interval must be one of 300, 600, 900, or 1800\n",
+                     interval);
+            exit(1);
+        }
+    } else {
+        if ((interval < 0) || (interval > 300)) {
+            LOGERROR("Invalid interval (%d) specified for simulation market.  "
+                     "Interval must be either 0 (requires keyboard input to "
+                     "move to next tick, or any number between 1 and 300\n",
+                     interval);
+            exit(1);
+        }
+    }
+    /**
+     *  Setup the start date and the market name if they were not
+     *  specified in the input parameters
+     */
+    if (start_date == NULL) {
+        start_date = cal_last_intraday_date();
+        LOGINFO("start_date = %s\n", start_date);
+    }
+    /**
      *  If running in realtime, need to check, during initialization,
      *  that we are prepared to run intraday analysis - the stock list
      *  is defined, all the data is stored in cache, etc.
@@ -56,14 +88,12 @@ int main(int argc, char** argv) {
      *  Same thing for simulation, but two cases, either resuming a
      *  previous simulation, or starting a new one.
      */
-    if (trd_load_market(mkt_name, start_date, realtime) != 0) {
-        LOGERROR("Failed to load market, exiting ...\n" );
-        exit(1);
-    }
+    mkt_enter(mkt_name, start_date, realtime);
     while (keep_running) {
         LOGINFO("Still running ...\n");
-        sleep(sleep_interval);
+        /* trd_analyze_market(); */
+        sleep(interval);
     }
     LOGINFO("Saving the market before exiting\n");
-    trd_save_market(mkt_name, realtime);
+    /* trd_save_market(mkt_name, realtime); */
 }
