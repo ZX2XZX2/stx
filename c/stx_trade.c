@@ -80,6 +80,10 @@ int main(int argc, char** argv) {
         start_date = cal_last_intraday_date();
         LOGINFO("start_date = %s\n", start_date);
     }
+    if (!strcmp(mkt_name, "")) {
+        sprintf(mkt_name, "sim-%s", start_date);
+        LOGINFO("No market name, assigning default %s\n", mkt_name);
+    }
     /**
      *  If running in realtime, need to check, during initialization,
      *  that we are prepared to run intraday analysis - the stock list
