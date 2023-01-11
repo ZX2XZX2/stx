@@ -199,6 +199,20 @@ void mkt_print(char *mkt_name, char *mkt_path, bool short_description) {
 }
 
 /**
+ *  Main market analysis loop.  Updates the EOD and intraday data for
+ *  each stock.  Updates the analysis for each stock.  Checks for any
+ *  stocks that have crossed watched thresholds.  Returns the number
+ *  of stocks that have crossed the threshold within the last
+ *  interval.
+ */
+int mkt_analyze() {
+    LOGINFO("Enter\n");
+    LOGINFO("Update EOD/ID data\n");
+    LOGINFO("Analyze\n");
+    LOGINFO("Exit\n");
+}
+
+/**
  *  Generate a new market cache at the end of the day
  */
 void gen_eod_market_cache(char *mkt_name, char *mkt_date, bool realtime) {
