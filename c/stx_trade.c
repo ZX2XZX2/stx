@@ -94,9 +94,14 @@ int main(int argc, char** argv) {
      */
     mkt_enter(mkt_name, start_date, realtime);
     while (keep_running) {
-        LOGINFO("Still running ...\n");
-        /* trd_analyze_market(); */
-        sleep(interval);
+        if (realtime) {
+            LOGWARN("Not implemented yet, exiting main loop\n");
+            keep_running = false;
+        } else {
+            LOGINFO("Still running ...\n");
+            mkt_analyze();
+            sleep(interval);
+        }
     }
     LOGINFO("Saving the market before exiting\n");
     /* trd_save_market(mkt_name, realtime); */
