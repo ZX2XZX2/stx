@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
     char mkt_name[64], *start_date = NULL;
     int interval = 300, run_times[80];
     bool realtime = false, keep_going_if_no_events = false;
+    srand(time(NULL));
     memset(mkt_name, 0, 64 * sizeof(char));
     for (int ix = 1; ix < argc; ix++) {
         if ((!strcmp(argv[ix], "-m") || !strcmp(argv[ix], "--market-name")) &&
@@ -99,7 +100,8 @@ int main(int argc, char** argv) {
             keep_running = false;
         } else {
             LOGINFO("Still running ...\n");
-            mkt_analyze();
+            int res = mkt_analyze();
+            LOGINFO("mkt_analyze returned %d\n", res);
             sleep(interval);
         }
     }
