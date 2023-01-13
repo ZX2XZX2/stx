@@ -206,10 +206,13 @@ void mkt_print(char *mkt_name, char *mkt_path, bool short_description) {
  *  interval.
  */
 int mkt_analyze() {
+    int n1 = rand() % 2, n2 = rand() % 10;
     LOGINFO("Enter\n");
     LOGINFO("Update EOD/ID data\n");
     LOGINFO("Analyze\n");
+    sleep(n2);
     LOGINFO("Exit\n");
+    return n1;
 }
 
 /**
