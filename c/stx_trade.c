@@ -102,7 +102,8 @@ int main(int argc, char** argv) {
             LOGINFO("Still running ...\n");
             int res = mkt_analyze();
             LOGINFO("mkt_analyze returned %d\n", res);
-            sleep(interval);
+            if ((res > 0) || !keep_going_if_no_events)
+                sleep(interval);
         }
     }
     LOGINFO("Saving the market before exiting\n");
