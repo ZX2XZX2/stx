@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE
 #include <stdio.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <time.h>
 #include <signal.h>
@@ -7,6 +8,20 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "stx_mkt.h"
+
+int get_lock(void) {
+    int fdlock;
+    struct flock fl;
+    fl.l_type = F_WRLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 1;
+    if((fdlock = open("oneproc.lock", O_WRONLY|O_CREAT, 0666)) == -1)
+        return 0;
+    if(fcntl(fdlock, F_SETLK, &fl) == -1)
+        return 0;
+    return 1;
+}
 
 static volatile bool keep_running = true;
 
@@ -29,8 +44,12 @@ void sig_handler(int dummy) {
  *  certain times if no events happened.
  */
 int main(int argc, char** argv) {
+    if(!get_lock()) {
+        fputs("Process already running!\n", stderr);
+        return 1;
+    }
     char mkt_name[64], *start_date = NULL;
-    int interval = 300, run_times[80];
+    int interval = 300, num_runs = 78, run_times[80];
     bool realtime = false, keep_going_if_no_events = false;
     srand(time(NULL));
     memset(mkt_name, 0, 64 * sizeof(char));
