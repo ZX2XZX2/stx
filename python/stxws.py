@@ -1,3 +1,4 @@
+import ctypes
 from flask import Flask, render_template, request, url_for, flash
 import logging
 import matplotlib
@@ -37,6 +38,8 @@ frequencydict = {
     '30min': '30min'
 }
 
+so_file = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
+so_functions = ctypes.CDLL(so_file)
 
 @app.route('/')
 def index():
@@ -229,4 +232,11 @@ def scanners():
 
 @app.route('/rtscanners')
 def rtscanners():
-    return "This will show the realtime scanners"
+    res = so_functions.my_function(10)
+    return f'the result is {res}'
+    # return "This will show the realtime scanners"
+
+@app.route('/market')
+def market():
+    res = so_functions.my_function(10)
+    return f'the result is {res}'
