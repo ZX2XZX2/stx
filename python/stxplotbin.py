@@ -11,40 +11,59 @@ import sys
 
 class ChartStruct(ctypes.Structure):
     _fields_ = [
-        ('dt', ctypes.c_char * 20),
         ('o', ctypes.c_int),
         ('hi', ctypes.c_int),
         ('lo', ctypes.c_int),
         ('c', ctypes.c_int),
         ('v', ctypes.c_int),
-        ('sma_50', ctypes.c_int),
-        ('sma_200', ctypes.c_int)
+        ('dt', ctypes.c_char * 20)#,
+        # ('sma_50', ctypes.c_int),
+        # ('sma_200', ctypes.c_int)
     ]
 
 class StxPlotBin:
-    def __init__(self, stk, mkt_name, start_dt, end_dt, intraday, period=5):
-        bin_file_path = os.path.join(
-            os.getenv('HOME'), 'stx', 'mkt', mkt_name,
-            'intraday' if intraday else 'eod', f'{stk}.dat')
+    def __init__(self, stk, mkt_name, num_days, end_dt, intraday, period=5):
+        so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'stx_lib.so')
+        _lib = ctypes.CDLL(so_file)
+        num_recs = ctypes.c_int(0)
+        _lib.stx_get_ohlcv.argtypes = (
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_bool,
+            ctypes.c_bool,
+            ctypes.POINTER(ctypes.c_int),
+        )
+        _lib.stx_get_ohlcv.restype = ctypes.POINTER(ChartStruct)
+        realtime = False
+        res = _lib.stx_get_ohlcv(
+            ctypes.c_char_p(stk.encode('UTF-8')),
+            ctypes.c_char_p(end_dt.encode('UTF-8')),
+            ctypes.c_int(num_days),
+            ctypes.c_bool(intraday),
+            ctypes.c_bool(realtime),
+            ctypes.byref(num_recs)
+        )
+        print(f'num_recs = {num_recs}')
+
+        ohlc_list = res[:num_recs.value]
         dates, data = [], []
-        with open(bin_file_path, 'rb') as file:
-            x = ChartStruct()
-            while file.readinto(x) == ctypes.sizeof(x):
-                dates.append(datetime.fromisoformat(x.dt.decode('utf-8')))
-                data.append((x.o, x.hi, x.lo, x.c, x.v,
-                             x.sma_50 if x.sma_50 != -1 else None,
-                             x.sma_200 if x.sma_200 != -1 else None))
+        for x in ohlc_list:
+            dates.append(datetime.fromisoformat(x.dt.decode('utf-8')))
+            data.append((x.o, x.hi, x.lo, x.c, x.v))#,
+                            #  x.sma_50 if x.sma_50 != -1 else None,
+                            #  x.sma_200 if x.sma_200 != -1 else None))
         if not dates or not data:
-            print(f'Couldnt read {stk} binary data in market {mkt_name}')
+            print(f'Couldnt read {stk} binary data')
         idf = pd.DataFrame(
             data=data,
             index=dates,
-            columns=['Open','High','Low','Close','Volume','SMA50','SMA200']) #,
+            columns=['Open','High','Low','Close','Volume'])
+            # columns=['Open','High','Low','Close','Volume','SMA50','SMA200']) #,
             # dtype=[str, float, float, float, float, int, float, float])
         idf.index.name = 'Date'
-        idf = idf.loc[start_dt:end_dt,:]
         
-        self.plot_df = idf.loc[start_dt:end_dt,:]
+        self.plot_df = idf
         self.intraday = intraday
         self.stk = stk
         self.s = 'yahoo'
@@ -139,15 +158,15 @@ if __name__ == '__main__':
                         help='Time interval covered by one candle, in minutes')
     parser.add_argument('-a', '--sorp', type=str, default='p',
                         help='Save or plot the chart (s)ave, (p)lot')
-    parser.add_argument('-s', '--startdate', type=str, required=True,
-                        help='Start date for chart')
+    parser.add_argument('-d', '--days', type=int, required=True,
+                        help='Number of days shown in chart')
     parser.add_argument('-e', '--enddate', type=str, required=True,
                         help='End date for chart')
     parser.add_argument('-i', '--intraday', action='store_true',
                         help="Run Intraday analysis")    
 
     args = parser.parse_args()
-    sp = StxPlotBin(args.stk, args.mkt, args.startdate, args.enddate,
+    sp = StxPlotBin(args.stk, args.mkt, args.days, args.enddate,
                     args.intraday, args.period)
     savefig = args.sorp.startswith('s')
     sp.plotchart(savefig=savefig)
