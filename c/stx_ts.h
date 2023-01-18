@@ -312,6 +312,18 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
     return data;
 }
 
+/**
+ *  Load the EOD ('intraday' is false) or intraday ('intraday' is
+ *  true) data for a stock.  The 'dt' argument specifies the end
+ *  datetime up to which data should be loaded.  If 'dt' is NULL, load
+ *  the data until current date time.  The 'num_days' parameter
+ *  specifies for how many days prior to 'dt' we should retrieve the
+ *  data.  If 'num_days' is not positive, then load all the data
+ *  available for that stock.  Calling this function with 'dt' set to
+ *  NULL during the trading hours will trigger the realtime logic,
+ *  where the code will attempt to download any missing data between
+ *  the date time of the last upload and the current datetime.
+ */
 stx_data_ptr ts_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     stx_data_ptr data = NULL;
     if (!intraday)
@@ -467,7 +479,7 @@ stx_data_ptr ts_get_ts(char *stk, char* dt, int rel_pos) {
     return data;
 }
 
-void ts_serialize(stx_data_ptr data, char *mkt_name, bool realtime) {
+void ts_serialize_to_file(stx_data_ptr data, char *mkt_name, bool realtime) {
     char file_path[64];
     sprintf(file_path, "%s/stx/mkt/%s/%s/%s.dat", getenv("HOME"), mkt_name,
             (data->intraday == 0? "eod": "intraday"), data->stk);
