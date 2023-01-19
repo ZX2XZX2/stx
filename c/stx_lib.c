@@ -21,3 +21,38 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
     *num_recs = data->pos + 1;
     return data->data;
 }
+
+int main(int argc, char** argv) {
+    char stk[16], ed[20];
+    strcpy(stk, "TSLA");
+    strcpy(ed, cal_current_trading_datetime());
+    int num_days = 200;
+    bool intraday = false, realtime = false;
+
+    for (int ix = 1; ix < argc; ix++) {
+        if (!strcmp(argv[ix], "-s") && (++ix < argc))
+            strcpy(stk, argv[ix]);
+        else if (!strcmp(argv[ix], "-e") && (++ix < argc))
+            strcpy(ed, argv[ix]);
+        else if (!strcmp(argv[ix], "-d") && (++ix < argc))
+            num_days = atoi(argv[ix]);
+        else if (!strcmp(argv[ix], "-i") || !strcmp(argv[ix], "--intraday") )
+            intraday = true;
+        else
+            LOGWARN("Unknown option %s\n", argv[ix]);
+    }
+    if (intraday) {
+        if (strlen(ed) == 10)
+            strcat(ed, " 15:55:00");
+    } else {
+        char *hhmm = strchr(ed, ' ');
+        if (hhmm != NULL)
+            *hhmm = '\0';
+    }
+    LOGINFO("ed = %s\n", ed);
+    int num_recs = 0;
+    ohlcv_record_ptr res = stx_get_ohlcv(stk, ed, num_days, intraday,
+                                         realtime, &num_recs);
+    LOGINFO("num_recs = %d\n", num_recs);
+    return 0;
+}
