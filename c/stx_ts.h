@@ -172,7 +172,8 @@ stx_data_ptr ts_load_eod_stk(char *stk, char *end_dt, int num_days) {
         strcpy(data->data[ts_idx].date, PQgetvalue(res, ix, 5)); 
         ts_idx++;
     }
-    data->pos = b_days - 1;
+    data->pos = 0;
+    // data->pos = b_days - 1;
     PQclear(res);
 #ifdef DEBUG
     LOGDEBUG("Loading the splits for %s\n", stk);
