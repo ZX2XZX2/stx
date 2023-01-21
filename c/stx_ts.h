@@ -301,7 +301,6 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         ts_idx++;
     }
     PQclear(res);
-    data->pos = data->num_recs - 1;
 #ifdef DEBUG
     LOGDEBUG("Loading the splits for %s\n", stk);
 #endif
@@ -374,10 +373,15 @@ int ts_find_date_record(stx_data_ptr data, char* dt, int rel_pos) {
 }
 
 void ts_adjust_data(stx_data_ptr data, int split_ix) {
-    if (split_ix < 0) 
+    if (split_ix < 0)
         return;
     for(int ix = data->last_adj + 1; ix <= split_ix; ix++) {
-        char *date = data->splits->list[ix].key;
+        char date[20];
+        memset(date, 0, 20 * sizeof(char));
+        if (data->intraday)
+            sprintf(date, "%s 15:55:00", data->splits->list[ix].key);
+        else
+            strcpy(date, data->splits->list[ix].key);
         float ratio = data->splits->list[ix].val.ratio;
         /* find the index for the date in the data->data */
         /* adjust the data up to, and including that index */
@@ -401,7 +405,14 @@ void ts_set_day(stx_data_ptr data, char* date, int rel_pos) {
         LOGERROR("Could not set date to %s for %s\n", date, data->stk);
         return;
     }
-    int split_ix = ht_seq_index(data->splits, date);
+    char split_date[20];
+    strcpy(split_date, date);
+    if (data->intraday) {
+        char *hhmm = strchr(split_date, ' ');
+        if (hhmm != NULL)
+            *hhmm = '\0';
+    }
+    int split_ix = ht_seq_index(data->splits, split_date);
     if (split_ix >= 0)
         ts_adjust_data(data, split_ix);
 }
