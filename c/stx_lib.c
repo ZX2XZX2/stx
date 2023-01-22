@@ -14,12 +14,13 @@ stx_data_ptr stx_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     return ts_load_stk(stk, dt, num_days, intraday);
 }
 
-ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
-                               bool intraday, bool realtime, int *num_recs) {
+void stx_get_ohlcv(char *stk, char *dt, int num_days, bool intraday,
+                   bool realtime, ohlcv_record_ptr *res, int *num_recs) {
     stx_data_ptr data = ts_load_stk(stk, dt, num_days, intraday);
     ts_set_day(data, dt, -1);
     *num_recs = data->pos + 1;
-    return data->data;
+    *res = data->data;
+    // return data->data;
 }
 
 int main(int argc, char** argv) {
@@ -51,8 +52,8 @@ int main(int argc, char** argv) {
     }
     LOGINFO("ed = %s\n", ed);
     int num_recs = 0;
-    ohlcv_record_ptr res = stx_get_ohlcv(stk, ed, num_days, intraday,
-                                         realtime, &num_recs);
+    ohlcv_record_ptr res = NULL;
+    stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &res, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
     return 0;
 }
