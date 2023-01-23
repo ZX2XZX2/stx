@@ -32,21 +32,24 @@ class StxPlotBin:
             ctypes.c_int,
             ctypes.c_bool,
             ctypes.c_bool,
+            ctypes.POINTER(ctypes.POINTER(ChartStruct)),
             ctypes.POINTER(ctypes.c_int),
         )
-        _lib.stx_get_ohlcv.restype = ctypes.POINTER(ChartStruct)
+        _lib.stx_get_ohlcv.restype = None
+        res = ctypes.POINTER(ChartStruct)()
         realtime = False
-        res = _lib.stx_get_ohlcv(
+        _lib.stx_get_ohlcv(
             ctypes.c_char_p(stk.encode('UTF-8')),
             ctypes.c_char_p(end_dt.encode('UTF-8')),
             ctypes.c_int(num_days),
             ctypes.c_bool(intraday),
             ctypes.c_bool(realtime),
+            ctypes.byref(res),
             ctypes.byref(num_recs)
         )
         print(f'num_recs = {num_recs}')
 
-        ohlc_list = res[:num_recs.value]
+        ohlc_list = res[:num_recs.value - 100]
         dates, data = [], []
         for x in ohlc_list:
             dates.append(datetime.fromisoformat(x.dt.decode('utf-8')))
