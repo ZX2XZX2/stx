@@ -111,14 +111,11 @@
     <div class="navbar">
       <a href="/indexes">Indexes</a>
       <div class="dropdown">
-        <button class="dropbtn">EOD Charts 
+        <button class="dropbtn">Analysis
           <i class="fa fa-caret-down"></i>
         </button>
         <div class="dropdown-content">
-          <div class="header">
-            <h3>EOD Charts</h3>
-          </div>
-          <form method="post" action="/charts">
+          <form method="post" action="/analysis">
             <fieldset>
               <label for="stocks">Stock(s)</label>
               <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}"/>
@@ -139,9 +136,6 @@
           <i class="fa fa-caret-down"></i>
         </button>
         <div class="dropdown-content">
-          <div class="header">
-            <h3>Intraday Charts</h3>
-          </div>
           <form method="post" action="/idcharts">
             <fieldset>
               <label for="stocks">Stock(s)</label>
@@ -171,9 +165,6 @@
           <i class="fa fa-caret-down"></i>
         </button>
         <div class="dropdown-content">
-          <div class="header">
-            <h3>Scanner</h3>
-          </div>
           <form method="post" action="/scanners">
             <fieldset>
               <label for="dt_date">Date</label>
