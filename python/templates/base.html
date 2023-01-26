@@ -118,13 +118,22 @@
           <form method="post" action="/analysis">
             <fieldset>
               <label for="stocks">Stock(s)</label>
-              <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}"/>
+              <input type="text" name="stocks" placeholder="Stocks" value="{{ stx }}" style='max-width:1000px'/>
               <br>
-              <label for="datetime">Date</label>
-              <input type="date" name="datetime" placeholder="Date" value="{{ dt }}"/><br>
-              <label for="days">Timeframe (days)</label>
-              <input type="text" name="num_days" placeholder="Days" value="{{ num_days }}"/><br>
-              <br>
+              <label for="dt_date">Date</label>
+              <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/>
+              <label for="dt_time">Time</label>
+              <input type="time" name="dt_time" step="300" min="09:30" max="16:00" placeholder="Time" value="{{ dt_time }}"/>
+              <label for="num_days">EOD Days (1-300)</label>
+              <input type="text" name="eod_days" placeholder="EOD Days" value="{{ eod_days }}" maxlength="3" style='max-width:40px'/>
+              <label for="num_days">ID Days (1-20)</label>
+              <input type="text" name="id_days" placeholder="ID Days" value="{{ id_days }}" maxlength="2" style='max-width:30px'/>
+              <label for="frequency">Frequency</label>
+              <select id="frequency" name="frequency">
+                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min'}.items() %}
+                <option value="{{ key }}" {% if (key == freq) %} selected="selected" {% endif %}> {{ value }} </option>
+                {% endfor %}
+              </select>
             </fieldset>
             <button type="submit" name="action" value="Current">Current</button>
             <button type="submit" name="action" value="Next">Next</button>
