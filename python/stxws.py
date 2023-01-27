@@ -136,6 +136,33 @@ def idcharts():
         dt_date=end_date, dt_time=end_time, num_days=num_days,
         frequencydict=frequencydict, freq=freq)
 
+@app.route('/analysis', methods=('GET', 'POST'))
+def analysis():
+    charts = []
+    stks = ''
+    dt, end_time = stxcal.current_intraday_busdatetime()
+    num_days = 90
+    if request.method == 'POST':
+        stks = request.form['stocks']
+        dt_date = request.form['dt_date']
+        eod_days = int(request.form['eod_days'])
+        if not stks:
+            flash('Stocks are required!')
+        elif not dt_date:
+            flash('Date is required!')
+        else:
+            stk_list = stks.split(' ')
+            if request.form['action'] == 'Next':
+                dt = stxcal.next_busday(dt_date)
+            end_date = dt_date
+            start_date = stxcal.move_busdays(end_date, -eod_days)
+            for stk in stk_list:
+                sp = StxPlot(None, stk, start_date, end_date, stk=stk)
+                chartdict = { 'figdata_png': sp.b64_png() }
+                charts.append(chartdict)
+    return render_template('charts.html', charts=charts, stx=stks, dt=dt_date,
+                           num_days=eod_days)
+
 
 @app.route('/scanners', methods=('GET', 'POST'))
 def scanners():
