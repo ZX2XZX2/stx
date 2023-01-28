@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  {% for chart, idchart in zip(charts, idcharts) %}
+  <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
+  <img src="data:image/png;base64,{{ idchart['figdata_png'] }}" width="1500">
+  {% endfor %}
+{% endblock %}
