@@ -141,16 +141,21 @@ def analysis():
     charts = []
     stks = ''
     dt, end_time = stxcal.current_intraday_busdatetime()
-    num_days = 90
+    eod_days = 90
+    id_days = 5
     if request.method == 'POST':
         stks = request.form['stocks']
         dt_date = request.form['dt_date']
+        dt_time = request.form['dt_time']
         eod_days = int(request.form['eod_days'])
+        id_days = int(request.form['id_days'])
         if not stks:
             flash('Stocks are required!')
         elif not dt_date:
             flash('Date is required!')
         else:
+            if not dt_time:
+                dt_time = "16:00"
             stk_list = stks.split(' ')
             if request.form['action'] == 'Next':
                 dt = stxcal.next_busday(dt_date)
@@ -160,8 +165,9 @@ def analysis():
                 sp = StxPlot(None, stk, start_date, end_date, stk=stk)
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
-    return render_template('charts.html', charts=charts, stx=stks, dt=dt_date,
-                           num_days=eod_days)
+    return render_template('charts.html', charts=charts, stx=stks,
+                           dt_date=dt_date, dt_time=dt_time,
+                           eod_days=eod_days, id_days=id_days)
 
 
 @app.route('/scanners', methods=('GET', 'POST'))
