@@ -127,10 +127,6 @@ def idcharts():
                 sp = StxPlotID(None, start_dt, end_dt, stk, frequency)
                 chartdict = { 'figdata_png': sp.b64_png() }
                 charts.append(chartdict)
-        return render_template(
-            'idcharts.html', charts=charts, stx=stks,
-            dt_date=end_date, dt_time=end_time, num_days=num_days,
-            frequencydict=frequencydict, freq=freq)
     return render_template(
         'idcharts.html', charts=charts, stx=stks,
         dt_date=end_date, dt_time=end_time, num_days=num_days,
@@ -139,36 +135,44 @@ def idcharts():
 @app.route('/analysis', methods=('GET', 'POST'))
 def analysis():
     charts = []
+    id_charts = []
     stks = ''
-    dt, end_time = stxcal.current_intraday_busdatetime()
+    dt_date, dt_time = stxcal.current_intraday_busdatetime()
     eod_days = 90
     id_days = 5
+    freq = '5min'
     if request.method == 'POST':
         stks = request.form['stocks']
         dt_date = request.form['dt_date']
         dt_time = request.form['dt_time']
         eod_days = int(request.form['eod_days'])
         id_days = int(request.form['id_days'])
+        end_dt = f'{dt_date} {dt_time}'
+        end_date = dt_date
+        freq = request.form['frequency']
         if not stks:
             flash('Stocks are required!')
-        elif not dt_date:
-            flash('Date is required!')
         else:
-            if not dt_time:
-                dt_time = "16:00"
             stk_list = stks.split(' ')
             if request.form['action'] == 'Next':
-                dt = stxcal.next_busday(dt_date)
-            end_date = dt_date
-            start_date = stxcal.move_busdays(end_date, -eod_days)
+                end_date, end_time = stxcal.next_intraday(end_dt)
+                end_dt = f'{end_date} {end_time}'
+            start_date = stxcal.move_busdays(end_date, -eod_days + 1)
+            start_iddate = stxcal.move_busdays(end_date, -id_days + 1)
+            start_dt = f'{start_iddate} 09:30'
+            frequency = int(freq[:-3])
             for stk in stk_list:
                 sp = StxPlot(None, stk, start_date, end_date, stk=stk)
-                chartdict = { 'figdata_png': sp.b64_png() }
+                spid = StxPlotID(None, start_dt, end_dt, stk, frequency)
+                chartdict = {
+                    'eod_png': sp.b64_png(),
+                    'id_png': spid.b64_png()
+                }
                 charts.append(chartdict)
-    return render_template('charts.html', charts=charts, stx=stks,
+    return render_template('analysis.html', charts=charts, stx=stks,
                            dt_date=dt_date, dt_time=dt_time,
-                           eod_days=eod_days, id_days=id_days)
-
+                           eod_days=eod_days, id_days=id_days, freq=freq,
+                           frequencydict=frequencydict)
 
 @app.route('/scanners', methods=('GET', 'POST'))
 def scanners():
