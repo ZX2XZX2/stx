@@ -22,7 +22,7 @@ class ChartStruct(ctypes.Structure):
     ]
 
 class StxPlotBin:
-    def __init__(self, stk, mkt_name, num_days, end_dt, intraday, period=5):
+    def __init__(self, stk, num_days, end_dt, intraday, period=5):
         so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'stx_lib.so')
         _lib = ctypes.CDLL(so_file)
         num_recs = ctypes.c_int(0)
@@ -155,8 +155,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--stk', type=str, default='NFLX',
                         help='Stock to chart')
-    parser.add_argument('-m', '--mkt', type=str, default='test',
-                        help='Market for the stock to chart')
     parser.add_argument('-p', '--period', type=int, default=5,
                         help='Time interval covered by one candle, in minutes')
     parser.add_argument('-a', '--sorp', type=str, default='p',
@@ -169,8 +167,8 @@ if __name__ == '__main__':
                         help="Run Intraday analysis")    
 
     args = parser.parse_args()
-    sp = StxPlotBin(args.stk, args.mkt, args.days, args.enddate,
-                    args.intraday, args.period)
+    sp = StxPlotBin(args.stk, args.days, args.enddate, args.intraday,
+                    args.period)
     savefig = args.sorp.startswith('s')
     sp.plotchart(savefig=savefig)
     if not savefig:
