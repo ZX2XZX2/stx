@@ -145,8 +145,15 @@ def analysis():
         stks = request.form['stocks']
         dt_date = request.form['dt_date']
         dt_time = request.form['dt_time']
-        eod_days = int(request.form['eod_days'])
-        id_days = int(request.form['id_days'])
+        try:
+            eod_days = int(request.form.get['eod_days'])
+        except:
+            logging.warn(f'No EOD days input, using default value {eod_days}')
+        try:
+            id_days = int(request.form.get('id_days', '10'))
+        except:
+            logging.warn(f'No ID days input, using default value {id_days}')
+
         end_dt = f'{dt_date} {dt_time}'
         end_date = dt_date
         freq = request.form['frequency']
@@ -164,6 +171,8 @@ def analysis():
             for stk in stk_list:
                 sp = StxPlot(None, stk, start_date, end_date, stk=stk)
                 spid = StxPlotID(None, start_dt, end_dt, stk, frequency)
+                # sp = StxPlotBin(args.stk, args.mkt, args.days, args.enddate,
+                #                 args.intraday, args.period)
                 chartdict = {
                     'eod_png': sp.b64_png(),
                     'id_png': spid.b64_png()
