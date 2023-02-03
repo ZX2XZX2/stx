@@ -2,6 +2,8 @@ import ctypes
 from flask import Flask, render_template, request, url_for, flash
 import logging
 import matplotlib
+
+from stxplotbin import StxPlotBin
 matplotlib.use('Agg')
 import os
 import pandas as pd
@@ -134,6 +136,7 @@ def idcharts():
 
 @app.route('/analysis', methods=('GET', 'POST'))
 def analysis():
+    use_c = True
     charts = []
     id_charts = []
     stks = ''
@@ -169,10 +172,12 @@ def analysis():
             start_dt = f'{start_iddate} 09:30'
             frequency = int(freq[:-3])
             for stk in stk_list:
-                sp = StxPlot(None, stk, start_date, end_date, stk=stk)
-                spid = StxPlotID(None, start_dt, end_dt, stk, frequency)
-                # sp = StxPlotBin(args.stk, args.mkt, args.days, args.enddate,
-                #                 args.intraday, args.period)
+                if (use_c):
+                    sp = StxPlotBin(stk, eod_days, end_dt, intraday=False)
+                    spid = StxPlotBin(stk, id_days, end_dt, intraday=True)
+                else:
+                    sp = StxPlot(None, stk, start_date, end_date, stk=stk)
+                    spid = StxPlotID(None, start_dt, end_dt, stk, frequency)
                 chartdict = {
                     'eod_png': sp.b64_png(),
                     'id_png': spid.b64_png()
