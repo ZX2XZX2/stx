@@ -22,11 +22,12 @@ class ChartStruct(ctypes.Structure):
     ]
 
 class StxPlotBin:
+    so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'stx_lib.so')
+    _lib = ctypes.CDLL(so_file)
+
     def __init__(self, stk, num_days, end_dt, intraday, period=5):
-        so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'stx_lib.so')
-        _lib = ctypes.CDLL(so_file)
         num_recs = ctypes.c_int(0)
-        _lib.stx_get_ohlcv.argtypes = (
+        self._lib.stx_get_ohlcv.argtypes = (
             ctypes.c_char_p,
             ctypes.c_char_p,
             ctypes.c_int,
@@ -35,10 +36,10 @@ class StxPlotBin:
             ctypes.POINTER(ctypes.POINTER(ChartStruct)),
             ctypes.POINTER(ctypes.c_int),
         )
-        _lib.stx_get_ohlcv.restype = None
+        self._lib.stx_get_ohlcv.restype = None
         res = ctypes.POINTER(ChartStruct)()
         realtime = False
-        _lib.stx_get_ohlcv(
+        self._lib.stx_get_ohlcv(
             ctypes.c_char_p(stk.encode('UTF-8')),
             ctypes.c_char_p(end_dt.encode('UTF-8')),
             ctypes.c_int(num_days),
@@ -49,7 +50,7 @@ class StxPlotBin:
         )
         print(f'num_recs = {num_recs}')
 
-        ohlc_list = res[:num_recs.value - 100]
+        ohlc_list = res[:num_recs.value - 1]
         dates, data = [], []
         for x in ohlc_list:
             dates.append(datetime.fromisoformat(x.dt.decode('utf-8')))
