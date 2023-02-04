@@ -157,7 +157,7 @@ def analysis():
         except:
             logging.warn(f'No ID days input, using default value {id_days}')
 
-        end_dt = f'{dt_date} {dt_time}'
+        end_dt = f'{dt_date} {dt_time}:00'
         end_date = dt_date
         freq = request.form['frequency']
         if not stks:
@@ -173,7 +173,7 @@ def analysis():
             frequency = int(freq[:-3])
             for stk in stk_list:
                 if (use_c):
-                    sp = StxPlotBin(stk, eod_days, end_dt, intraday=False)
+                    sp = StxPlotBin(stk, eod_days, end_date, intraday=False)
                     spid = StxPlotBin(stk, id_days, end_dt, intraday=True)
                 else:
                     sp = StxPlot(None, stk, start_date, end_date, stk=stk)
