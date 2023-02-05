@@ -22,11 +22,10 @@ class ChartStruct(ctypes.Structure):
     ]
 
 class StxPlotBin:
-    so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'stx_lib.so')
-    _lib = ctypes.CDLL(so_file)
 
-    def __init__(self, stk, num_days, end_dt, intraday, period=5):
+    def __init__(self, _lib, stk, num_days, end_dt, intraday, period=5):
         num_recs = ctypes.c_int(0)
+        self._lib = _lib
         self._lib.stx_get_ohlcv.argtypes = (
             ctypes.c_char_p,
             ctypes.c_char_p,
@@ -147,6 +146,8 @@ class StxPlotBin:
 
 
 if __name__ == '__main__':
+    so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'stx_lib.so')
+    _lib = ctypes.CDLL(so_file)
     # logging.basicConfig(
     #     format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
     #     '%(message)s',
@@ -168,7 +169,7 @@ if __name__ == '__main__':
                         help="Run Intraday analysis")    
 
     args = parser.parse_args()
-    sp = StxPlotBin(args.stk, args.days, args.enddate, args.intraday,
+    sp = StxPlotBin(_lib, args.stk, args.days, args.enddate, args.intraday,
                     args.period)
     savefig = args.sorp.startswith('s')
     sp.plotchart(savefig=savefig)
