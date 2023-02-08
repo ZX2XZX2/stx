@@ -325,10 +325,9 @@ void jl_free_pivots(jl_piv_ptr pivs) {
 
 cJSON* jl_pivots_json(jl_data_ptr jl, int num_pivots) {
     jl_piv_ptr jl_pivs = jl_get_pivots(jl, num_pivots);
-    cJSON *json_jl = cJSON_CreateObject();
+    cJSON *json_jl = cJSON_CreateObject(), *pivs = NULL;
     if (cJSON_AddNumberToObject(json_jl, "f", jl->factor) == NULL)
         goto end;
-    cJSON *pivs = NULL;
     if ((pivs = cJSON_AddArrayToObject(json_jl, "pivs")) == NULL)
         goto end;
     for(int ix = 0; ix < jl_pivs->num; ix++) {
