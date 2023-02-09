@@ -43,7 +43,7 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
     size_t realsize = size * nmemb;
     net_mem_ptr mem = (net_mem_ptr)userp;
  
-    char *ptr = realloc(mem->memory, mem->size + realsize + 1);
+    char *ptr = (char *)realloc(mem->memory, mem->size + realsize + 1);
     if(ptr == NULL) {
         /* out of memory! */ 
         printf("not enough memory (realloc returned NULL)\n");
@@ -95,7 +95,7 @@ net_mem_ptr net_get_quote(char* url) {
     net_mem_ptr chunk = (net_mem_ptr) malloc(sizeof(net_mem));
     CURL *curl_handle;
     CURLcode res;
-    chunk->memory = malloc(1);  /* will be grown by the realloc above */
+    chunk->memory = (char *) malloc(1);  /* will be grown by the realloc above */
     chunk->size = 0;    /* no data at this point */
     /* init the curl session */
     curl_handle = curl_easy_init();
@@ -293,14 +293,15 @@ ohlcv_record_ptr net_get_intraday_data(char* stk, unsigned long startts,
         return id_data;
     }
     cJSON *json = net_parse_quote(chunk->memory);
-    if (json == NULL) {
-        LOGERROR("%s: net_parse_quote() failed for %s\n", stk, chunk->memory);
-        goto end;
-    }
     cJSON *chart = NULL, *chart_result = NULL, *intraday_data = NULL,
         *timestamps = NULL, *opens = NULL, *highs = NULL, *lows = NULL,
         *closes = NULL, *volumes = NULL, *indicators = NULL, *quote_arr = NULL,
         *quote = NULL, *crs = NULL;
+    int total = 0, num = 0;
+    if (json == NULL) {
+        LOGERROR("%s: net_parse_quote() failed for %s\n", stk, chunk->memory);
+        goto end;
+    }
     if ((chart = cJSON_GetObjectItemCaseSensitive(json, "chart")) == NULL) {
         net_print_json_err(json, "No 'chart' found in data");
         goto end;
@@ -330,7 +331,8 @@ ohlcv_record_ptr net_get_intraday_data(char* stk, unsigned long startts,
         net_print_json_err(quote, "Incomplete quote ");
         goto end;
     }
-    int total = cJSON_GetArraySize(timestamps), num = 0;
+    total = cJSON_GetArraySize(timestamps);
+    num = 0;
     id_data = (ohlcv_record_ptr) calloc((size_t) total, sizeof(ohlcv_record));
     *num_records = total;
     struct tm *ts;
@@ -426,14 +428,16 @@ void net_get_option_data(FILE *eod_fp, FILE *opt_fp, char* und, char* dt,
     }
     cJSON *opt_quote = net_navigate_to_opt_quote(json);
     cJSON *quote = cJSON_GetObjectItemCaseSensitive(opt_quote, "quote");
+    cJSON *options = NULL, *opt_arr = NULL;
+    int num_calls = 0, num_puts = 0, spot = -1;
     if (quote == NULL) {
         net_print_json_err(json, "No 'quote' found in 'result'");
         goto end;
     }
-    int spot = net_parse_eod(eod_fp, quote, und, dt, false);
+    spot = net_parse_eod(eod_fp, quote, und, dt, false);
     if (spot == -1)
         goto end;
-    cJSON *opt_arr = cJSON_GetObjectItemCaseSensitive(opt_quote, "options");
+    opt_arr = cJSON_GetObjectItemCaseSensitive(opt_quote, "options");
     if (opt_arr == NULL) {
         /* net_print_json_err(opt_quote, "No 'options' found in options quote"); */
         goto end;
@@ -442,9 +446,9 @@ void net_get_option_data(FILE *eod_fp, FILE *opt_fp, char* und, char* dt,
         /* net_print_json_err(json, "'options' is not an array"); */
         goto end;
     }
-    cJSON *options = cJSON_GetArrayItem(opt_arr, 0);
-    int num_calls = net_parse_options(opt_fp, options, "calls", exp, und, dt);
-    int num_puts = net_parse_options(opt_fp, options, "puts", exp, und, dt);
+    options = cJSON_GetArrayItem(opt_arr, 0);
+    num_calls = net_parse_options(opt_fp, options, "calls", exp, und, dt);
+    num_puts = net_parse_options(opt_fp, options, "puts", exp, und, dt);
     LOGINFO("%d %s: %s expiry %s got %d calls and %d puts\n", num, dt, und,
             exp, num_calls, num_puts);
  end:
