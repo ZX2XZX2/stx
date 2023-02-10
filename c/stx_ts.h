@@ -376,8 +376,8 @@ void ts_adjust_data(stx_data_ptr data, int split_ix) {
     if (split_ix < 0)
         return;
     for(int ix = data->last_adj + 1; ix <= split_ix; ix++) {
-        char date[20];
-        memset(date, 0, 20 * sizeof(char));
+        char date[32];
+        memset(date, 0, 32 * sizeof(char));
         if (data->intraday)
             sprintf(date, "%s 15:55:00", data->splits->list[ix].key);
         else
