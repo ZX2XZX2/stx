@@ -2,25 +2,30 @@
  *  This file contains the functions that will be called from python,
  *  by the intraday analysis daemon.
  */
-
 #define _XOPEN_SOURCE
-#include <stdio.h>
-#include <stdint.h>
-#include "stx_core.h"
-#include "stx_ts.h"
 
+#include "stx_lib.h"
 
 stx_data_ptr stx_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     return ts_load_stk(stk, dt, num_days, intraday);
 }
 
 void stx_get_ohlcv(char *stk, char *dt, int num_days, bool intraday,
-                   bool realtime, ohlcv_record_ptr *res, int *num_recs) {
+                   bool realtime, ohlcv_record_ptr *ohlcvs, int *num_recs) {
+
     stx_data_ptr data = ts_load_stk(stk, dt, num_days, intraday);
     ts_set_day(data, dt, -1);
     *num_recs = data->pos + 1;
-    *res = data->data;
-    // return data->data;
+    ohlcv_record_ptr res = (ohlcv_record_ptr)
+        calloc((size_t) *num_recs, sizeof(ohlcv_record));
+    memcpy(res, data->data, *num_recs * sizeof(ohlcv_record));
+    *ohlcvs = res;
+    ts_free_data(data);
+}
+
+void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs) {
+    free(*ohlcvs);
+    *ohlcvs = NULL;
 }
 
 int main(int argc, char** argv) {
@@ -55,5 +60,6 @@ int main(int argc, char** argv) {
     ohlcv_record_ptr res = NULL;
     stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &res, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
+    stx_free_ohlcv(&res);
     return 0;
 }
