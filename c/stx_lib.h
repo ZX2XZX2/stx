@@ -24,6 +24,6 @@ typedef struct candlev_t {
 stx_data_ptr stx_load_stk(char *stk, char *dt, int num_days, bool intraday);
 
 void stx_get_ohlcv(char *stk, char *dt, int num_days, bool intraday,
-                   bool realtime, char** dates, candlev_ptr *candlevs,
-                   int *num_recs);
+                   bool realtime, ohlcv_record_ptr *ohlcvs, int *num_recs);
+void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs);
 #endif
