@@ -3,7 +3,7 @@ import base64
 import ctypes
 from datetime import datetime
 from io import BytesIO
-# import logging
+import logging
 import mplfinance as mpf
 import os
 import pandas as pd
@@ -24,6 +24,7 @@ class ChartStruct(ctypes.Structure):
 class StxPlotBin:
 
     def __init__(self, _lib, stk, num_days, end_dt, intraday, period=5):
+        logging.info('start')
         num_recs = ctypes.c_int(0)
         self._lib = _lib
         self._lib.stx_get_ohlcv.argtypes = (
@@ -38,6 +39,7 @@ class StxPlotBin:
         self._lib.stx_get_ohlcv.restype = None
         res = ctypes.POINTER(ChartStruct)()
         realtime = False
+        logging.info('getting stock data')
         self._lib.stx_get_ohlcv(
             ctypes.c_char_p(stk.encode('UTF-8')),
             ctypes.c_char_p(end_dt.encode('UTF-8')),
@@ -47,24 +49,25 @@ class StxPlotBin:
             ctypes.byref(res),
             ctypes.byref(num_recs)
         )
-        print(f'num_recs = {num_recs}')
+        logging.info(f'got stock data, num_recs = {num_recs}')
 
-        ohlc_list = res[:num_recs.value - 1]
-        dates, data = [], []
-        for x in ohlc_list:
-            dates.append(datetime.fromisoformat(x.dt.decode('utf-8')))
-            data.append((x.o, x.hi, x.lo, x.c, x.v))#,
-                            #  x.sma_50 if x.sma_50 != -1 else None,
-                            #  x.sma_200 if x.sma_200 != -1 else None))
-        if not dates or not data:
-            print(f'Couldnt read {stk} binary data')
+        _ohlc_list = res[:num_recs.value - 1]
+        ohlc_list = [(x.o, x.hi, x.lo, x.c, x.v,
+                     datetime.fromisoformat(x.dt.decode('utf-8')))
+                     for x in _ohlc_list]
+        self._lib.stx_free_ohlcv.argtypes = (
+            ctypes.POINTER(ctypes.POINTER(ChartStruct)),
+        )
+        self._lib.stx_free_ohlcv.restype = None
+        logging.info('freeing stock data')
+        self._lib.stx_free_ohlcv(
+            ctypes.byref(res)
+        )
         idf = pd.DataFrame(
-            data=data,
-            index=dates,
-            columns=['Open','High','Low','Close','Volume'])
-            # columns=['Open','High','Low','Close','Volume','SMA50','SMA200']) #,
-            # dtype=[str, float, float, float, float, int, float, float])
-        idf.index.name = 'Date'
+            data=ohlc_list,
+            columns=['Open','High','Low','Close','Volume', 'Date'])
+        idf.set_index('Date', inplace=True)
+        logging.info('built data frame')
         
         self.plot_df = idf
         self.intraday = intraday
@@ -77,10 +80,11 @@ class StxPlotBin:
                 'High'  : 'max'  ,
                 'Low'   : 'min'  ,
                 'Close' : 'last',
-                'Volume':'sum'
+                'Volume': 'sum'
             }
             idf = idf.resample(resample_period).agg(resample_map).dropna()
         self.plot_df = idf
+        logging.info('done')
 
     def drawchart(self):
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
@@ -146,14 +150,14 @@ class StxPlotBin:
 
 
 if __name__ == '__main__':
-    so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'stx_lib.so')
+    so_file = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
     _lib = ctypes.CDLL(so_file)
-    # logging.basicConfig(
-    #     format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
-    #     '%(message)s',
-    #     datefmt='%Y-%m-%d %H:%M:%S',
-    #     level=logging.INFO
-    # )
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
+        '%(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.INFO
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--stk', type=str, default='NFLX',
                         help='Stock to chart')
