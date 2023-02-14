@@ -10,17 +10,16 @@ stx_data_ptr stx_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     return ts_load_stk(stk, dt, num_days, intraday);
 }
 
-void stx_get_ohlcv(char *stk, char *dt, int num_days, bool intraday,
-                   bool realtime, ohlcv_record_ptr *ohlcvs, int *num_recs) {
-
+ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
+                               bool intraday, bool realtime, int *num_recs) {
     stx_data_ptr data = ts_load_stk(stk, dt, num_days, intraday);
     ts_set_day(data, dt, -1);
     *num_recs = data->pos + 1;
     ohlcv_record_ptr res = (ohlcv_record_ptr)
         calloc((size_t) *num_recs, sizeof(ohlcv_record));
     memcpy(res, data->data, *num_recs * sizeof(ohlcv_record));
-    *ohlcvs = res;
     ts_free_data(data);
+    return res;
 }
 
 void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs) {
@@ -57,8 +56,8 @@ int main(int argc, char** argv) {
     }
     LOGINFO("ed = %s\n", ed);
     int num_recs = 0;
-    ohlcv_record_ptr res = NULL;
-    stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &res, &num_recs);
+    ohlcv_record_ptr res = stx_get_ohlcv(stk, ed, num_days, intraday,
+                                         realtime, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
     stx_free_ohlcv(&res);
     return 0;
