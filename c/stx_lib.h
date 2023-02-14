@@ -23,7 +23,7 @@ typedef struct candlev_t {
 
 stx_data_ptr stx_load_stk(char *stk, char *dt, int num_days, bool intraday);
 
-void stx_get_ohlcv(char *stk, char *dt, int num_days, bool intraday,
-                   bool realtime, ohlcv_record_ptr *ohlcvs, int *num_recs);
+ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
+                               bool intraday, bool realtime, int *num_recs);
 void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs);
 #endif
