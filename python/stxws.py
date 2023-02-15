@@ -40,8 +40,8 @@ frequencydict = {
     '30min': '30min'
 }
 
-so_file = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
-so_functions = ctypes.CDLL(so_file)
+_lib_name = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
+_lib = ctypes.CDLL(_lib_name)
 
 @app.route('/')
 def index():
@@ -173,8 +173,8 @@ def analysis():
             frequency = int(freq[:-3])
             for stk in stk_list:
                 if (use_c):
-                    sp = StxPlotBin(stk, eod_days, end_date, intraday=False)
-                    spid = StxPlotBin(stk, id_days, end_dt, intraday=True)
+                    sp = StxPlotBin(_lib, stk, eod_days, end_date, intraday=False)
+                    spid = StxPlotBin(_lib, stk, id_days, end_dt, intraday=True)
                 else:
                     sp = StxPlot(None, stk, start_date, end_date, stk=stk)
                     spid = StxPlotID(None, start_dt, end_dt, stk, frequency)
@@ -283,11 +283,8 @@ def scanners():
 
 @app.route('/rtscanners')
 def rtscanners():
-    res = so_functions.my_function(10)
-    return f'the result is {res}'
-    # return "This will show the realtime scanners"
+    return "This will show the realtime scanners"
 
 @app.route('/market')
 def market():
-    res = so_functions.my_function(10)
-    return f'the result is {res}'
+    return f'this will show the market'
