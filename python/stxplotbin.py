@@ -48,7 +48,7 @@ class StxPlotBin:
         )
         logging.info(f'got stock data, num_recs = {num_recs}')
 
-        _ohlc_list = res[:num_recs.value - 1]
+        _ohlc_list = res[:num_recs.value]
         ohlc_list = [(x.o, x.hi, x.lo, x.c, x.v,
                      datetime.fromisoformat(x.dt.decode('utf-8')))
                      for x in _ohlc_list]
