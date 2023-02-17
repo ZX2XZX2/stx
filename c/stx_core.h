@@ -287,6 +287,19 @@ ht_item_ptr ht_new_str(ht_item_ptr hi, const char* k, char* str) {
     return hi;
 }
 
+void ht_del_item(ht_item_ptr i) {
+    free(i->key);
+    /**
+     *  Only used to delete stx data; then values are freed in ts_stx.
+     *  Strings HT loads last date from DB and is freed when PGresult is freed
+     */
+    if (i->item_type == CAL_HT) {
+        free(i->val.cal);
+        i->val.cal = NULL;
+    }
+    free(i);
+}
+
 int ht_hash(const char* s, const int a, const int m) {
     long hash = 0;
     const int len_s = strlen(s);
@@ -493,6 +506,7 @@ void ht_free(hashtable_ptr ht) {
             ht_item_ptr crs = ht->list + ix;
             if (crs->item_type == CAL_HT)
                 free(crs->val.cal);
+                crs->val.cal = NULL;
         }
         free(ht->list);
     }
