@@ -971,14 +971,14 @@ static hashtable_ptr id_jl = NULL;
 /** Return the hash table with EOD stock data. */
 hashtable_ptr ht_data() {
     if (stx == NULL) 
-        stx = ht_new(NULL, 10000);
+        stx = ht_new(NULL, 2500);
     return stx;
 }
 
 /** Return the hash table with intraday stock data. */
 hashtable_ptr ht_id_data() {
     if (id_stx == NULL) 
-        id_stx = ht_new(NULL, 10000);
+        id_stx = ht_new(NULL, 2500);
     return id_stx;
 }
 
@@ -989,7 +989,7 @@ hashtable_ptr ht_jl(const char* factor) {
     ht_item_ptr jlht = ht_get(jl, factor);
     hashtable_ptr jl_factor_ht = NULL;
     if (jlht == NULL) {
-        jl_factor_ht = ht_new(NULL, 10000);
+        jl_factor_ht = ht_new(NULL, 2500);
         jlht = ht_new_data(factor, (void *) jl_factor_ht);
         ht_insert(jl, jlht);
     } else
@@ -1004,7 +1004,7 @@ hashtable_ptr ht_id_jl(const char* factor) {
     ht_item_ptr jlht = ht_get(id_jl, factor);
     hashtable_ptr jl_factor_ht = NULL;
     if (jlht == NULL) {
-        jl_factor_ht = ht_new(NULL, 10000);
+        jl_factor_ht = ht_new(NULL, 2500);
         jlht = ht_new_data(factor, (void *) jl_factor_ht);
         ht_insert(id_jl, jlht);
     } else
