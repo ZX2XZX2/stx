@@ -35,7 +35,6 @@ char* crt_timestamp() {
 #define LOGERROR(format, ...) __LOG__(format, "ERROR", ## __VA_ARGS__)
 #define LOGINFO(format, ...) __LOG__(format, "INFO", ## __VA_ARGS__)
 
-
 /** DATABASE **/
 static PGconn *conn = NULL;
 
@@ -226,6 +225,9 @@ typedef struct hashtable_t {
     ht_item_ptr list;
 } hashtable, *hashtable_ptr;
 
+/** Global sentinel item; marks that a bucket contains a deleted item **/
+static ht_item HT_DELETED_ITEM = {"", DIVI_HT, 0};
+
 static int HT_PRIME_1 = 151;
 static int HT_PRIME_2 = 163;
 
@@ -354,6 +356,24 @@ ht_item_ptr ht_get(hashtable_ptr ht, const char* key) {
         i++;
     } 
     return NULL;
+}
+
+void ht_delete(hashtable_ptr ht, const char* key) {
+    int ix = ht_get_hash(key, ht->size, 0);
+    ht_item* item = ht->items[ix];
+    int i = 1;
+    while (item != NULL) {
+        if (item != &HT_DELETED_ITEM) {
+            if (strcmp(item->key, key) == 0) {
+                ht_del_item(item);
+                ht->items[ix] = &HT_DELETED_ITEM;
+            }
+        }
+        ix = ht_get_hash(key, ht->size, i);
+        item = ht->items[ix];
+        i++;
+    } 
+    ht->count--;
 }
 
 hashtable_ptr ht_new(ht_item_ptr list, int num_elts) {
