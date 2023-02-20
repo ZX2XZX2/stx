@@ -330,7 +330,7 @@ void ht_insert(hashtable_ptr ht, ht_item_ptr item) {
     int index = ht_get_hash(key, ht->size, 0);
     ht_item_ptr crt_item = ht->items[index];
     int i = 1;
-    while (crt_item != NULL) {
+    while (crt_item != NULL && crt_item != &HT_DELETED_ITEM) {
         index = ht_get_hash(item->key, ht->size, i);
 #ifdef DDEBUGG
         LOGDEBUG("i= %d, index = %d\n", i, index);
@@ -349,8 +349,10 @@ ht_item_ptr ht_get(hashtable_ptr ht, const char* key) {
     ht_item_ptr item = ht->items[index];
     int i = 1;
     while (item != NULL) {
-        if (strcmp(item->key, key) == 0)
-            return item;
+        if (item != &HT_DELETED_ITEM) {
+            if (strcmp(item->key, key) == 0)
+                return item;
+        }
         index = ht_get_hash(key, ht->size, i);
         item = ht->items[index];
         i++;
