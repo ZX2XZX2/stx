@@ -381,11 +381,11 @@ void ht_delete(hashtable_ptr ht, const char* key) {
 hashtable_ptr ht_new(ht_item_ptr list, int num_elts) {
     if (num_elts <= 0)
         return NULL;
-    hashtable_ptr ht = malloc(sizeof(hashtable));
+    hashtable_ptr ht = (hashtable_ptr)calloc((size_t)1, sizeof(hashtable));
     ht->count = 0;
     ht->list = list;
     ht->size = next_prime(2 * num_elts);
-    ht->items = calloc((size_t)ht->size, sizeof(ht_item_ptr));
+    ht->items = (ht_item_ptr*)calloc((size_t)ht->size, sizeof(ht_item_ptr));
     if (list != NULL) {
         for (int ix = 0; ix < num_elts; ++ix)
             ht_insert(ht, &list[ix]);
