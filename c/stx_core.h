@@ -330,14 +330,21 @@ void ht_insert(hashtable_ptr ht, ht_item_ptr item) {
     int index = ht_get_hash(key, ht->size, 0);
     ht_item_ptr crt_item = ht->items[index];
     int i = 1;
-    while (crt_item != NULL && crt_item != &HT_DELETED_ITEM) {
+    while (crt_item != NULL) {
+        if (crt_item != &HT_DELETED_ITEM) {
+            if (!strcmp(crt_item->key, key)) {
+                ht_del_item(crt_item);
+                ht->items[index] = item;
+                return;
+            }
+        }
         index = ht_get_hash(item->key, ht->size, i);
 #ifdef DDEBUGG
         LOGDEBUG("i= %d, index = %d\n", i, index);
 #endif
         crt_item = ht->items[index];
         i++;
-    } 
+    }
     ht->items[index] = item;
     ht->count++;
 }
