@@ -12,13 +12,50 @@ stx_data_ptr stx_load_stk(char *stk, char *dt, int num_days, bool intraday) {
 
 ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
                                bool intraday, bool realtime, int *num_recs) {
-    stx_data_ptr data = ts_load_stk(stk, dt, num_days, intraday);
-    ts_set_day(data, dt, -1);
+    char end_date[20], *hhmm = NULL;
+    // bool get_intraday_data = true;
+    strcpy(end_date, dt);
+    hhmm = strchr(end_date, ' ');
+    if (hhmm != NULL)
+        *hhmm++ = '\0';
+    // if (!intraday &&
+    //     (hhmm == NULL || !strcmp(hhmm, "16:00") || !strcmp(hhmm, "16:00:00")))
+    //     get_intraday_data = false;
+    if (!cal_is_busday(end_date)) {
+        char *prev_bdate = NULL;
+        cal_prev_bday(cal_ix(end_date), &prev_bdate);
+        strcpy(end_date, prev_bdate);
+        if (hhmm != NULL)
+            sprintf(dt, "%s %s", end_date, hhmm);
+        else
+            strcpy(dt, end_date);
+    }
+    ht_item_ptr data_ht = ht_get(ht_data(), stk);
+    stx_data_ptr data = NULL;
+    if (data_ht == NULL) {
+        data = ts_load_stk(stk, end_date, NUM_EOD_DAYS, false);
+        if (data == NULL)
+            return NULL;
+        ts_set_day(data, end_date, 0);
+        data_ht = ht_new_data(stk, (void*)data);
+        ht_insert(ht_data(), data_ht);
+    } else {
+        data = (stx_data_ptr) data_ht->val.data;
+        char *current_dt = data->data[data->pos].date;
+        if (strcmp(current_dt, end_date) != 0) {
+            ts_free_data(data);
+            data = ts_load_stk(stk, end_date, NUM_EOD_DAYS, false);
+            if (data == NULL)
+                return NULL;
+            ts_set_day(data, end_date, 0);
+            data_ht = ht_new_data(stk, (void*)data);
+            ht_insert(ht_data(), data_ht);
+        }
+    }
     *num_recs = data->pos + 1;
     ohlcv_record_ptr res = (ohlcv_record_ptr)
         calloc((size_t) *num_recs, sizeof(ohlcv_record));
     memcpy(res, data->data, *num_recs * sizeof(ohlcv_record));
-    ts_free_data(data);
     return res;
 }
 
