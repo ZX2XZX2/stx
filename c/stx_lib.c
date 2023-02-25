@@ -6,12 +6,10 @@
 
 #include "stx_lib.h"
 
-stx_data_ptr stx_load_stk(char *stk, char *dt, int num_days, bool intraday) {
-    return ts_load_stk(stk, dt, num_days, intraday);
-}
-
 ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
                                bool intraday, bool realtime, int *num_recs) {
+    LOGINFO("stx_get_ohlcv: dt = %s, num_days = %d, intraday = %d\n",
+        dt, num_days, intraday);
     char end_date[20], *hhmm = NULL;
     // bool get_intraday_data = true;
     strcpy(end_date, dt);
@@ -33,6 +31,7 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
     ht_item_ptr data_ht = ht_get(ht_data(), stk);
     stx_data_ptr data = NULL;
     if (data_ht == NULL) {
+        LOGINFO("No data cached for %s\n", stk);
         data = ts_load_stk(stk, end_date, NUM_EOD_DAYS, false);
         if (data == NULL)
             return NULL;
@@ -52,10 +51,13 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
             ht_insert(ht_data(), data_ht);
         }
     }
-    *num_recs = data->pos + 1;
+    int start_ix = data->pos - num_days + 1;
+    if (start_ix < 0)
+        start_ix = 0;
+    *num_recs = data->pos - start_ix + 1;
     ohlcv_record_ptr res = (ohlcv_record_ptr)
         calloc((size_t) *num_recs, sizeof(ohlcv_record));
-    memcpy(res, data->data, *num_recs * sizeof(ohlcv_record));
+    memcpy(res, data->data + start_ix, *num_recs * sizeof(ohlcv_record));
     return res;
 }
 
