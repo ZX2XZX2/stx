@@ -28,16 +28,21 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
         else
             strcpy(dt, end_date);
     }
-    ht_item_ptr data_ht = ht_get(ht_data(), stk);
+    ht_item_ptr data_ht = intraday? ht_get(ht_id_data(), stk):
+        ht_get(ht_data(), stk);
     stx_data_ptr data = NULL;
     if (data_ht == NULL) {
         LOGINFO("No data cached for %s\n", stk);
-        data = ts_load_stk(stk, end_date, NUM_EOD_DAYS, false);
+        data = ts_load_stk(stk, dt, intraday? NUM_ID_DAYS: NUM_EOD_DAYS,
+                           intraday);
         if (data == NULL)
             return NULL;
-        ts_set_day(data, end_date, 0);
+        ts_set_day(data, dt, 0);
         data_ht = ht_new_data(stk, (void*)data);
-        ht_insert(ht_data(), data_ht);
+        if (intraday)
+            ht_insert(ht_id_data(), data_ht);
+        else
+            ht_insert(ht_data(), data_ht);
     } else {
         data = (stx_data_ptr) data_ht->val.data;
         char *current_dt = data->data[data->pos].date;
