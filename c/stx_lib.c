@@ -56,7 +56,11 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
             ht_insert(ht_data(), data_ht);
         }
     }
-    int start_ix = data->pos - num_days + 1;
+    int start_ix = data->pos;
+    if (intraday)
+        start_ix -= (((data->pos + 1) % 78) + 78 * (num_days - 1));
+    else
+        start_ix -= (num_days + 1);
     if (start_ix < 0)
         start_ix = 0;
     *num_recs = data->pos - start_ix + 1;
