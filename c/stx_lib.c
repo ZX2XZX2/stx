@@ -45,7 +45,12 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
             ht_insert(ht_data(), data_ht);
     } else {
         data = (stx_data_ptr) data_ht->val.data;
-        char *current_dt = data->data[data->pos].date;
+        char current_dt[20], *hhmm = NULL;
+        memset(current_dt, 0, 20 * sizeof(char));
+        strcpy(current_dt, data->data[data->pos].date);
+        hhmm = strchr(current_dt, ' ');
+        if (hhmm != NULL)
+            *hhmm++ = '\0';
         if (strcmp(current_dt, end_date) != 0) {
             ts_free_data(data);
             data = ts_load_stk(stk, end_date, NUM_EOD_DAYS, false);
@@ -55,6 +60,7 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
             data_ht = ht_new_data(stk, (void*)data);
             ht_insert(ht_data(), data_ht);
         }
+        /** TODO: set the day here for intraday charts */
     }
     int start_ix = data->pos;
     if (intraday)
@@ -108,5 +114,10 @@ int main(int argc, char** argv) {
                                          realtime, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
     stx_free_ohlcv(&res);
+    *(ed + 12) = '5';
+    res = stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &num_recs);
+    LOGINFO("num_recs = %d\n", num_recs);
+    stx_free_ohlcv(&res);
+
     return 0;
 }
