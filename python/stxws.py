@@ -167,6 +167,8 @@ def analysis():
             if request.form['action'] == 'Next':
                 end_date, end_time = stxcal.next_intraday(end_dt)
                 end_dt = f'{end_date} {end_time}'
+                dt_date = end_date
+                dt_time = end_time
             start_date = stxcal.move_busdays(end_date, -eod_days + 1)
             start_iddate = stxcal.move_busdays(end_date, -id_days + 1)
             start_dt = f'{start_iddate} 09:30'
