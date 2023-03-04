@@ -61,6 +61,8 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
             ht_insert(ht_data(), data_ht);
         }
         /** TODO: set the day here for intraday charts */
+        if (intraday)
+            ts_set_day(data, dt, 0);
     }
     int start_ix = data->pos;
     if (intraday)
