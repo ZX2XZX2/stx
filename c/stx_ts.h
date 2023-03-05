@@ -332,7 +332,7 @@ stx_data_ptr ts_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     if (hhmm != NULL)
         *hhmm = '\0';
     if (!intraday)
-        data = ts_load_eod_stk(stk, dt, num_days);
+        data = ts_load_eod_stk(stk, load_date, num_days);
     else
         data = ts_load_id_stk(stk, load_date, num_days);
     return data;
@@ -351,7 +351,13 @@ int ts_find_date_record(stx_data_ptr data, char* dt, int rel_pos) {
         int ix = cal_5min_ticks(first_dt, dt) - 1;
         return ix;
     }
-    int n = cal_num_busdays(first_dt, dt) - 1;
+    char crt_dt[20], *hhmm = NULL;
+    memset(crt_dt, 0, 20 * sizeof(char));
+    strcpy(crt_dt, dt);
+    hhmm = strchr(crt_dt, ' ');
+    if (hhmm != NULL)
+        *hhmm++ = '\0';
+    int n = cal_num_busdays(first_dt, crt_dt) - 1;
     if (n < 0) {
         if (rel_pos > 0)
             return 0;
@@ -359,7 +365,7 @@ int ts_find_date_record(stx_data_ptr data, char* dt, int rel_pos) {
         if (rel_pos < 0)
             return data->num_recs - 1;
     } else {
-        if (strcmp(data->data[n].date, dt) == 0)
+        if (strcmp(data->data[n].date, crt_dt) == 0)
             return n;
         else {
             if (rel_pos < 0)
