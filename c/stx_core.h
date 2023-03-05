@@ -290,7 +290,6 @@ ht_item_ptr ht_new_str(ht_item_ptr hi, const char* k, char* str) {
 }
 
 void ht_del_item(ht_item_ptr i) {
-    free(i->key);
     /**
      *  Only used to delete stx data; then values are freed in ts_stx.
      *  Strings HT loads last date from DB and is freed when PGresult is freed
