@@ -6,64 +6,111 @@
 
 #include "stx_lib.h"
 
+/**
+ * @brief load stock data from DB into cache
+ * 
+ * @param stk 
+ * @param dt 
+ * @param intraday 
+ * @return stx_data_ptr 
+ */
+stx_data_ptr load_db_data_in_cache(char *stk, char *dt, bool intraday) {
+    stx_data_ptr data = ts_load_stk(stk, dt,
+        intraday? NUM_ID_DAYS: NUM_EOD_DAYS, intraday);
+    if (data == NULL) {
+        LOGERROR("Failed to load %s data for %s as of %s\n",
+                 intraday? "intraday": "eod", stk, dt);
+        return NULL;
+    }
+    ts_set_day(data, dt, 0);
+    ht_item_ptr data_ht = ht_new_data(stk, (void*)data);
+    ht_insert(intraday? ht_id_data(): ht_data(), data_ht);
+    return data;
+}
+
+/**
+ * @brief refresh cache data as of dt
+ * 
+ * @param data_ht 
+ * @param dt 
+ * @return stx_data_ptr 
+ */
+stx_data_ptr refresh_cache_data(ht_item_ptr data_ht, char *dt) {
+    stx_data_ptr data = (stx_data_ptr) data_ht->val.data;
+    char stk[16], data_dt[20], *data_hhmm = NULL;
+    bool intraday = data->intraday;
+    memset(data_dt, 0, 20 * sizeof(char));
+    strcpy(data_dt, data->data[data->pos].date);
+    memset(stk, 0, 16 * sizeof(char));
+    strcpy(stk, data->stk);
+    data_hhmm = strchr(data_dt, ' ');
+    if (data_hhmm != NULL)
+        *data_hhmm++ = '\0';
+    if (strncmp(data_dt, dt, 10) != 0) {
+        LOGINFO("Refreshing %s data for %s, from %s to %s\n", 
+                intraday? "intraday": "eod", stk, data_dt, dt);
+        ts_free_data(data);
+        data = NULL;
+        data = load_db_data_in_cache(stk, dt, intraday);
+    } else
+        ts_set_day(data, dt, 0);
+    return data;
+}
+
 ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
                                bool intraday, bool realtime, int *num_recs) {
     LOGINFO("stx_get_ohlcv: dt = %s, num_days = %d, intraday = %d\n",
         dt, num_days, intraday);
-    char end_date[20], *hhmm = NULL;
-    // bool get_intraday_data = true;
+    char end_date[20], *hhmm = NULL, *eod_hhmm = "15:55:00";
+    /** Separate dt into date and time */
     strcpy(end_date, dt);
     hhmm = strchr(end_date, ' ');
     if (hhmm != NULL)
         *hhmm++ = '\0';
-    // if (!intraday &&
-    //     (hhmm == NULL || !strcmp(hhmm, "16:00") || !strcmp(hhmm, "16:00:00")))
-    //     get_intraday_data = false;
+    else
+        hhmm = eod_hhmm;
+    /** If date not a business date, move it to previous business date */
     if (!cal_is_busday(end_date)) {
         char *prev_bdate = NULL;
         cal_prev_bday(cal_ix(end_date), &prev_bdate);
         strcpy(end_date, prev_bdate);
-        if (hhmm != NULL)
-            sprintf(dt, "%s %s", end_date, hhmm);
-        else
-            strcpy(dt, end_date);
     }
-    ht_item_ptr data_ht = intraday? ht_get(ht_id_data(), stk):
-        ht_get(ht_data(), stk);
-    stx_data_ptr data = NULL;
-    if (data_ht == NULL) {
-        LOGINFO("No data cached for %s\n", stk);
-        data = ts_load_stk(stk, dt, intraday? NUM_ID_DAYS: NUM_EOD_DAYS,
-                           intraday);
-        if (data == NULL)
+    /** copy the date and the time in the datetime */
+    char datetime[20];
+    memset(datetime, 0, 20 * sizeof(char));
+    sprintf(datetime, "%s %s", end_date, hhmm);
+    stx_data_ptr data = NULL, id_data = NULL, eod_data = NULL;
+    /** Get intraday data.  This is always needed, even for EOD data, to
+     *  display correctly last day, as of the time specified in input.
+    */
+    ht_item_ptr id_data_ht = ht_get(ht_id_data(), stk);
+    if (id_data_ht == NULL) {
+        LOGINFO("No intraday data cached for %s, get from DB\n", stk);
+        id_data = load_db_data_in_cache(stk, datetime, true);
+        if (id_data == NULL)
             return NULL;
-        ts_set_day(data, dt, 0);
-        data_ht = ht_new_data(stk, (void*)data);
-        if (intraday)
-            ht_insert(ht_id_data(), data_ht);
-        else
-            ht_insert(ht_data(), data_ht);
     } else {
-        data = (stx_data_ptr) data_ht->val.data;
-        char current_dt[20], *hhmm = NULL;
-        memset(current_dt, 0, 20 * sizeof(char));
-        strcpy(current_dt, data->data[data->pos].date);
-        hhmm = strchr(current_dt, ' ');
-        if (hhmm != NULL)
-            *hhmm++ = '\0';
-        if (strcmp(current_dt, end_date) != 0) {
-            ts_free_data(data);
-            data = ts_load_stk(stk, end_date, NUM_EOD_DAYS, false);
-            if (data == NULL)
-                return NULL;
-            ts_set_day(data, end_date, 0);
-            data_ht = ht_new_data(stk, (void*)data);
-            ht_insert(ht_data(), data_ht);
-        }
-        /** TODO: set the day here for intraday charts */
-        if (intraday)
-            ts_set_day(data, dt, 0);
+        id_data = refresh_cache_data(id_data_ht, datetime);
+        if (id_data == NULL)
+            return NULL;
     }
+    /** Get eod data, if needed */
+    if (!intraday) {
+        ht_item_ptr eod_data_ht = ht_get(ht_data(), stk);
+        if (eod_data_ht == NULL) {
+            LOGINFO("No eod data cached for %s, get from DB\n", stk);
+            eod_data = load_db_data_in_cache(stk, datetime, false);
+            if (eod_data == NULL)
+                return NULL;
+        } else {
+            eod_data = refresh_cache_data(eod_data_ht, datetime);
+            if (eod_data == NULL)
+                return NULL;
+        }
+        /** TODO: update last day here with intraday data as of dt */
+    }
+    /** extract the data needed for the chart display */
+    data = intraday? id_data: eod_data;
     int start_ix = data->pos;
     if (intraday)
         start_ix -= (((data->pos + 1) % 78) + 78 * (num_days - 1) - 1);
