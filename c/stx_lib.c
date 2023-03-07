@@ -107,7 +107,8 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
             if (eod_data == NULL)
                 return NULL;
         }
-        /** TODO: update last day here with intraday data as of dt */
+        /** update last day with intraday data as of dt */
+        ts_eod_intraday_update(eod_data, id_data);
     }
     /** extract the data needed for the chart display */
     data = intraday? id_data: eod_data;
@@ -149,14 +150,8 @@ int main(int argc, char** argv) {
         else
             LOGWARN("Unknown option %s\n", argv[ix]);
     }
-    if (intraday) {
-        if (strlen(ed) == 10)
-            strcat(ed, " 15:55:00");
-    } else {
-        char *hhmm = strchr(ed, ' ');
-        if (hhmm != NULL)
-            *hhmm = '\0';
-    }
+    if (strlen(ed) == 10)
+        strcat(ed, " 15:55:00");
     LOGINFO("ed = %s\n", ed);
     int num_recs = 0;
     ohlcv_record_ptr res = stx_get_ohlcv(stk, ed, num_days, intraday,
