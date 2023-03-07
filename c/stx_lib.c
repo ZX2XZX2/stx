@@ -8,11 +8,11 @@
 
 /**
  * @brief load stock data from DB into cache
- * 
- * @param stk 
- * @param dt 
- * @param intraday 
- * @return stx_data_ptr 
+ *
+ * @param stk
+ * @param dt
+ * @param intraday
+ * @return stx_data_ptr
  */
 stx_data_ptr load_db_data_in_cache(char *stk, char *dt, bool intraday) {
     stx_data_ptr data = ts_load_stk(stk, dt,
@@ -30,10 +30,10 @@ stx_data_ptr load_db_data_in_cache(char *stk, char *dt, bool intraday) {
 
 /**
  * @brief refresh cache data as of dt
- * 
- * @param data_ht 
- * @param dt 
- * @return stx_data_ptr 
+ *
+ * @param data_ht
+ * @param dt
+ * @return stx_data_ptr
  */
 stx_data_ptr refresh_cache_data(ht_item_ptr data_ht, char *dt) {
     stx_data_ptr data = (stx_data_ptr) data_ht->val.data;
@@ -47,7 +47,7 @@ stx_data_ptr refresh_cache_data(ht_item_ptr data_ht, char *dt) {
     if (data_hhmm != NULL)
         *data_hhmm++ = '\0';
     if (strncmp(data_dt, dt, 10) != 0) {
-        LOGINFO("Refreshing %s data for %s, from %s to %s\n", 
+        LOGINFO("Refreshing %s data for %s, from %s to %s\n",
                 intraday? "intraday": "eod", stk, data_dt, dt);
         ts_free_data(data);
         data = NULL;
