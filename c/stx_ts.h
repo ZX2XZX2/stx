@@ -496,6 +496,28 @@ stx_data_ptr ts_get_ts(char *stk, char* dt, int rel_pos) {
     return data;
 }
 
+void ts_eod_intraday_update(stx_data_ptr eod_data, stx_data_ptr id_data) {
+    int id_end = id_data->pos, crs = id_end - id_end % 78;
+    ohlcv_record_ptr id = id_data->data + crs;
+    ohlcv_record_ptr last_eod = eod_data->data + eod_data->pos;
+    last_eod->open = id->open;
+    last_eod->high = id->high;
+    last_eod->low = id->low;
+    last_eod->close = id->close;
+    last_eod->volume = id->volume / 1000;
+    crs++;
+    while (crs <= id_end) {
+        id = id_data->data + crs;
+        if (id->high > last_eod->high)
+            last_eod->high = id->high;
+        if (id->low < last_eod->low)
+            last_eod->low = id->low;
+        last_eod->volume += id->volume;
+        last_eod->close = id->close;
+        crs++;
+    }
+}
+
 void ts_serialize_to_file(stx_data_ptr data, char *mkt_name, bool realtime) {
     char file_path[64];
     sprintf(file_path, "%s/stx/mkt/%s/%s/%s.dat", getenv("HOME"), mkt_name,
