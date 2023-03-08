@@ -149,11 +149,11 @@ def analysis():
         dt_date = request.form['dt_date']
         dt_time = request.form['dt_time']
         try:
-            eod_days = int(request.form.get['eod_days'])
+            eod_days = int(request.form['eod_days'])
         except:
             logging.warn(f'No EOD days input, using default value {eod_days}')
         try:
-            id_days = int(request.form.get('id_days', '10'))
+            id_days = int(request.form['id_days'])
         except:
             logging.warn(f'No ID days input, using default value {id_days}')
 
