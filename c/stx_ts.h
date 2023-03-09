@@ -512,7 +512,7 @@ void ts_eod_intraday_update(stx_data_ptr eod_data, stx_data_ptr id_data) {
             last_eod->high = id->high;
         if (id->low < last_eod->low)
             last_eod->low = id->low;
-        last_eod->volume += id->volume;
+        last_eod->volume += id->volume / 1000;
         last_eod->close = id->close;
         crs++;
     }
