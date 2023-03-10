@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
+  <p></p>
   {% for chart in charts %}
-  <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="1500">
-  <img src="data:image/png;base64,{{ chart['id_png'] }}" width="1500">
+  <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+  <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
   {% endfor %}
 {% endblock %}
