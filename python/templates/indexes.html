@@ -1,8 +1,11 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>{% block title %} SPX {{ date_dict['^GSPC'] }} IXIC {{ date_dict['^IXIC'] }} DJI {{ date_dict['^DJI'] }} {% endblock %}</h1>
+<br>
+<br>
+<br>
+<h3>{% block title %} SPX {{ date_dict['^GSPC'] }} IXIC {{ date_dict['^IXIC'] }} DJI {{ date_dict['^DJI'] }} {% endblock %}</h3>
   {% for chart in charts %}
-    <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1500">
+    <img src="data:image/png;base64,{{ chart['figdata_png'] }}" width="1200">
   {% endfor %}
 {% endblock %}
