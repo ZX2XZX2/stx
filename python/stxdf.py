@@ -593,7 +593,7 @@ class StxDatafeed:
             sys.exit(-1)
         df.columns = [x[1: -1].lower() for x in df.columns]
         stx_df = df.query('ticker.str.endswith(".US") and per == "5"',
-                          engine='python')
+                          engine='python').copy()
         logging.info(f'Getting {len(stx_df)} intraday US stocks out of '
                      f'{len(df)} records')
         stx_df['date'] = stx_df['date'].astype(str)
