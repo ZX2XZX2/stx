@@ -4,6 +4,7 @@
  */
 #define _XOPEN_SOURCE
 
+#include "stx_jl.h"
 #include "stx_lib.h"
 
 /**
@@ -131,6 +132,18 @@ void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs) {
     *ohlcvs = NULL;
 }
 
+
+jl_piv_ptr stx_jl_pivots(char *stk, char *dt) {
+    jl_data_ptr jl_recs = jl_get_jl(stk, dt, JL_100, JLF_100);
+    if (jl_recs == NULL) {
+        LOGERROR("Could not get jl_recs for %s, as of %s\n", stk, dt);
+        return NULL;
+    }
+    jl_piv_ptr pivots = jl_get_pivots(jl_recs, 50);
+    return pivots;
+}
+
+
 int main(int argc, char** argv) {
     char stk[16], ed[20];
     strcpy(stk, "TSLA");
@@ -161,6 +174,8 @@ int main(int argc, char** argv) {
     *(ed + 12) = '5';
     res = stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
+    jl_piv_ptr jl_pivs = stx_jl_pivots(stk, ed);
+    /** jl_print_pivots() */
     stx_free_ohlcv(&res);
 
     return 0;
