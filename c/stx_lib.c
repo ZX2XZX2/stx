@@ -77,8 +77,8 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
         strcpy(end_date, prev_bdate);
     }
     /** copy the date and the time in the datetime */
-    char datetime[20];
-    memset(datetime, 0, 20 * sizeof(char));
+    char datetime[32];
+    memset(datetime, 0, 32 * sizeof(char));
     sprintf(datetime, "%s %s", end_date, hhmm);
     stx_data_ptr data = NULL, id_data = NULL, eod_data = NULL;
     /** Get intraday data.  This is always needed, even for EOD data, to
