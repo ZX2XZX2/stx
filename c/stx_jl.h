@@ -611,6 +611,14 @@ void jl_split_adjust(jl_data_ptr jl, ht_item_ptr split) {
     }
     jl->last->prim_price = (int) (jl->last->prim_price * ratio);
     jl->last->price = (int) (jl->last->price * ratio);
+    jl_pivot_ptr crs = jl->pivots;
+    while((crs!= NULL) && (crs->next != NULL)) {
+        if (strcmp(crs->date, split->key) <= 0) {
+            crs->price *= split->val.ratio;
+            crs->rg *= split->val.ratio;
+        }
+        crs = crs->next;
+    }
 }
 
 void jl_sra(jl_data_ptr jl, int factor) {
