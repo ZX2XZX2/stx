@@ -58,6 +58,40 @@ stx_data_ptr refresh_cache_data(ht_item_ptr data_ht, char *dt) {
     return data;
 }
 
+void stx_get_stx_data_ptrs(char *stk, char *datetime, bool intraday,
+                           stx_data_ptr *eod_data, stx_data_ptr *id_data) {
+    /** Get intraday data.  This is always needed, even for EOD data, to
+     *  display correctly last day, as of the time specified in input.
+    */
+    ht_item_ptr id_data_ht = ht_get(ht_id_data(), stk);
+    if (id_data_ht == NULL) {
+        LOGINFO("No intraday data cached for %s, get from DB\n", stk);
+        *id_data = load_db_data_in_cache(stk, datetime, true);
+        if (*id_data == NULL)
+            return;
+    } else {
+        *id_data = refresh_cache_data(id_data_ht, datetime);
+        if (*id_data == NULL)
+            return;
+    }
+    /** Get eod data, if needed */
+    if (!intraday) {
+        ht_item_ptr eod_data_ht = ht_get(ht_data(), stk);
+        if (eod_data_ht == NULL) {
+            LOGINFO("No eod data cached for %s, get from DB\n", stk);
+            *eod_data = load_db_data_in_cache(stk, datetime, false);
+            if (*eod_data == NULL)
+                return;
+        } else {
+            *eod_data = refresh_cache_data(eod_data_ht, datetime);
+            if (*eod_data == NULL)
+                return;
+        }
+        /** update last day with intraday data as of dt */
+        ts_eod_intraday_update(*eod_data, *id_data);
+    }
+}
+
 ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
                                bool intraday, bool realtime, int *num_recs) {
     LOGINFO("stx_get_ohlcv: dt = %s, num_days = %d, intraday = %d\n",
@@ -80,39 +114,10 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
     char datetime[32];
     memset(datetime, 0, 32 * sizeof(char));
     sprintf(datetime, "%s %s", end_date, hhmm);
-    stx_data_ptr data = NULL, id_data = NULL, eod_data = NULL;
-    /** Get intraday data.  This is always needed, even for EOD data, to
-     *  display correctly last day, as of the time specified in input.
-    */
-    ht_item_ptr id_data_ht = ht_get(ht_id_data(), stk);
-    if (id_data_ht == NULL) {
-        LOGINFO("No intraday data cached for %s, get from DB\n", stk);
-        id_data = load_db_data_in_cache(stk, datetime, true);
-        if (id_data == NULL)
-            return NULL;
-    } else {
-        id_data = refresh_cache_data(id_data_ht, datetime);
-        if (id_data == NULL)
-            return NULL;
-    }
-    /** Get eod data, if needed */
-    if (!intraday) {
-        ht_item_ptr eod_data_ht = ht_get(ht_data(), stk);
-        if (eod_data_ht == NULL) {
-            LOGINFO("No eod data cached for %s, get from DB\n", stk);
-            eod_data = load_db_data_in_cache(stk, datetime, false);
-            if (eod_data == NULL)
-                return NULL;
-        } else {
-            eod_data = refresh_cache_data(eod_data_ht, datetime);
-            if (eod_data == NULL)
-                return NULL;
-        }
-        /** update last day with intraday data as of dt */
-        ts_eod_intraday_update(eod_data, id_data);
-    }
+    stx_data_ptr id_data = NULL, eod_data = NULL;
+    stx_get_stx_data_ptrs(stk, datetime, intraday, &eod_data, &id_data);
     /** extract the data needed for the chart display */
-    data = intraday? id_data: eod_data;
+    stx_data_ptr data = intraday? id_data: eod_data;
     int start_ix = data->pos;
     if (intraday)
         start_ix -= (((data->pos + 1) % 78) + 78 * (num_days - 1) - 1);
@@ -132,7 +137,6 @@ void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs) {
     *ohlcvs = NULL;
 }
 
-
 jl_piv_ptr stx_jl_pivots(char *stk, char *dt) {
     jl_data_ptr jl_recs = jl_get_jl(stk, dt, JL_100, JLF_100);
     if (jl_recs == NULL) {
@@ -142,7 +146,6 @@ jl_piv_ptr stx_jl_pivots(char *stk, char *dt) {
     jl_piv_ptr pivots = jl_get_pivots(jl_recs, 50);
     return pivots;
 }
-
 
 int main(int argc, char** argv) {
     char stk[16], ed[20];
@@ -175,7 +178,7 @@ int main(int argc, char** argv) {
     res = stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
     jl_piv_ptr jl_pivs = stx_jl_pivots(stk, ed);
-    /** jl_print_pivots() */
+    /** jl_print_pivots(); */
     stx_free_ohlcv(&res);
 
     return 0;
