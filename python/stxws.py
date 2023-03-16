@@ -136,6 +136,7 @@ def idcharts():
 
 @app.route('/analysis', methods=('GET', 'POST'))
 def analysis():
+    logging.info('Start analysis')
     use_c = True
     charts = []
     id_charts = []
