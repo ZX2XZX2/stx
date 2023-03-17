@@ -1,6 +1,12 @@
 import ctypes
-from flask import Flask, render_template, request, url_for, flash
 import logging
+logging.basicConfig(
+    format='%(asctime)s.%(msecs)03d %(levelname)s '
+    '[%(filename)s:%(lineno)d] - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO
+)
+from flask import Flask, render_template, request, url_for, flash
 import matplotlib
 
 from stxplotbin import StxPlotBin
@@ -14,12 +20,6 @@ from stxplotid import StxPlotID
 from stxtsid import StxTSID
 import traceback as tb
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
-    '%(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    level=logging.INFO
-)
 app = Flask(__name__)
 indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
 indicator_list = indicators.split(',')
@@ -31,6 +31,7 @@ indicators_df.sort_values(by=['indicator', 'tenor'], inplace=True)
 indicator_names = sorted(indicators_df['indicator'].unique())
 indicator_tenors = sorted(indicators_df['tenor'].unique())
 display_days = 90
+
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
 frequencydict = {
