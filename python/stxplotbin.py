@@ -150,8 +150,8 @@ if __name__ == '__main__':
     so_file = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
     _lib = ctypes.CDLL(so_file)
     logging.basicConfig(
-        format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
-        '%(message)s',
+        format='%(asctime)s.%(msecs)03d %(levelname)s '
+        '[%(filename)s:%(lineno)d] - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
         level=logging.INFO
     )
