@@ -905,6 +905,34 @@ char* cal_current_trading_datetime() {
 }
 
 /**
+ * @brief transform the input date(time) in format YYYY-MM-DD HH:MM:SS
+ * 
+ * @param dt 
+ * @return char* 
+ */
+char *cal_datetime(char *dt) {
+    static char _retval_datetime[32];
+    char end_date[20], *hhmm = NULL, *eod_hhmm = "15:55:00";
+    /** Separate dt into date and time */
+    strcpy(end_date, dt);
+    hhmm = strchr(end_date, ' ');
+    if (hhmm != NULL)
+        *hhmm++ = '\0';
+    else
+        hhmm = eod_hhmm;
+    /** If date not a business date, move it to previous business date */
+    if (!cal_is_busday(end_date)) {
+        char *prev_bdate = NULL;
+        cal_prev_bday(cal_ix(end_date), &prev_bdate);
+        strcpy(end_date, prev_bdate);
+    }
+    /** copy the date and the time in the datetime */
+    memset(_retval_datetime, 0, 32 * sizeof(char));
+    sprintf(_retval_datetime, "%s %s", end_date, hhmm);
+    return _retval_datetime;
+}
+
+/**
  *  Generate timestamp from intraday date
  */
 unsigned long cal_tsfromdt(char *dt) {
