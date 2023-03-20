@@ -96,24 +96,7 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
                                bool intraday, bool realtime, int *num_recs) {
     LOGINFO("stx_get_ohlcv: dt = %s, num_days = %d, intraday = %d\n",
         dt, num_days, intraday);
-    char end_date[20], *hhmm = NULL, *eod_hhmm = "15:55:00";
-    /** Separate dt into date and time */
-    strcpy(end_date, dt);
-    hhmm = strchr(end_date, ' ');
-    if (hhmm != NULL)
-        *hhmm++ = '\0';
-    else
-        hhmm = eod_hhmm;
-    /** If date not a business date, move it to previous business date */
-    if (!cal_is_busday(end_date)) {
-        char *prev_bdate = NULL;
-        cal_prev_bday(cal_ix(end_date), &prev_bdate);
-        strcpy(end_date, prev_bdate);
-    }
-    /** copy the date and the time in the datetime */
-    char datetime[32];
-    memset(datetime, 0, 32 * sizeof(char));
-    sprintf(datetime, "%s %s", end_date, hhmm);
+    char *datetime = cal_datetime(dt);
     stx_data_ptr id_data = NULL, eod_data = NULL;
     stx_get_stx_data_ptrs(stk, datetime, intraday, &eod_data, &id_data);
     /** extract the data needed for the chart display */
@@ -177,7 +160,7 @@ int main(int argc, char** argv) {
     *(ed + 12) = '5';
     res = stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
-    jl_piv_ptr jl_pivs = stx_jl_pivots(stk, ed);
+    // jl_piv_ptr jl_pivs = stx_jl_pivots(stk, ed);
     /** jl_print_pivots(); */
     stx_free_ohlcv(&res);
 
