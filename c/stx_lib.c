@@ -92,6 +92,29 @@ void stx_get_stx_data_ptrs(char *stk, char *datetime, bool intraday,
     }
 }
 
+jl_data_ptr stx_get_jl_data_ptr(char *stk, char *dt, char *label, float factor,
+                                bool intraday) {
+    ht_item_ptr jl_ht = ht_get(intraday? ht_id_jl(label): ht_jl(label), stk);
+    char *datetime = cal_datetime(dt);
+    jl_data_ptr jl_recs = NULL;
+    if (jl_ht == NULL) {
+        stx_data_ptr id_data = NULL, eod_data = NULL;
+        stx_get_stx_data_ptrs(stk, datetime, intraday, &eod_data, &id_data);
+        stx_data_ptr data = intraday? id_data: eod_data;
+        if (data == NULL) {
+            LOGERROR("Could not load JL_%s for %s, skipping...\n", label, stk);
+            return NULL;
+        }
+        jl_recs = jl_jl(data, datetime, factor);
+        jl_ht = ht_new_data(stk, (void*)jl_recs);
+        ht_insert(intraday? ht_id_jl(label): ht_jl(label), jl_ht);
+    } else {
+        jl_recs = (jl_data_ptr) jl_ht->val.data;
+        jl_advance(jl_recs, datetime);
+    }
+    return jl_recs;
+}
+
 ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
                                bool intraday, bool realtime, int *num_recs) {
     LOGINFO("stx_get_ohlcv: dt = %s, num_days = %d, intraday = %d\n",
