@@ -143,8 +143,8 @@ void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs) {
     *ohlcvs = NULL;
 }
 
-jl_piv_ptr stx_jl_pivots(char *stk, char *dt) {
-    jl_data_ptr jl_recs = jl_get_jl(stk, dt, JL_100, JLF_100);
+jl_piv_ptr stx_jl_pivots(char *stk, char *dt, bool intraday) {
+    jl_data_ptr jl_recs = stx_get_jl_data_ptr(stk, dt, JL_100, JLF_100, intraday);
     if (jl_recs == NULL) {
         LOGERROR("Could not get jl_recs for %s, as of %s\n", stk, dt);
         return NULL;
