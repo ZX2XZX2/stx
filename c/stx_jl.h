@@ -63,6 +63,14 @@ typedef struct jl_last_t {
     int lns_obv;
 } jl_last, *jl_last_ptr;
 
+typedef struct jl_rec_t {
+    char date[20];
+    int state;
+    int price;
+    int rg;
+    int obv;
+} jl_rec, *jl_rec_ptr;
+
 typedef struct jl_pivot_t {
     char date[20];
     int state;
