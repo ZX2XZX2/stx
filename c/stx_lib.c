@@ -143,14 +143,30 @@ void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs) {
     *ohlcvs = NULL;
 }
 
-jl_piv_ptr stx_jl_pivots(char *stk, char *dt, bool intraday) {
+jl_rec_ptr stx_jl_pivots(char *stk, char *dt, bool intraday, int *num_recs) {
     jl_data_ptr jl_recs = stx_get_jl_data_ptr(stk, dt, JL_100, JLF_100, intraday);
     if (jl_recs == NULL) {
         LOGERROR("Could not get jl_recs for %s, as of %s\n", stk, dt);
         return NULL;
     }
-    jl_piv_ptr pivots = jl_get_pivots(jl_recs, 50);
-    return pivots;
+    jl_piv_ptr pivs = jl_get_pivots(jl_recs, 20);
+    *num_recs = pivs->num;
+    jl_rec_ptr pivot_list = (jl_rec_ptr) calloc((size_t)pivs->num,
+                                                sizeof(jl_rec));
+    for (int ix = 0; ix < pivs->num; ix++) {
+        jl_pivot_ptr crs = pivs->pivots + ix;
+        strcpy(pivot_list[ix].date, crs->date);
+        pivot_list[ix].price = crs->price;
+        pivot_list[ix].state = crs->state;
+        pivot_list[ix].rg = crs->rg;
+        pivot_list[ix].obv = crs->obv;
+    }
+    jl_free_pivots(pivs);
+    for(int ix = 0; ix < *num_recs; ix++) {
+        jl_rec_ptr x = pivot_list + ix;
+        jl_print_rec(x->date, x->state, x->price, false, x->rg, x->obv);
+    }
+    return pivot_list;
 }
 
 int main(int argc, char** argv) {
@@ -183,8 +199,9 @@ int main(int argc, char** argv) {
     *(ed + 12) = '5';
     res = stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &num_recs);
     LOGINFO("num_recs = %d\n", num_recs);
-    // jl_piv_ptr jl_pivs = stx_jl_pivots(stk, ed);
-    /** jl_print_pivots(); */
+
+    int num_jl_recs = 0;
+    jl_rec_ptr jl_res = stx_jl_pivots(stk, ed, intraday, &num_jl_recs);
     stx_free_ohlcv(&res);
 
     return 0;
