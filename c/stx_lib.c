@@ -169,6 +169,11 @@ jl_rec_ptr stx_jl_pivots(char *stk, char *dt, bool intraday, int *num_recs) {
     return pivot_list;
 }
 
+void stx_free_jl_pivots(jl_rec_ptr *pivots) {
+    free(*pivots);
+    *pivots = NULL;
+}
+
 int main(int argc, char** argv) {
     char stk[16], ed[20];
     strcpy(stk, "TSLA");
@@ -203,6 +208,6 @@ int main(int argc, char** argv) {
     int num_jl_recs = 0;
     jl_rec_ptr jl_res = stx_jl_pivots(stk, ed, intraday, &num_jl_recs);
     stx_free_ohlcv(&res);
-
+    stx_free_jl_pivots(&jl_res);
     return 0;
 }
