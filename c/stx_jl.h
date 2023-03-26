@@ -606,26 +606,30 @@ jl_data_ptr jl_init20(stx_data_ptr data, float factor) {
 }
 
 void jl_split_adjust(jl_data_ptr jl, ht_item_ptr split) {
-    float ratio = split->val.ratio;
-    for(int ix = 0; ix < jl->pos; ix++) {
-        jl->recs[ix].rg = (int) (jl->recs[ix].rg * ratio);
-        jl->recs[ix].volume = (int) (jl->recs[ix].volume / ratio);
-        jl->recs[ix].price = (int) (jl->recs[ix].price * ratio);
-        jl->recs[ix].price2 = (int) (jl->recs[ix].price2 * ratio);
-    }
-    for(int ix = 0; ix < jl->window; ix++) {
-        jl->rgs[ix] = (int) (jl->rgs[ix] * ratio);
-        jl->volumes[ix] = (int) (jl->volumes[ix] / ratio);
-    }
-    jl->last->prim_price = (int) (jl->last->prim_price * ratio);
-    jl->last->price = (int) (jl->last->price * ratio);
-    jl_pivot_ptr crs = jl->pivots;
-    while((crs!= NULL) && (crs->next != NULL)) {
-        if (strcmp(crs->date, split->key) <= 0) {
-            crs->price *= split->val.ratio;
-            crs->rg *= split->val.ratio;
+    int split_ix = ht_seq_index(jl->data->splits, split->key);
+    if (split_ix > jl->data->last_adj) {
+        ts_adjust_data(jl->data, split_ix);
+        float ratio = split->val.ratio;
+        for(int ix = 0; ix < jl->pos; ix++) {
+            jl->recs[ix].rg = (int) (jl->recs[ix].rg * ratio);
+            jl->recs[ix].volume = (int) (jl->recs[ix].volume / ratio);
+            jl->recs[ix].price = (int) (jl->recs[ix].price * ratio);
+            jl->recs[ix].price2 = (int) (jl->recs[ix].price2 * ratio);
         }
-        crs = crs->next;
+        for(int ix = 0; ix < jl->window; ix++) {
+            jl->rgs[ix] = (int) (jl->rgs[ix] * ratio);
+            jl->volumes[ix] = (int) (jl->volumes[ix] / ratio);
+        }
+        jl->last->prim_price = (int) (jl->last->prim_price * ratio);
+        jl->last->price = (int) (jl->last->price * ratio);
+        jl_pivot_ptr crs = jl->pivots;
+        while((crs!= NULL) && (crs->next != NULL)) {
+            if (strcmp(crs->date, split->key) <= 0) {
+                crs->price *= split->val.ratio;
+                crs->rg *= split->val.ratio;
+            }
+            crs = crs->next;
+        }
     }
 }
 
