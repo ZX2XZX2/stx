@@ -125,9 +125,11 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
     /** extract the data needed for the chart display */
     stx_data_ptr data = intraday? id_data: eod_data;
     int start_ix = data->pos;
-    if (intraday)
+    if (intraday) {
+        if (data->pos % 78 == 77)
+            num_days++;
         start_ix -= (((data->pos + 1) % 78) + 78 * (num_days - 1) - 1);
-    else
+    } else
         start_ix -= (num_days + 1);
     if (start_ix < 0)
         start_ix = 0;
