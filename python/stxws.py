@@ -177,8 +177,10 @@ def analysis():
             frequency = int(freq[:-3])
             for stk in stk_list:
                 if (use_c):
-                    sp = StxPlotBin(_lib, stk, eod_days, end_dt, intraday=False)
-                    spid = StxPlotBin(_lib, stk, id_days, end_dt, intraday=True)
+                    sp = StxPlotBin(_lib, stk, eod_days, end_dt,
+                                    intraday=False)
+                    spid = StxPlotBin(_lib, stk, id_days, end_dt,
+                                      intraday=True, period=frequency)
                 else:
                     sp = StxPlot(None, stk, start_date, end_date, stk=stk)
                     spid = StxPlotID(None, start_dt, end_dt, stk, frequency)
