@@ -38,7 +38,8 @@ frequencydict = {
     '5min': '5min',
     '10min': '10min',
     '15min': '15min',
-    '30min': '30min'
+    '30min': '30min',
+    '60min': '60min'
 }
 
 _lib_name = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
