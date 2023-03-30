@@ -130,7 +130,7 @@
               <input type="text" name="id_days" placeholder="ID Days" value="{{ id_days }}" maxlength="2" style='max-width:30px'/>
               <label for="frequency">Frequency</label>
               <select id="frequency" name="frequency">
-                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min'}.items() %}
+                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min', '60min': '60min'}.items() %}
                 <option value="{{ key }}" {% if (key == freq) %} selected="selected" {% endif %}> {{ value }} </option>
                 {% endfor %}
               </select>
@@ -158,7 +158,7 @@
               <input type="text" name="num_days" placeholder="Days" value="{{ num_days }}"/><br>
               <label for="frequency">Frequency</label>
               <select id="frequency" name="frequency">
-                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min'}.items() %}
+                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min', '60min': '60min'}.items() %}
                 <option value="{{ key }}" {% if (key == freq) %} selected="selected" {% endif %}> {{ value }} </option>
                 {% endfor %}
               </select>
@@ -186,7 +186,7 @@
               <input type="text" name="id_num_days" placeholder="ID Days" value="{{ id_num_days }}"/><br>
               <label for="frequency">Frequency</label>
               <select id="frequency" name="frequency">
-                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min'}.items() %}
+                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min', '60min': '60min'}.items() %}
                   <option value="{{ key }}" {% if (key == freq) %} selected="selected" {% endif %}> {{ value }} </option>
                 {% endfor %}
               </select>
