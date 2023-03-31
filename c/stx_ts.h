@@ -286,6 +286,12 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
         data->data[ts_idx].close = atoi(PQgetvalue(res, db_ix, 3));
         data->data[ts_idx].volume = atoi(PQgetvalue(res, db_ix, 4));
         strcpy(data->data[ts_idx].date, PQgetvalue(res, db_ix, 5));
+        /**
+         *  "Fix" the problem of massive volumes at 15:55:00
+         */
+        if (ts_idx % 78 == 77)
+            data->data[ts_idx].volume = 0.6 * (data->data[ts_idx - 1].volume +
+                data->data[ts_idx - 2].volume);
         cal_move_5mins(sd, 1);
         ts_idx++;
     }
