@@ -1,12 +1,13 @@
 #!/bin/bash
 
-ops='port:'
-USAGE="\nUsage: $0 [--port port-number] \n"
+ops='port:,realtime'
+USAGE="\nUsage: $0 [--port port-number] [--realtime] \n"
 OPTIONS=$(getopt --options '' --longoptions ${ops} --name "$0" -- "$@")
 [[ $? != 0 ]] && exit 3
 eval set -- "${OPTIONS}"
 
 FLASK_PORT=5000
+STX_REALTIME=0
 
 while true
 do
@@ -15,6 +16,11 @@ do
 	    FLASK_PORT="$2"
 	    shift 2
 	    ;;
+    --realtime)
+        FLASK_PORT=5555
+        STX_REALTIME=1
+        shift
+        ;;
     --)
 	    shift
 	    break
