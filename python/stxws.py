@@ -20,6 +20,8 @@ from stxplotid import StxPlotID
 from stxtsid import StxTSID
 import traceback as tb
 
+ixxx = 0
+
 app = Flask(__name__)
 indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
 indicator_list = indicators.split(',')
@@ -33,6 +35,15 @@ indicator_tenors = sorted(indicators_df['tenor'].unique())
 display_days = 90
 
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
+
+
+display_times = [
+    '2023-04-04 10:00:00',
+    '2023-04-04 10:05:00',
+    '2023-04-04 10:10:00',
+    '2023-04-04 10:15:00',
+    '2023-04-04 10:20:00'
+]
 
 frequencydict = {
     '5min': '5min',
@@ -294,4 +305,9 @@ def rtscanners():
 
 @app.route('/market')
 def market():
-    return f'this will show the market'
+    # read the market date from database
+    global ixxx
+    refresh = 10
+    date_time = display_times[ixxx]
+    ixxx = (ixxx + 1) % len(display_times)
+    return render_template('market.html', refresh=refresh, datetime=date_time)
