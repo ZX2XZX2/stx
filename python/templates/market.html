@@ -2,7 +2,12 @@
 <html>
 <head>
     <title>Market</title>
-    <meta http-equiv="refresh" content="{{ refresh }}">
+    <script>
+        function autoRefresh() {
+            window.location = window.location.href;
+        }
+        setInterval('autoRefresh()', "{{ refresh }}");
+    </script>
 </head>
 <body>
     <h2>Welcome To Market</h2>
