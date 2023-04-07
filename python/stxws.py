@@ -21,6 +21,7 @@ from stxtsid import StxTSID
 import traceback as tb
 
 ixxx = 0
+refresh = 10
 
 app = Flask(__name__)
 indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
@@ -307,7 +308,10 @@ def rtscanners():
 def market():
     # read the market date from database
     global ixxx
-    refresh = 10
+    global refresh
+    refresh -= 1
+    if refresh <= 2:
+        refresh = 10
     date_time = display_times[ixxx]
     ixxx = (ixxx + 1) % len(display_times)
-    return render_template('market.html', refresh=refresh, datetime=date_time)
+    return render_template('market.html', refresh=1000*refresh, datetime=date_time)
