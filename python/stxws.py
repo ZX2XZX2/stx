@@ -1,5 +1,8 @@
 import ctypes
+import datetime
 import logging
+import time
+
 logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s '
     '[%(filename)s:%(lineno)d] - %(message)s',
@@ -306,12 +309,14 @@ def rtscanners():
 
 @app.route('/market')
 def market():
+    start_time = datetime.datetime.now()
     # read the market date from database
     global ixxx
     global refresh
-    refresh -= 1
-    if refresh <= 2:
-        refresh = 10
+    time.sleep(2)
     date_time = display_times[ixxx]
     ixxx = (ixxx + 1) % len(display_times)
-    return render_template('market.html', refresh=1000*refresh, datetime=date_time)
+    end_time = datetime.datetime.now()
+    dt = end_time - start_time
+    dt_milliseconds = dt.seconds * 1000 + dt.microseconds // 1000
+    return render_template('market.html', refresh=1000 * refresh - dt_milliseconds, datetime=date_time)
