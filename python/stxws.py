@@ -1,6 +1,7 @@
 import ctypes
 import datetime
 import logging
+import random
 import time
 
 logging.basicConfig(
@@ -24,7 +25,7 @@ from stxtsid import StxTSID
 import traceback as tb
 
 ixxx = 0
-refresh = 10
+refresh = 1 # refrsh time in minutes. for realtime, it is 5 minutes
 
 app = Flask(__name__)
 indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
@@ -309,14 +310,20 @@ def rtscanners():
 
 @app.route('/market')
 def market():
-    start_time = datetime.datetime.now()
+    exec_start_time = datetime.datetime.now()
+    logging.info(f'exec_start_time = {exec_start_time}')
     # read the market date from database
     global ixxx
     global refresh
-    time.sleep(2)
+    sleep_interval = 10 * random.random()
+    time.sleep(sleep_interval)
     date_time = display_times[ixxx]
     ixxx = (ixxx + 1) % len(display_times)
-    end_time = datetime.datetime.now()
-    dt = end_time - start_time
-    dt_milliseconds = dt.seconds * 1000 + dt.microseconds // 1000
-    return render_template('market.html', refresh=1000 * refresh - dt_milliseconds, datetime=date_time)
+    exec_end_time = datetime.datetime.now()
+    logging.info(f'exec_end_time = {exec_end_time}')
+    exec_time = exec_end_time - exec_start_time
+    logging.info(f'exec_time = {exec_time}')
+    refresh_time = 60000 * refresh - int( 1000 * exec_time.total_seconds())
+    logging.info(f'refresh_time = {refresh_time}')
+    return render_template('market.html', refresh=refresh_time,
+                            datetime=date_time)
