@@ -41,14 +41,8 @@ display_days = 90
 
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
-
-display_times = [
-    '2023-04-04 10:00:00',
-    '2023-04-04 10:05:00',
-    '2023-04-04 10:10:00',
-    '2023-04-04 10:15:00',
-    '2023-04-04 10:20:00'
-]
+market_date = '2023-05-01'
+market_time = '09:30'
 
 frequencydict = {
     '5min': '5min',
@@ -313,17 +307,34 @@ def market():
     exec_start_time = datetime.datetime.now()
     logging.info(f'exec_start_time = {exec_start_time}')
     # read the market date from database
-    global ixxx
     global refresh
-    sleep_interval = 10 * random.random()
-    time.sleep(sleep_interval)
-    date_time = display_times[ixxx]
-    ixxx = (ixxx + 1) % len(display_times)
+    global market_date
+    global market_time
+
+    logging.info('Start market')
+    charts = []
+    stks = 'SPY AAPL AMZN TSLA'
+    eod_days = 90
+    id_days = 5
+    freq = '5min'
+    market_datetime = f'{market_date} {market_time}:00'
+    stk_list = stks.split(' ')
+    market_date, market_time = stxcal.next_intraday(market_datetime)
+    frequency = int(freq[:-3])
+    for stk in stk_list:
+        sp = StxPlotBin(_lib, stk, eod_days, market_datetime, intraday=False)
+        spid = StxPlotBin(_lib, stk, id_days, market_datetime, intraday=True,
+            period=frequency)
+        chartdict = {
+            'eod_png': sp.b64_png(),
+            'id_png': spid.b64_png()
+        }
+        charts.append(chartdict)
     exec_end_time = datetime.datetime.now()
     logging.info(f'exec_end_time = {exec_end_time}')
     exec_time = exec_end_time - exec_start_time
     logging.info(f'exec_time = {exec_time}')
     refresh_time = 60000 * refresh - int( 1000 * exec_time.total_seconds())
     logging.info(f'refresh_time = {refresh_time}')
-    return render_template('market.html', refresh=refresh_time,
-                            datetime=date_time)
+    return render_template('market.html', refresh=refresh_time, charts=charts,
+                            datetime=market_datetime)
