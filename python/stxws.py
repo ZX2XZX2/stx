@@ -305,7 +305,7 @@ def rtscanners():
 @app.route('/market')
 def market():
     exec_start_time = datetime.datetime.now()
-    logging.info(f'exec_start_time = {exec_start_time}')
+    logging.debug(f'exec_start_time = {exec_start_time}')
     # read the market date from database
     global refresh
     global market_date
@@ -315,26 +315,32 @@ def market():
     charts = []
     stks = 'SPY AAPL AMZN TSLA'
     eod_days = 90
-    id_days = 5
-    freq = '5min'
+    id_days_1 = 2
+    freq_1 = '5min'
+    id_days_2 = 20
+    freq_2 = '60min'
+
     market_datetime = f'{market_date} {market_time}:00'
     stk_list = stks.split(' ')
     market_date, market_time = stxcal.next_intraday(market_datetime)
-    frequency = int(freq[:-3])
+    frequency_1 = int(freq_1[:-3])
+    frequency_2 = int(freq_2[:-3])
     for stk in stk_list:
-        sp = StxPlotBin(_lib, stk, eod_days, market_datetime, intraday=False)
-        spid = StxPlotBin(_lib, stk, id_days, market_datetime, intraday=True,
-            period=frequency)
+        # sp = StxPlotBin(_lib, stk, eod_days, market_datetime, intraday=False)
+        spid_1 = StxPlotBin(_lib, stk, id_days_1, market_datetime, intraday=True,
+            period=frequency_1)
+        spid_2 = StxPlotBin(_lib, stk, id_days_2, market_datetime, intraday=True,
+            period=frequency_2)
         chartdict = {
-            'eod_png': sp.b64_png(),
-            'id_png': spid.b64_png()
+            'eod_png': spid_1.b64_png(),
+            'id_png': spid_2.b64_png()
         }
         charts.append(chartdict)
     exec_end_time = datetime.datetime.now()
-    logging.info(f'exec_end_time = {exec_end_time}')
+    logging.debug(f'exec_end_time = {exec_end_time}')
     exec_time = exec_end_time - exec_start_time
-    logging.info(f'exec_time = {exec_time}')
+    logging.debug(f'exec_time = {exec_time}')
     refresh_time = 60000 * refresh - int( 1000 * exec_time.total_seconds())
-    logging.info(f'refresh_time = {refresh_time}')
+    logging.debug(f'refresh_time = {refresh_time}')
     return render_template('market.html', refresh=refresh_time, charts=charts,
                             datetime=market_datetime)
