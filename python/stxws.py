@@ -42,7 +42,7 @@ display_days = 90
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
 market_date = '2023-05-01'
-market_time = '09:30'
+market_time = '15:50'
 
 frequencydict = {
     '5min': '5min',
@@ -323,24 +323,26 @@ def market():
     market_datetime = f'{market_date} {market_time}:00'
     stk_list = stks.split(' ')
     market_date, market_time = stxcal.next_intraday(market_datetime)
-    frequency_1 = int(freq_1[:-3])
-    frequency_2 = int(freq_2[:-3])
-    for stk in stk_list:
-        # sp = StxPlotBin(_lib, stk, eod_days, market_datetime, intraday=False)
-        spid_1 = StxPlotBin(_lib, stk, id_days_1, market_datetime, intraday=True,
-            period=frequency_1)
-        spid_2 = StxPlotBin(_lib, stk, id_days_2, market_datetime, intraday=True,
-            period=frequency_2)
-        chartdict = {
-            'eod_png': spid_1.b64_png(),
-            'id_png': spid_2.b64_png()
-        }
-        charts.append(chartdict)
-    exec_end_time = datetime.datetime.now()
-    logging.debug(f'exec_end_time = {exec_end_time}')
-    exec_time = exec_end_time - exec_start_time
-    logging.debug(f'exec_time = {exec_time}')
-    refresh_time = 60000 * refresh - int( 1000 * exec_time.total_seconds())
-    logging.debug(f'refresh_time = {refresh_time}')
-    return render_template('market.html', refresh=refresh_time, charts=charts,
-                            datetime=market_datetime)
+    if market_time != "09:30":
+        frequency_1 = int(freq_1[:-3])
+        frequency_2 = int(freq_2[:-3])
+        for stk in stk_list:
+            # sp = StxPlotBin(_lib, stk, eod_days, market_datetime, intraday=False)
+            spid_1 = StxPlotBin(_lib, stk, id_days_1, market_datetime, intraday=True,
+                period=frequency_1)
+            spid_2 = StxPlotBin(_lib, stk, id_days_2, market_datetime, intraday=True,
+                period=frequency_2)
+            chartdict = {
+                'eod_png': spid_1.b64_png(),
+                'id_png': spid_2.b64_png()
+            }
+            charts.append(chartdict)
+        exec_end_time = datetime.datetime.now()
+        logging.debug(f'exec_end_time = {exec_end_time}')
+        exec_time = exec_end_time - exec_start_time
+        logging.debug(f'exec_time = {exec_time}')
+        refresh_time = 60000 * refresh - int( 1000 * exec_time.total_seconds())
+        logging.debug(f'refresh_time = {refresh_time}')
+        return render_template('market.html', refresh=refresh_time, charts=charts,
+                                datetime=market_datetime)
+    return render_template('eod.html', datetime=market_datetime)
