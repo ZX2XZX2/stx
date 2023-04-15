@@ -333,7 +333,10 @@ stx_data_ptr ts_load_id_stk(char *stk, char *end_dt, int num_days) {
 stx_data_ptr ts_load_stk(char *stk, char *dt, int num_days, bool intraday) {
     stx_data_ptr data = NULL;
     char load_date[20], *hhmm = NULL;
-    strcpy(load_date, dt);
+    if (dt != NULL)
+        strcpy(load_date, dt);
+    else
+        strcpy(load_date, cal_current_busdate(16));
     hhmm = strchr(load_date, ' ');
     if (hhmm != NULL)
         *hhmm = '\0';
