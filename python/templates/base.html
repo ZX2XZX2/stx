@@ -69,7 +69,7 @@
           display: block;
       }
 
-      /* Create three equal columns that floats next to each other */
+      /* Create five equal columns that floats next to each other */
       .column {
           float: left;
           width: 20.00%;
@@ -98,7 +98,7 @@
           clear: both;
       }
 
-      /* Responsive layout - makes the three columns stack on top of each other instead of next to each other */
+      /* Responsive layout - makes the five columns stack on top of each other instead of next to each other */
       @media screen and (max-width: 600px) {
           .column {
               width: 100%;
@@ -170,11 +170,11 @@
         </div>
       </div>
       <div class="dropdown">
-        <button class="dropbtn">Scanner 
+        <button class="dropbtn">EOD Market Analysis
           <i class="fa fa-caret-down"></i>
         </button>
         <div class="dropdown-content">
-          <form method="post" action="/scanners">
+          <form method="post" action="/eod_market">
             <fieldset>
               <label for="dt_date">Date</label>
               <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/>
@@ -182,7 +182,7 @@
               <input type="text" name="dt_time" placeholder="Time" value="{{ dt_time }}"/><br>
               <label for="eod_num_days">Daily Timeframe (10-500 days)</label>
               <input type="text" name="eod_num_days" placeholder="EOD Days" value="{{ eod_num_days }}"/><br>
-              <label for="id_num_days">Intrday Timeframe (1-30 days)</label>
+              <label for="id_num_days">Intraday Timeframe (1-30 days)</label>
               <input type="text" name="id_num_days" placeholder="ID Days" value="{{ id_num_days }}"/><br>
               <label for="frequency">Frequency</label>
               <select id="frequency" name="frequency">
@@ -195,12 +195,11 @@
               <input type="text" name="min_up_cs" placeholder="MinUpCS" value="{{ min_up_cs }}"/>
               <label for="max_down_cs">Max Down CS</label>
               <input type="text" name="max_down_cs" placeholder="MaxDownCS" value="{{ max_down_cs }}" />
+              <label for="min_activity">Min Activity</label>
+              <input type="text" name="min_activity" placeholder="MinActivity" value="{{ min_activity }}" />
               <br>
-              <label for="untriggered">Get All Setups for Next Day</label>
-              <input type="checkbox" name="untriggered" value="true"/>
             </fieldset>
-            <button type="submit" name="action" value="Current">Current</button>
-            <button type="submit" name="action" value="Next">Next</button>
+            <button type="submit" name="action" value="EodAnalysis">EOD Analysis</button>
           </form>
         </div>
       </div>
