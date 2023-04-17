@@ -178,12 +178,11 @@
             <fieldset>
               <label for="dt_date">Date</label>
               <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/>
-              <label for="dt_time">Time</label>
-              <input type="text" name="dt_time" placeholder="Time" value="{{ dt_time }}"/><br>
-              <label for="eod_num_days">Daily Timeframe (10-500 days)</label>
-              <input type="text" name="eod_num_days" placeholder="EOD Days" value="{{ eod_num_days }}"/><br>
-              <label for="id_num_days">Intraday Timeframe (1-30 days)</label>
-              <input type="text" name="id_num_days" placeholder="ID Days" value="{{ id_num_days }}"/><br>
+              <br>
+              <label for="eod_days">Daily Timeframe (10-500 days)</label>
+              <input type="text" name="eod_days" placeholder="EOD Days" value="{{ eod_days }}" maxlength="3" style='max-width:40px'/>
+              <label for="id_days">Intraday Timeframe (1-30 days)</label>
+              <input type="text" name="id_days" placeholder="ID Days" value="{{ id_days }}" maxlength="2" style='max-width:40px'/>
               <label for="frequency">Frequency</label>
               <select id="frequency" name="frequency">
                 {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min', '60min': '60min'}.items() %}
@@ -192,11 +191,11 @@
               </select>
               <br>
               <label for="min_up_cs">Min Up CS</label>
-              <input type="text" name="min_up_cs" placeholder="MinUpCS" value="{{ min_up_cs }}"/>
+              <input type="text" name="min_up_cs" placeholder="MinUpCS" value="{{ min_up_cs }}" maxlength="2" style='max-width:40px'/>
               <label for="max_down_cs">Max Down CS</label>
-              <input type="text" name="max_down_cs" placeholder="MaxDownCS" value="{{ max_down_cs }}" />
+              <input type="text" name="max_down_cs" placeholder="MaxDownCS" value="{{ max_down_cs }}" maxlength="2" style='max-width:40px'/>
               <label for="min_activity">Min Activity</label>
-              <input type="text" name="min_activity" placeholder="MinActivity" value="{{ min_activity }}" />
+              <input type="text" name="min_activity" placeholder="MinActivity" value="{{ min_activity }}" maxlength="6" style='max-width:80px'/>
               <br>
             </fieldset>
             <button type="submit" name="action" value="EodAnalysis">EOD Analysis</button>
