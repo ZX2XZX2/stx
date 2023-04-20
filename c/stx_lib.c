@@ -4,6 +4,7 @@
  */
 #define _XOPEN_SOURCE
 
+#include "stx_ana.h"
 #include "stx_jl.h"
 #include "stx_lib.h"
 
@@ -212,4 +213,13 @@ int main(int argc, char** argv) {
     stx_free_ohlcv(&res);
     stx_free_jl_pivots(&jl_res);
     return 0;
+}
+
+char* stx_eod_analysis(char *dt) {
+    int max_atm_price = 1, max_opt_spread = 1, min_stp_activity = 1000000000;
+    int min_ind_activity = MIN_LDR_IND_ACT, max_stp_range = 1;
+    bool download_spots = false, download_options = false, eod = true;
+    ana_stx_analysis(dt, NULL, max_atm_price, max_opt_spread,
+        min_ind_activity, min_stp_activity, max_stp_range, download_spots,
+        download_options, eod);
 }
