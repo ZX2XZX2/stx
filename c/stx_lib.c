@@ -215,7 +215,16 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-char* stx_eod_analysis(char *dt) {
+char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
+                       int up_limit, int down_limit) {
+    char sql_cmd[256], *expiry = NULL, *ind_name = "CS_45";
+    memset(sql_cmd, 0, 256 * sizeof(char));
+    cal_expiry(cal_ix(dt), &expiry);
+    sprintf(sql_cmd, "SELECT ticker, bucket_rank FROM indicators_1 WHERE "
+            "dt='%s' AND name='%s' AND ticker IN "
+            "(SELECT stk FROM leaders WHERE expiry='%s' AND activity>=%d) "
+            "ORDER BY rank LIMIT %d", dt, ind_name, expiry, min_activity,
+            up_limit);
     int max_atm_price = 1, max_opt_spread = 1, min_stp_activity = 1000000000;
     int min_ind_activity = MIN_LDR_IND_ACT, max_stp_range = 1;
     bool download_spots = false, download_options = false, eod = true;
