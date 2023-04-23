@@ -225,10 +225,34 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
             "(SELECT stk FROM leaders WHERE expiry='%s' AND activity>=%d) "
             "ORDER BY rank LIMIT %d", dt, ind_name, expiry, min_activity,
             up_limit);
-    int max_atm_price = 1, max_opt_spread = 1, min_stp_activity = 1000000000;
-    int min_ind_activity = MIN_LDR_IND_ACT, max_stp_range = 1;
-    bool download_spots = false, download_options = false, eod = true;
-    ana_stx_analysis(dt, NULL, max_atm_price, max_opt_spread,
-        min_ind_activity, min_stp_activity, max_stp_range, download_spots,
-        download_options, eod);
+    PGresult *res = db_query(sql_cmd);
+    int num_recs = PQntuples(res);
+    if(num_recs <= 0) {
+        int max_atm_price = 1, max_opt_spread = 1, min_stp_activity = 1000000000;
+        int min_ind_activity = MIN_LDR_IND_ACT, max_stp_range = 1;
+        bool download_spots = false, download_options = false, eod = true;
+        ana_stx_analysis(dt, NULL, max_atm_price, max_opt_spread,
+            min_ind_activity, min_stp_activity, max_stp_range, download_spots,
+            download_options, eod);
+        PQclear(res);
+        res = db_query(sql_cmd);
+        num_recs = PQntuples(res);
+        if(num_recs <= 0) {
+            LOGERROR("Could not get EOD analysis for %s, %d\n",
+                     dt, min_activity);
+            PQclear(res);
+            return NULL;
+        }
+    }
+    // for(int ix = 0; ix < num_recs; ix++) {
+    //     char* db_date = PQgetvalue(res, ix, 5);
+    //     data->data[ts_idx].open = atoi(PQgetvalue(res, ix, 0));
+    //     data->data[ts_idx].high = atoi(PQgetvalue(res, ix, 1));
+    //     data->data[ts_idx].low = atoi(PQgetvalue(res, ix, 2));
+    //     data->data[ts_idx].close = atoi(PQgetvalue(res, ix, 3));
+    //     data->data[ts_idx].volume = atoi(PQgetvalue(res, ix, 4));
+    //     strcpy(data->data[ts_idx].date, PQgetvalue(res, ix, 5));
+    // }
+    PQclear(res);
+
 }
