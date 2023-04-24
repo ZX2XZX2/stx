@@ -228,8 +228,12 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
     PGresult *res = db_query(sql_cmd);
     int num_recs = PQntuples(res);
     if(num_recs <= 0) {
+        /**
+         *  reuse ana_stx_analysis, call it with arguments that
+         *  will only trigger indicator analysis
+         */
         int max_atm_price = 1, max_opt_spread = 1, min_stp_activity = 1000000000;
-        int min_ind_activity = MIN_LDR_IND_ACT, max_stp_range = 1;
+        int min_ind_activity = min_activity, max_stp_range = 1;
         bool download_spots = false, download_options = false, eod = true;
         ana_stx_analysis(dt, NULL, max_atm_price, max_opt_spread,
             min_ind_activity, min_stp_activity, max_stp_range, download_spots,
