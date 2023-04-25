@@ -177,49 +177,10 @@ void stx_free_jl_pivots(jl_rec_ptr *pivots) {
     *pivots = NULL;
 }
 
-int main(int argc, char** argv) {
-    char stk[16], ed[20];
-    strcpy(stk, "TSLA");
-    strcpy(ed, cal_current_trading_datetime());
-    int num_days = 200;
-    bool intraday = false, realtime = false;
-
-    for (int ix = 1; ix < argc; ix++) {
-        if (!strcmp(argv[ix], "-s") && (++ix < argc))
-            strcpy(stk, argv[ix]);
-        else if (!strcmp(argv[ix], "-e") && (++ix < argc))
-            strcpy(ed, argv[ix]);
-        else if (!strcmp(argv[ix], "-d") && (++ix < argc))
-            num_days = atoi(argv[ix]);
-        else if (!strcmp(argv[ix], "-i") || !strcmp(argv[ix], "--intraday") )
-            intraday = true;
-        else
-            LOGWARN("Unknown option %s\n", argv[ix]);
-    }
-    if (strlen(ed) == 10)
-        strcat(ed, " 15:55:00");
-    LOGINFO("ed = %s\n", ed);
-    int num_recs = 0;
-    ohlcv_record_ptr res = stx_get_ohlcv(stk, ed, num_days, intraday,
-                                         realtime, &num_recs);
-    LOGINFO("num_recs = %d\n", num_recs);
-    stx_free_ohlcv(&res);
-    *(ed + 12) = '5';
-    res = stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &num_recs);
-    LOGINFO("num_recs = %d\n", num_recs);
-
-    int num_jl_recs = 0;
-    jl_rec_ptr jl_res = stx_jl_pivots(stk, ed, intraday, &num_jl_recs);
-    stx_free_ohlcv(&res);
-    stx_free_jl_pivots(&jl_res);
-    return 0;
-}
-
-char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
-                       int up_limit, int down_limit) {
-    char sql_cmd[256], *expiry = NULL, *ind_name = "CS_45";
+char* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
+                             int min_activity, int up_limit, int down_limit) {
+    char sql_cmd[256];
     memset(sql_cmd, 0, 256 * sizeof(char));
-    cal_expiry(cal_ix(dt), &expiry);
     sprintf(sql_cmd, "SELECT ticker, bucket_rank FROM indicators_1 WHERE "
             "dt='%s' AND name='%s' AND ticker IN "
             "(SELECT stk FROM leaders WHERE expiry='%s' AND activity>=%d) "
@@ -258,5 +219,61 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
     //     strcpy(data->data[ts_idx].date, PQgetvalue(res, ix, 5));
     // }
     PQclear(res);
+    return NULL;
+}
 
+char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
+                       int up_limit, int down_limit) {
+    char *expiry = NULL, *ind_name = NULL;
+    cal_expiry(cal_ix(dt), &expiry);
+    ind_name = strtok(ind_names, " ");
+    while (ind_name) {
+        // stk_name = cJSON_CreateString(token);
+        // if (stk_name == NULL) {
+        //     LOGERROR("Failed to create cJSON string for %s\n", token);
+        //     continue;
+        // }
+        // cJSON_AddItemToArray(stx, stk_name);
+        stx_indicator_analysis(dt, expiry, ind_name, min_activity, up_limit,
+                               down_limit);
+        ind_name = strtok(NULL, " ");
+    }
+}
+
+int main(int argc, char** argv) {
+    char stk[16], ed[20];
+    strcpy(stk, "TSLA");
+    strcpy(ed, cal_current_trading_datetime());
+    int num_days = 200;
+    bool intraday = false, realtime = false;
+
+    for (int ix = 1; ix < argc; ix++) {
+        if (!strcmp(argv[ix], "-s") && (++ix < argc))
+            strcpy(stk, argv[ix]);
+        else if (!strcmp(argv[ix], "-e") && (++ix < argc))
+            strcpy(ed, argv[ix]);
+        else if (!strcmp(argv[ix], "-d") && (++ix < argc))
+            num_days = atoi(argv[ix]);
+        else if (!strcmp(argv[ix], "-i") || !strcmp(argv[ix], "--intraday") )
+            intraday = true;
+        else
+            LOGWARN("Unknown option %s\n", argv[ix]);
+    }
+    if (strlen(ed) == 10)
+        strcat(ed, " 15:55:00");
+    LOGINFO("ed = %s\n", ed);
+    int num_recs = 0;
+    ohlcv_record_ptr res = stx_get_ohlcv(stk, ed, num_days, intraday,
+                                         realtime, &num_recs);
+    LOGINFO("num_recs = %d\n", num_recs);
+    stx_free_ohlcv(&res);
+    *(ed + 12) = '5';
+    res = stx_get_ohlcv(stk, ed, num_days, intraday, realtime, &num_recs);
+    LOGINFO("num_recs = %d\n", num_recs);
+
+    int num_jl_recs = 0;
+    jl_rec_ptr jl_res = stx_jl_pivots(stk, ed, intraday, &num_jl_recs);
+    stx_free_ohlcv(&res);
+    stx_free_jl_pivots(&jl_res);
+    return 0;
 }
