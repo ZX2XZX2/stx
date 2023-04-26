@@ -177,8 +177,9 @@ void stx_free_jl_pivots(jl_rec_ptr *pivots) {
     *pivots = NULL;
 }
 
-char* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
-                             int min_activity, int up_limit, int down_limit) {
+cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
+                              int min_activity, int up_limit,
+                              int down_limit) {
     char sql_cmd[256];
     memset(sql_cmd, 0, 256 * sizeof(char));
     sprintf(sql_cmd, "SELECT ticker, bucket_rank FROM indicators_1 WHERE "
@@ -225,17 +226,15 @@ char* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
 char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
                        int up_limit, int down_limit) {
     char *expiry = NULL, *ind_name = NULL;
+    cJSON *ind_list = cJSON_CreateArray();
     cal_expiry(cal_ix(dt), &expiry);
     ind_name = strtok(ind_names, " ");
     while (ind_name) {
-        // stk_name = cJSON_CreateString(token);
-        // if (stk_name == NULL) {
-        //     LOGERROR("Failed to create cJSON string for %s\n", token);
-        //     continue;
-        // }
-        // cJSON_AddItemToArray(stx, stk_name);
-        stx_indicator_analysis(dt, expiry, ind_name, min_activity, up_limit,
-                               down_limit);
+        cJSON* ind_data = stx_indicator_analysis(dt, expiry, ind_name,
+                                                 min_activity, up_limit,
+                                                 down_limit);
+        if (ind_data != NULL)
+            cJSON_AddItemToArray(ind_list, ind_data);
         ind_name = strtok(NULL, " ");
     }
 }
