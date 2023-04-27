@@ -210,17 +210,23 @@ cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
             return NULL;
         }
     }
-    // for(int ix = 0; ix < num_recs; ix++) {
-    //     char* db_date = PQgetvalue(res, ix, 5);
-    //     data->data[ts_idx].open = atoi(PQgetvalue(res, ix, 0));
-    //     data->data[ts_idx].high = atoi(PQgetvalue(res, ix, 1));
-    //     data->data[ts_idx].low = atoi(PQgetvalue(res, ix, 2));
-    //     data->data[ts_idx].close = atoi(PQgetvalue(res, ix, 3));
-    //     data->data[ts_idx].volume = atoi(PQgetvalue(res, ix, 4));
-    //     strcpy(data->data[ts_idx].date, PQgetvalue(res, ix, 5));
-    // }
+
+    cJSON *ind_res = cJSON_CreateObject();
+    cJSON *ind_data = cJSON_AddObjectToObject(ind_res, ind_name);
+    cJSON *ind_up = cJSON_AddArrayToObject(ind_data, "Up");
+    cJSON *ind_down = cJSON_AddArrayToObject(ind_data, "Down");
+
+    for(int ix = 0; ix < num_recs; ix++) {
+        char *stk = PQgetvalue(res, ix, 0);
+        int bucket_rank =  atoi(PQgetvalue(res, ix, 1));
+        cJSON *stk_rec = cJSON_CreateObject();
+        cJSON_AddStringToObject(stk_rec, "ticker", stk);
+        cJSON_AddNumberToObject(stk_rec, "rank", (double)bucket_rank);
+        cJSON_AddItemToArray(ind_up, stk_rec);
+    }
     PQclear(res);
-    return NULL;
+    res = NULL;
+    return ind_res;
 }
 
 char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
