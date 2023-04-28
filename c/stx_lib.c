@@ -226,6 +226,24 @@ cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
     }
     PQclear(res);
     res = NULL;
+    memset(sql_cmd, 0, 256 * sizeof(char));
+    sprintf(sql_cmd, "SELECT ticker, bucket_rank FROM indicators_1 WHERE "
+            "dt='%s' AND name='%s' AND ticker IN "
+            "(SELECT stk FROM leaders WHERE expiry='%s' AND activity>=%d) "
+            "ORDER BY rank DESC LIMIT %d", dt, ind_name, expiry, min_activity,
+            down_limit);
+    res = db_query(sql_cmd);
+    num_recs = PQntuples(res);
+    for(int ix = 0; ix < num_recs; ix++) {
+        char *stk = PQgetvalue(res, ix, 0);
+        int bucket_rank =  atoi(PQgetvalue(res, ix, 1));
+        cJSON *stk_rec = cJSON_CreateObject();
+        cJSON_AddStringToObject(stk_rec, "ticker", stk);
+        cJSON_AddNumberToObject(stk_rec, "rank", (double)bucket_rank);
+        cJSON_AddItemToArray(ind_down, stk_rec);
+    }
+    PQclear(res);
+    res = NULL;
     return ind_res;
 }
 
