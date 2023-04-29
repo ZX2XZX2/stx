@@ -261,6 +261,9 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
             cJSON_AddItemToArray(ind_list, ind_data);
         ind_name = strtok(NULL, " ");
     }
+    char *res = cJSON_Print(ind_list);
+    cJSON_Delete(ind_list);
+    return res;
 }
 
 int main(int argc, char** argv) {
@@ -298,5 +301,11 @@ int main(int argc, char** argv) {
     jl_rec_ptr jl_res = stx_jl_pivots(stk, ed, intraday, &num_jl_recs);
     stx_free_ohlcv(&res);
     stx_free_jl_pivots(&jl_res);
+    char *res_json = stx_eod_analysis("2023-04-28", "CS_45", 10000, 5, 5);
+    if (res_json != NULL) {
+        LOGINFO("res_json = \n%s\n", res_json);
+        free(res_json);
+        res_json = NULL;
+    }
     return 0;
 }
