@@ -185,8 +185,8 @@ cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
     sprintf(sql_cmd, "SELECT ticker, bucket_rank FROM indicators_1 WHERE "
             "dt='%s' AND name='%s' AND ticker IN "
             "(SELECT stk FROM leaders WHERE expiry='%s' AND activity>=%d) "
-            "ORDER BY rank LIMIT %d", dt, ind_name, expiry, min_activity,
-            up_limit);
+            "ORDER BY rank DESC LIMIT %d", dt, ind_name, expiry, min_activity,
+            down_limit);
     PGresult *res = db_query(sql_cmd);
     int num_recs = PQntuples(res);
     if(num_recs <= 0) {
@@ -230,8 +230,8 @@ cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
     sprintf(sql_cmd, "SELECT ticker, bucket_rank FROM indicators_1 WHERE "
             "dt='%s' AND name='%s' AND ticker IN "
             "(SELECT stk FROM leaders WHERE expiry='%s' AND activity>=%d) "
-            "ORDER BY rank DESC LIMIT %d", dt, ind_name, expiry, min_activity,
-            down_limit);
+            "ORDER BY rank LIMIT %d", dt, ind_name, expiry, min_activity,
+            up_limit);
     res = db_query(sql_cmd);
     num_recs = PQntuples(res);
     for(int ix = 0; ix < num_recs; ix++) {
