@@ -252,14 +252,14 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
     char *expiry = NULL, *ind_name = NULL;
     cJSON *ind_list = cJSON_CreateArray();
     cal_expiry(cal_ix(dt), &expiry);
-    ind_name = strtok(ind_names, " ");
+    ind_name = strtok(ind_names, ",");
     while (ind_name) {
         cJSON* ind_data = stx_indicator_analysis(dt, expiry, ind_name,
                                                  min_activity, up_limit,
                                                  down_limit);
         if (ind_data != NULL)
             cJSON_AddItemToArray(ind_list, ind_data);
-        ind_name = strtok(NULL, " ");
+        ind_name = strtok(NULL, ",");
     }
     char *res = cJSON_Print(ind_list);
     cJSON_Delete(ind_list);
@@ -301,7 +301,10 @@ int main(int argc, char** argv) {
     jl_rec_ptr jl_res = stx_jl_pivots(stk, ed, intraday, &num_jl_recs);
     stx_free_ohlcv(&res);
     stx_free_jl_pivots(&jl_res);
-    char *res_json = stx_eod_analysis("2023-04-28", "CS_45", 10000, 5, 5);
+    char ind_names[64];
+    memset(ind_names, 0, 64 * sizeof(char));
+    strcpy(ind_names, "CS_45,OBV_45");
+    char *res_json = stx_eod_analysis("2023-04-28", ind_names, 10000, 5, 5);
     if (res_json != NULL) {
         LOGINFO("res_json = \n%s\n", res_json);
         free(res_json);
