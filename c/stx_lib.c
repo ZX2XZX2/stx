@@ -312,3 +312,10 @@ int main(int argc, char** argv) {
     }
     return 0;
 }
+
+void stx_free_text(char *text) {
+    if (text != NULL) {
+        free(text);
+        text = NULL;
+    }   
+}
