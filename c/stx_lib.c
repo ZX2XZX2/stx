@@ -142,8 +142,10 @@ ohlcv_record_ptr stx_get_ohlcv(char *stk, char *dt, int num_days,
 }
 
 void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs) {
-    free(*ohlcvs);
-    *ohlcvs = NULL;
+    if (*ohlcvs != NULL) {
+        free(*ohlcvs);
+        *ohlcvs = NULL;
+    }
 }
 
 jl_rec_ptr stx_jl_pivots(char *stk, char *dt, bool intraday, int *num_recs) {
