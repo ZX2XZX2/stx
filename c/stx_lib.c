@@ -175,8 +175,10 @@ jl_rec_ptr stx_jl_pivots(char *stk, char *dt, bool intraday, int *num_recs) {
 }
 
 void stx_free_jl_pivots(jl_rec_ptr *pivots) {
-    free(*pivots);
-    *pivots = NULL;
+    if (*pivots != NULL) {
+        free(*pivots);
+        *pivots = NULL;
+    }
 }
 
 cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
