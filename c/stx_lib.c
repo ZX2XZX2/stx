@@ -270,6 +270,13 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
     return res;
 }
 
+void stx_free_text(char *text) {
+    if (text != NULL) {
+        free(text);
+        text = NULL;
+    }   
+}
+
 int main(int argc, char** argv) {
     char stk[16], ed[20];
     strcpy(stk, "TSLA");
@@ -315,11 +322,4 @@ int main(int argc, char** argv) {
         res_json = NULL;
     }
     return 0;
-}
-
-void stx_free_text(char *text) {
-    if (text != NULL) {
-        free(text);
-        text = NULL;
-    }   
 }
