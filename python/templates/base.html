@@ -170,7 +170,7 @@
         </div>
       </div>
       <div class="dropdown">
-        <button class="dropbtn">EOD Market Analysis
+        <button class="dropbtn">Markets
           <i class="fa fa-caret-down"></i>
         </button>
         <div class="dropdown-content">
@@ -188,19 +188,14 @@
           </form>
           <form method="post" action="/eod_market">
             <fieldset>
+              <label for="mkt_name">Market Name</label>
+              <input type="text" name="mkt_name" placeholder="Market Name" value="{{ mkt_name }}" maxlength="32" style='max-width:120px'/>
               <label for="dt_date">Date</label>
               <input type="date" name="dt_date" placeholder="Date" value="{{ dt_date }}"/>
               <br>
-              <label for="eod_days">Daily Timeframe (10-500 days)</label>
-              <input type="text" name="eod_days" placeholder="EOD Days" value="{{ eod_days }}" maxlength="3" style='max-width:40px'/>
-              <label for="id_days">Intraday Timeframe (1-30 days)</label>
-              <input type="text" name="id_days" placeholder="ID Days" value="{{ id_days }}" maxlength="2" style='max-width:40px'/>
-              <label for="frequency">Frequency</label>
-              <select id="frequency" name="frequency">
-                {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min', '60min': '60min'}.items() %}
-                  <option value="{{ key }}" {% if (key == freq) %} selected="selected" {% endif %}> {{ value }} </option>
-                {% endfor %}
-              </select>
+              <label for="refresh_minutes">Refresh After </label>
+              <input type="text" name="refresh_minutes" placeholder="" value="{{ refresh_minutes }}" maxlength="2" style='max-width:40px'/>
+              <label">Minutes</label>
               <br>
               <label for="min_up_cs">Min Up CS</label>
               <input type="text" name="min_up_cs" placeholder="MinUpCS" value="{{ min_up_cs }}" maxlength="2" style='max-width:40px'/>
@@ -210,7 +205,7 @@
               <input type="text" name="min_activity" placeholder="MinActivity" value="{{ min_activity }}" maxlength="6" style='max-width:80px'/>
               <br>
             </fieldset>
-            <button type="submit" name="action" value="EodAnalysis">EOD Analysis</button>
+            <button type="submit" name="action" value="Create Market">Create Market</button>
           </form>
         </div>
       </div>
