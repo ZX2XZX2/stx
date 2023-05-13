@@ -42,7 +42,7 @@ display_days = 90
 stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
 market_date = '2023-05-01'
-market_time = '15:50'
+market_time = '15:45'
 
 frequencydict = {
     '5min': '5min',
@@ -205,16 +205,16 @@ def analysis():
                            eod_days=eod_days, id_days=id_days, freq=freq,
                            frequencydict=frequencydict)
 
-@app.route('/scanners', methods=('GET', 'POST'))
-def scanners():
+@app.route('/eod_market', methods=('GET', 'POST'))
+def eod_market_analysis():
     charts = []
     stks = ''
     end_date, end_time = stxcal.current_intraday_busdatetime()
     min_up_cs = 90
     max_down_cs = 10
-    eod_num_days = 90
-    id_num_days = 10
-    freq = '15min'
+    eod_days = 90
+    id_days = 20
+    freq = '60min'
     """1. Get all the JC_1234 and JC_5DAYS setups for the current day.
     2. Use the same DB query as in the report generator
     3. Filter on the indicators
@@ -228,18 +228,40 @@ def scanners():
     end_dt = ''
     if request.method == 'POST':
         end_date = request.form['dt_date']
-        end_time = request.form['dt_time']
+        end_time = "15:55:00"
         end_dt = f'{end_date} {end_time}'
-        eod_num_days = int(request.form['eod_num_days'])
-        id_num_days = int(request.form['id_num_days'])
+        eod_days = int(request.form['eod_days'])
+        id_days = int(request.form['id_days'])
         freq = request.form['frequency']
         if not end_dt:
             flash('Date is required!')
             return render_template(
-                'scanner.html', charts=[], end_date='', end_time='',
-                eod_num_days=eod_num_days, id_num_days=id_num_days,
+                'eod_market.html', charts=[], end_date='', end_time='',
+                eod_days=eod_days, id_days=id_days,
                 min_up_cs=min_up_cs, max_down_cs=max_down_cs,
                 frequencydict=frequencydict, freq=freq)
+        # num_recs = ctypes.c_int(0)
+        # self._lib = _lib
+        # self._lib.stx_get_ohlcv.argtypes = (
+        #     ctypes.c_char_p,
+        #     ctypes.c_char_p,
+        #     ctypes.c_int,
+        #     ctypes.c_bool,
+        #     ctypes.c_bool,
+        #     ctypes.POINTER(ctypes.c_int),
+        # )
+        # self._lib.stx_get_ohlcv.restype = ctypes.POINTER(ChartStruct)
+        # realtime = False
+        # logging.info('getting stock data')
+        # res = self._lib.stx_get_ohlcv(
+        #     ctypes.c_char_p(stk.encode('UTF-8')),
+        #     ctypes.c_char_p(end_dt.encode('UTF-8')),
+        #     ctypes.c_int(num_days),
+        #     ctypes.c_bool(intraday),
+        #     ctypes.c_bool(realtime),
+        #     ctypes.byref(num_recs)
+        # )
+
         if request.form.get('untriggered') is not None:
             eod = True
             triggered = False
@@ -278,8 +300,8 @@ def scanners():
                     or (not eod and row['direction'] == 'D' and
                         tsid.df.loc[end_date,'Low']>tsid.df.loc[date_1,'Low'])):
                     continue
-                res = tsid.getchartstreams(end_dt, eod_days=eod_num_days,
-                                           id_days1=id_num_days,
+                res = tsid.getchartstreams(end_dt, eod_days=eod_days,
+                                           id_days1=id_days,
                                            id_mins1=frequency)
                 indicator_tbl = stx_ana.build_indicators_table(row)
                 res['indicator_table'] = ''.join(indicator_tbl)
@@ -290,13 +312,12 @@ def scanners():
     else:
         min_up_cs = 90
         max_down_cs = 10
-    return render_template('scanner.html', charts=charts, dt_date=end_date,
+    return render_template('eod_market.html', charts=charts, dt_date=end_date,
                            dt_time=end_time, min_up_cs=min_up_cs,
                            max_down_cs=max_down_cs,
-                           eod_num_days=eod_num_days,
-                           id_num_days=id_num_days,
+                           eod_days=eod_days,
+                           id_days=id_days,
                            frequencydict=frequencydict, freq=freq)
-
 
 @app.route('/rtscanners')
 def rtscanners():
@@ -321,6 +342,7 @@ def market():
     freq_2 = '60min'
 
     market_datetime = f'{market_date} {market_time}:00'
+    logging.info(f'market_datetime = {market_datetime}')
     stk_list = stks.split(' ')
     market_date, market_time = stxcal.next_intraday(market_datetime)
     if market_time != "09:30":
