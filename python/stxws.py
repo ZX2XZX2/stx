@@ -323,6 +323,18 @@ def eod_market_analysis():
 def rtscanners():
     return "This will show the realtime scanners"
 
+@app.route('/create_market', methods=('GET', 'POST'))
+def create_market():
+    return "Create market here"
+
+@app.route('/load_market', methods=('GET', 'POST'))
+def load_market():
+    return "Load market here"
+
+@app.route('/delete_market', methods=('GET', 'POST'))
+def delete_market():
+    return "Delete market here"
+
 @app.route('/market')
 def market():
     exec_start_time = datetime.datetime.now()
