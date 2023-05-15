@@ -185,17 +185,6 @@
             </fieldset>
             <button type="submit" name="action" value="Load Market">Load Market</button>
           </form>
-          <form method="post" action="/delete_market">
-            <fieldset>
-              <label for="market_name">Select Market</label>
-              <select id="market_name" name="market_name">
-                {% for mkt in market_list %}
-                  <option value="{{ mkt }}">{{ mkt }}</option>
-                {% endfor %}
-              </select>
-            </fieldset>
-            <button type="submit" name="action" value="Delete Market">Delete Market</button>
-          </form>
           <form method="post" action="/create_market">
             <fieldset>
               <legend> Create New Market</legend>
@@ -219,6 +208,17 @@
               <br>
             </fieldset>
             <button type="submit" name="action" value="Create Market">Create Market</button>
+          </form>
+          <form method="post" action="/delete_market">
+            <fieldset>
+              <label for="market_name">Select Market</label>
+              <select id="market_name" name="market_name">
+                {% for mkt in market_list %}
+                  <option value="{{ mkt }}">{{ mkt }}</option>
+                {% endfor %}
+              </select>
+            </fieldset>
+            <button type="submit" name="action" value="Delete Market">Delete Market</button>
           </form>
         </div>
       </div>
