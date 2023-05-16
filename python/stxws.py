@@ -1,8 +1,8 @@
 import ctypes
 import datetime
 import logging
-import random
-import time
+from psycopg2 import sql
+import stxdb
 
 logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s '
@@ -323,6 +323,7 @@ def eod_market_analysis():
 def rtscanners():
     return "This will show the realtime scanners"
 
+
 @app.route('/create_market', methods=('GET', 'POST'))
 def create_market():
     return "Create market here"
@@ -380,3 +381,8 @@ def market():
         return render_template('market.html', refresh=refresh_time, charts=charts,
                                 datetime=market_datetime)
     return render_template('eod.html', datetime=market_datetime)
+
+@app.route('/markets')
+def markets():
+    market_list = ['market_1', 'market_2']
+    return render_template('markets.html', market_list=market_list)
