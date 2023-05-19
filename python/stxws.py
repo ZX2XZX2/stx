@@ -384,5 +384,10 @@ def market():
 
 @app.route('/markets')
 def markets():
-    market_list = ['market_1', 'market_2']
+    q = sql.Composed([sql.SQL("SELECT DISTINCT mkt_name FROM market_caches")])
+    cnx = stxdb.db_get_cnx()
+    market_list = []
+    with cnx.cursor() as crs:
+        crs.execute(q.as_string(cnx))
+        market_list = [x[0] for x in crs]
     return render_template('markets.html', market_list=market_list)
