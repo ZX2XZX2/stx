@@ -390,4 +390,19 @@ def markets():
     with cnx.cursor() as crs:
         crs.execute(q.as_string(cnx))
         market_list = [x[0] for x in crs]
-    return render_template('markets.html', market_list=market_list)
+    mkt_name = ''
+    dt_date, _ = stxcal.current_intraday_busdatetime()
+    refresh_minutes = 5
+    min_up_cs = 90
+    max_down_cs = 10
+    min_activity = 10000
+    return render_template(
+        'markets.html',
+        market_list=market_list,
+        mkt_name=mkt_name,
+        dt_date=dt_date,
+        refresh_minutes=refresh_minutes,
+        min_up_cs=min_up_cs,
+        max_down_cs=max_down_cs,
+        min_activity=min_activity,
+    )
