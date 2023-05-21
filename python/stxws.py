@@ -395,6 +395,8 @@ def markets():
     refresh_minutes = 5
     min_up_cs = 90
     max_down_cs = 10
+    num_up = 5
+    num_down = 5
     min_activity = 10000
     return render_template(
         'markets.html',
@@ -404,5 +406,7 @@ def markets():
         refresh_minutes=refresh_minutes,
         min_up_cs=min_up_cs,
         max_down_cs=max_down_cs,
+        num_up=num_up,
+        num_down=num_down,
         min_activity=min_activity,
     )
