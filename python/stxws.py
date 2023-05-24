@@ -326,7 +326,9 @@ def rtscanners():
 
 @app.route('/create_market', methods=('GET', 'POST'))
 def create_market():
-    return "Create market here"
+    mkt_name = request.form.get('mkt_name')
+    dt_date  = request.form.get('dt_date')
+    return render_template('eod.html', market_name=mkt_name, dt_date=dt_date)
 
 @app.route('/load_market', methods=('GET', 'POST'))
 def load_market():
