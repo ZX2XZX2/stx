@@ -328,6 +328,19 @@ def rtscanners():
 def create_market():
     mkt_name = request.form.get('mkt_name')
     dt_date  = request.form.get('dt_date')
+    q = sql.Composed([
+        sql.SQL("SELECT"),
+        sql.Identifier("mkt_name"),
+        sql.SQL("FROM"),
+        sql.Identifier("market_caches"),
+        sql.SQL("WHERE"),
+        sql.Identifier("mkt_name"),
+        sql.SQL("="),
+        sql.Literal(mkt_name)
+    ])
+    res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    if res:
+        return f'A market named {mkt_name} already exists'
     return render_template('eod.html', market_name=mkt_name, dt_date=dt_date)
 
 @app.route('/load_market', methods=('GET', 'POST'))
