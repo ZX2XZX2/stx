@@ -1,8 +1,10 @@
 import ctypes
 import datetime
+import json
 import logging
 from psycopg2 import sql
 import stxdb
+import traceback as tb
 
 logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s '
@@ -328,6 +330,7 @@ def rtscanners():
 def create_market():
     mkt_name = request.form.get('mkt_name')
     dt_date  = request.form.get('dt_date')
+    realtime = "TRUE" if request.form.get('realtime') else "FALSE"
     q = sql.Composed([
         sql.SQL("SELECT"),
         sql.Identifier("mkt_name"),
@@ -341,6 +344,27 @@ def create_market():
     res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
     if res:
         return f'A market named {mkt_name} already exists'
+    mkt_cache = json.dumps({"portfolio": [], "watchlist": [], "setups": {}})
+    q = sql.Composed([
+        sql.SQL("INSERT INTO"),
+        sql.Identifier("market_caches"),
+        sql.SQL("VALUES ("),
+        sql.SQL(',').join(
+            [
+                sql.Literal(mkt_name),
+                sql.Literal(dt_date),
+                sql.Literal(f"{dt_date} 16:00:00"),
+                sql.Literal(mkt_cache),
+                sql.Literal(realtime)
+            ]
+        ),
+        sql.SQL(")")
+    ])
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        return f'Market {mkt_name} create failed:<br>{tb.print_exc()}'
+
     return render_template('eod.html', market_name=mkt_name, dt_date=dt_date)
 
 @app.route('/load_market', methods=('GET', 'POST'))
