@@ -330,7 +330,7 @@ def rtscanners():
 def create_market():
     mkt_name = request.form.get('mkt_name')
     dt_date  = request.form.get('dt_date')
-    realtime = "TRUE" if request.form.get('realtime') else "FALSE"
+    realtime = "TRUE" if request.form.get('realtime') else "FALSE"  
     q = sql.Composed([
         sql.SQL("SELECT"),
         sql.Identifier("mkt_name"),
@@ -373,7 +373,20 @@ def load_market():
 
 @app.route('/delete_market', methods=('GET', 'POST'))
 def delete_market():
-    return "Delete market here"
+    mkt_name = request.form.get('market_name')
+    q = sql.Composed([
+        sql.SQL("DELETE FROM"),
+        sql.Identifier("market_caches"),
+        sql.SQL("WHERE"),
+        sql.Identifier("mkt_name"),
+        sql.SQL("="),
+        sql.Literal(mkt_name)
+    ])
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        return f'Market {mkt_name} delete failed:<br>{tb.print_exc()}'
+    return f'Market {mkt_name} successfully deleted'
 
 @app.route('/market')
 def market():
