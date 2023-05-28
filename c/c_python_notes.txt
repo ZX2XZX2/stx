@@ -1,0 +1,20 @@
+stx) cma@cma-ThinkPad-W541:~/stx/python$ python
+Python 3.8.10 (default, Nov 14 2022, 12:59:47) 
+[GCC 9.4.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import os
+>>> so_file = os.path.join(os.sep, 'usr', 'local', 'sbin', 'core_stx.so')
+>>> import ctypes
+>>> stx_functions = ctypes.CDLL(so_file)
+>>> stx_functions.cal_is_busday(b'2023-01-05')
+2023-01-05 00:03:32 INFO  [cal_get] [core_stx.c:320] getting calendar from database
+2023-01-05 00:03:32 INFO  [cal_get] [core_stx.c:323] got calendar fron database
+2023-01-05 00:03:32 INFO  [cal_get] [core_stx.c:326] populated hashtable with calendar dates
+1
+>>> stx_functions.cal_is_busday(b'2023-01-01')
+0
+>>> stx_functions.cal_current_trading_datetime.restype = ctypes.c_char_p
+>>> stx_functions.cal_current_trading_datetime()
+b'2023-01-04 15:55:00'
+
+https://stackoverflow.com/questions/12906552/ctypes-reference-double-pointer
