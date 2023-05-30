@@ -369,7 +369,23 @@ def create_market():
 
 @app.route('/load_market', methods=('GET', 'POST'))
 def load_market():
-    return "Load market here"
+    mkt_name = request.form.get('market_name')
+    q = sql.Composed([
+        sql.SQL("SELECT * FROM"),
+        sql.Identifier("market_caches"),
+        sql.SQL("WHERE"),
+        sql.Identifier("mkt_name"),
+        sql.SQL("="),
+        sql.Literal(mkt_name)
+    ])
+    res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    if not res:
+        return f'Could not load market {mkt_name}, it does not exist'
+    mkt_date = res[0][1]
+    mkt_dt = res[0][2]
+    mkt_cache = res[0][3]
+    mkt_realtime = res[0][4]
+    return render_template('eod.html', market_name=mkt_name, dt_date=mkt_date)
 
 @app.route('/delete_market', methods=('GET', 'POST'))
 def delete_market():
