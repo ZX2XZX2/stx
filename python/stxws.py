@@ -2,7 +2,10 @@ import ctypes
 import datetime
 import json
 import logging
+import os
+import pandas as pd
 from psycopg2 import sql
+import stxcal
 import stxdb
 import traceback as tb
 
@@ -14,17 +17,12 @@ logging.basicConfig(
 )
 from flask import Flask, render_template, request, url_for, flash
 import matplotlib
-
 from stxplotbin import StxPlotBin
 matplotlib.use('Agg')
-import os
-import pandas as pd
-import stxcal
 from stx247 import StxAnalyzer
 from stxplot import StxPlot
 from stxplotid import StxPlotID
 from stxtsid import StxTSID
-import traceback as tb
 
 ixxx = 0
 refresh = 1 # refrsh time in minutes. for realtime, it is 5 minutes
@@ -321,16 +319,31 @@ def eod_market_analysis():
                            id_days=id_days,
                            frequencydict=frequencydict, freq=freq)
 
-@app.route('/rtscanners')
-def rtscanners():
-    return "This will show the realtime scanners"
+
+def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
+    if isinstance(mkt_dt, datetime.datetime):
+        eod_market = (mkt_dt.hour == 16)
+    elif isinstance(mkt_dt, str):
+        eod_market = mkt_dt.endswith('16:00:00')
+    else:
+        return f"Unexpected type for mkt_dt: {mkt_dt.__class__}"
+    if eod_market:
+        return render_template(
+            'eod.html',
+            market_name=mkt_name,
+            market_date=mkt_date,
+            market_dt=mkt_dt
+        )
+    else:
+        return f"Intraday market {mkt_name}, datetime = {mkt_dt}"
 
 
 @app.route('/create_market', methods=('GET', 'POST'))
 def create_market():
     mkt_name = request.form.get('mkt_name')
-    dt_date  = request.form.get('dt_date')
-    realtime = "TRUE" if request.form.get('realtime') else "FALSE"  
+    mkt_date  = request.form.get('dt_date')
+    mkt_dt = f"{mkt_date} 16:00:00"
+    mkt_realtime = "TRUE" if request.form.get('realtime') else "FALSE"  
     q = sql.Composed([
         sql.SQL("SELECT"),
         sql.Identifier("mkt_name"),
@@ -352,10 +365,10 @@ def create_market():
         sql.SQL(',').join(
             [
                 sql.Literal(mkt_name),
-                sql.Literal(dt_date),
-                sql.Literal(f"{dt_date} 16:00:00"),
+                sql.Literal(mkt_date),
+                sql.Literal(mkt_dt),
                 sql.Literal(mkt_cache),
-                sql.Literal(realtime)
+                sql.Literal(mkt_realtime)
             ]
         ),
         sql.SQL(")")
@@ -364,8 +377,7 @@ def create_market():
         stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
     except:
         return f'Market {mkt_name} create failed:<br>{tb.print_exc()}'
-
-    return render_template('eod.html', market_name=mkt_name, dt_date=dt_date)
+    return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
 
 @app.route('/load_market', methods=('GET', 'POST'))
 def load_market():
@@ -385,7 +397,7 @@ def load_market():
     mkt_dt = res[0][2]
     mkt_cache = res[0][3]
     mkt_realtime = res[0][4]
-    return render_template('eod.html', market_name=mkt_name, dt_date=mkt_date)
+    return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
 
 @app.route('/delete_market', methods=('GET', 'POST'))
 def delete_market():
