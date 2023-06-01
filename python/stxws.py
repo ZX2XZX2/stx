@@ -322,12 +322,24 @@ def eod_market_analysis():
 
 def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_dt, datetime.datetime):
-        eod_market = (mkt_dt.hour == 16)
-    elif isinstance(mkt_dt, str):
-        eod_market = mkt_dt.endswith('16:00:00')
-    else:
-        return f"Unexpected type for mkt_dt: {mkt_dt.__class__}"
+        mkt_dt = mkt_dt.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(mkt_date, datetime.date):
+        mkt_date = mkt_date.strftime("%Y-%m-%d")
+    eod_market = mkt_dt.endswith('16:00:00')
     if eod_market:
+        min_activity = mkt_cache.get('min_activity', 10000)
+        up_limit = mkt_cache.get('up_limit', 8)
+        down_limit = mkt_cache.get('down_limit', 8)
+        _lib.stx_eod_analysis.restype = ctypes.c_char_p
+        ind_names = 'CS_45'
+        res = _lib.stx_eod_analysis(
+            ctypes.c_char_p(mkt_date.encode('UTF-8')),
+            ctypes.c_char_p(ind_names.encode('UTF-8')),
+            ctypes.c_int(min_activity),
+            ctypes.c_int(up_limit),
+            ctypes.c_int(down_limit),
+        )
+        print(f'res = {str(res)}')
         return render_template(
             'eod.html',
             market_name=mkt_name,
