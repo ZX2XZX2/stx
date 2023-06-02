@@ -339,7 +339,9 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
             ctypes.c_int(up_limit),
             ctypes.c_int(down_limit),
         )
-        print(f'res = {str(res)}')
+        res_json = json.loads(res)
+        # _lib.stx_free_text(res)
+        print(f'res = {json.dumps(res_json, indent=2)}')
         return render_template(
             'eod.html',
             market_name=mkt_name,
