@@ -330,7 +330,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         min_activity = mkt_cache.get('min_activity', 10000)
         up_limit = mkt_cache.get('up_limit', 8)
         down_limit = mkt_cache.get('down_limit', 8)
-        _lib.stx_eod_analysis.restype = ctypes.c_char_p
+        _lib.stx_eod_analysis.restype = ctypes.c_void_p
         ind_names = 'CS_45'
         res = _lib.stx_eod_analysis(
             ctypes.c_char_p(mkt_date.encode('UTF-8')),
@@ -339,8 +339,10 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
             ctypes.c_int(up_limit),
             ctypes.c_int(down_limit),
         )
-        res_json = json.loads(res)
-        # _lib.stx_free_text(res)
+        res_json = json.loads(ctypes.cast(res, ctypes.c_char_p).value)
+        _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
+        _lib.stx_free_text.restype = None
+        _lib.stx_free_text(ctypes.c_void_p(res))
         print(f'res = {json.dumps(res_json, indent=2)}')
         return render_template(
             'eod.html',
