@@ -432,6 +432,32 @@ def delete_market():
         return f'Market {mkt_name} delete failed:<br>{tb.print_exc()}'
     return f'Market {mkt_name} successfully deleted'
 
+def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
+                    id_days1=None, frequency1=None):
+    charts = []
+    end_date, _ = end_dt.split()
+    start_iddate = stxcal.move_busdays(end_date, -id_days + 1)
+    freq = int(frequency[:-3])
+    for stk in stk_list:
+        sp = StxPlotBin(_lib, stk, eod_days, end_dt, intraday=False)
+        spid = StxPlotBin(_lib, stk, id_days, end_dt, intraday=True,
+            period=freq)
+        chartdict = {
+            'eod_png': sp.b64_png(),
+            'id_png': spid.b64_png()
+        }
+        if id_days1 is not None:
+            if frequency1 is not None:
+                freq1 = int(frequency1[:-3])
+            else:
+                freq1 = int(frequency[:-3])
+            spid1 = StxPlotBin(_lib, stk, id_days1, end_dt, intraday=True,
+                               period=freq1)
+            chartdict['id1_png'] = spid1.b64_png()
+        charts.append(chartdict)
+    return charts
+
+
 @app.route('/market')
 def market():
     exec_start_time = datetime.datetime.now()
