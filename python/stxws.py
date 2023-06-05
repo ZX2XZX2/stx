@@ -149,9 +149,7 @@ def idcharts():
 @app.route('/analysis', methods=('GET', 'POST'))
 def analysis():
     logging.info('Start analysis')
-    use_c = True
     charts = []
-    id_charts = []
     stks = ''
     dt_date, dt_time = stxcal.current_intraday_busdatetime()
     eod_days = 90
@@ -182,24 +180,7 @@ def analysis():
                 end_dt = f'{end_date} {end_time}'
                 dt_date = end_date
                 dt_time = end_time
-            start_date = stxcal.move_busdays(end_date, -eod_days + 1)
-            start_iddate = stxcal.move_busdays(end_date, -id_days + 1)
-            start_dt = f'{start_iddate} 09:30'
-            frequency = int(freq[:-3])
-            for stk in stk_list:
-                if (use_c):
-                    sp = StxPlotBin(_lib, stk, eod_days, end_dt,
-                                    intraday=False)
-                    spid = StxPlotBin(_lib, stk, id_days, end_dt,
-                                      intraday=True, period=frequency)
-                else:
-                    sp = StxPlot(None, stk, start_date, end_date, stk=stk)
-                    spid = StxPlotID(None, start_dt, end_dt, stk, frequency)
-                chartdict = {
-                    'eod_png': sp.b64_png(),
-                    'id_png': spid.b64_png()
-                }
-                charts.append(chartdict)
+            charts = generate_charts(stk_list, end_dt, eod_days, id_days, freq)
     return render_template('analysis.html', charts=charts, stx=stks,
                            dt_date=dt_date, dt_time=dt_time,
                            eod_days=eod_days, id_days=id_days, freq=freq,
