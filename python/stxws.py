@@ -324,6 +324,21 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
         _lib.stx_free_text.restype = None
         _lib.stx_free_text(ctypes.c_void_p(res))
+        # TODO: fix res_json: it should not be only an array of indicators
+        # indicators should be a list associated with 'indicators' dict key
+        # each item of indicators should have a name, up and down fields
+        # portfolio = res_json.get('portfolio')
+        # watchlist = res_json.get('watchlist')
+        pf_charts, wl_charts, indicator_charts = [], [], {}
+        # if portfolio:
+        #     pass
+        #     pf_charts = generate_charts(...)
+        # if watchlist:
+        #     pass
+        #     wl_charts = generate_charts(...)
+
+        for indicator in res_json:
+            print(f'Indicator  {indicator}')
         print(f'res = {json.dumps(res_json, indent=2)}')
         return render_template(
             'eod.html',
