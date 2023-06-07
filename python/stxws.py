@@ -369,7 +369,7 @@ def create_market():
     res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
     if res:
         return f'A market named {mkt_name} already exists'
-    mkt_cache = json.dumps({"portfolio": [], "watchlist": [], "setups": {}})
+    mkt_cache = {"portfolio": [], "watchlist": [], "setups": {}}
     q = sql.Composed([
         sql.SQL("INSERT INTO"),
         sql.Identifier("market_caches"),
@@ -379,7 +379,7 @@ def create_market():
                 sql.Literal(mkt_name),
                 sql.Literal(mkt_date),
                 sql.Literal(mkt_dt),
-                sql.Literal(mkt_cache),
+                sql.Literal(json.dumps(mkt_cache)),
                 sql.Literal(mkt_realtime)
             ]
         ),
