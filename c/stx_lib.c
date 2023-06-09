@@ -205,21 +205,19 @@ cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
             min_ind_activity, min_stp_activity, max_stp_range, download_spots,
             download_options, eod);
         PQclear(res);
-        res = db_query(sql_cmd);
-        num_recs = PQntuples(res);
-        if(num_recs <= 0) {
-            LOGERROR("Could not get EOD analysis for %s, %d\n",
-                     dt, min_activity);
-            PQclear(res);
-            return NULL;
-        }
     }
-
+    res = db_query(sql_cmd);
+    num_recs = PQntuples(res);
+    if(num_recs <= 0) {
+        LOGERROR("Could not get EOD analysis for %s, %d\n",
+                    dt, min_activity);
+        PQclear(res);
+        return NULL;
+    }
     cJSON *ind_res = cJSON_CreateObject();
-    cJSON *ind_data = cJSON_AddObjectToObject(ind_res, ind_name);
-    cJSON *ind_up = cJSON_AddArrayToObject(ind_data, "Up");
-    cJSON *ind_down = cJSON_AddArrayToObject(ind_data, "Down");
-
+    cJSON_AddStringToObject(ind_res, "name", ind_name);
+    cJSON *ind_up = cJSON_AddArrayToObject(ind_res, "Up");
+    cJSON *ind_down = cJSON_AddArrayToObject(ind_res, "Down");
     for(int ix = 0; ix < num_recs; ix++) {
         char *stk = PQgetvalue(res, ix, 0);
         int bucket_rank =  atoi(PQgetvalue(res, ix, 1));
@@ -254,7 +252,8 @@ cJSON* stx_indicator_analysis(char *dt, char *expiry, char *ind_name,
 char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
                        int up_limit, int down_limit) {
     char *expiry = NULL, *ind_name = NULL;
-    cJSON *ind_list = cJSON_CreateArray();
+    cJSON *mkt = cJSON_CreateObject();
+    cJSON *ind_list = cJSON_AddArrayToObject(mkt, "indicators");
     cal_expiry(cal_ix(dt), &expiry);
     ind_name = strtok(ind_names, ",");
     while (ind_name) {
@@ -265,8 +264,8 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
             cJSON_AddItemToArray(ind_list, ind_data);
         ind_name = strtok(NULL, ",");
     }
-    char *res = cJSON_Print(ind_list);
-    cJSON_Delete(ind_list);
+    char *res = cJSON_Print(mkt);
+    cJSON_Delete(mkt);
     return res;
 }
 
