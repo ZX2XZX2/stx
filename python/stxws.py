@@ -324,27 +324,40 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
         _lib.stx_free_text.restype = None
         _lib.stx_free_text(ctypes.c_void_p(res))
-        # TODO: fix res_json: it should not be only an array of indicators
-        # indicators should be a list associated with 'indicators' dict key
-        # each item of indicators should have a name, up and down fields
-        # portfolio = res_json.get('portfolio')
-        # watchlist = res_json.get('watchlist')
+        portfolio = res_json.get('portfolio')
+        watchlist = res_json.get('watchlist')
+        indicators = res_json.get('indicators')
         pf_charts, wl_charts, indicator_charts = [], [], {}
-        # if portfolio:
-        #     pass
+        if portfolio:
+            pass
         #     pf_charts = generate_charts(...)
-        # if watchlist:
-        #     pass
+        if watchlist:
+            pass
         #     wl_charts = generate_charts(...)
-
-        for indicator in res_json:
-            print(f'Indicator  {indicator}')
+        if indicators:
+            for indicator in indicators:
+                indicator_name = indicator.get('name')
+                ind_up = indicator.get('Up')
+                ind_down = indicator.get('Down')
+                stx_up = [x['ticker'] for x in ind_up]
+                stx_down = [x['ticker'] for x in ind_down]
+                up_charts = generate_charts(stx_up, f'{mkt_date} 15:55:00',
+                                            120, 20, '60min')
+                down_charts = generate_charts(stx_down, f'{mkt_date} 15:55:00',
+                                              120, 20, '60min')
+                indicator_charts[indicator_name] = {
+                    "up": up_charts,
+                    "down": down_charts
+                }
         print(f'res = {json.dumps(res_json, indent=2)}')
         return render_template(
             'eod.html',
             market_name=mkt_name,
             market_date=mkt_date,
-            market_dt=mkt_dt
+            market_dt=mkt_dt,
+            pf_charts=pf_charts,
+            wl_charts=wl_charts,
+            indicator_charts=indicator_charts
         )
     else:
         return f"Intraday market {mkt_name}, datetime = {mkt_dt}"
