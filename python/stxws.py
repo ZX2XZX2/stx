@@ -452,6 +452,7 @@ def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
         spid = StxPlotBin(_lib, stk, id_days, end_dt, intraday=True,
             period=freq)
         chartdict = {
+            'name': stk,
             'eod_png': sp.b64_png(),
             'id_png': spid.b64_png()
         }
