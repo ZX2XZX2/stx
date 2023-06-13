@@ -9,13 +9,19 @@
     {% for indicator_name, indicator_data in indicator_charts.items() %}
       <h4> {{ indicator_name}} UP </h4>
       {% for chart in indicator_data['up'] %}
-        <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
-        <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+        <fieldset>
+          <legend>{{ chart['name'] }}</legend>
+          <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+          <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+        </fieldset>
       {% endfor %}
       <h4> {{ indicator_name}} DOWN </h4>
       {% for chart in indicator_data['down'] %}
-        <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
-        <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+        <fieldset>
+          <legend>{{ chart['name'] }}</legend>
+          <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+          <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+        </fieldset>
       {% endfor %}
     {% endfor %}
 {% endblock %}
