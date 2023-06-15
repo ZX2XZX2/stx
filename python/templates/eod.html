@@ -13,7 +13,7 @@
           <legend>{{ chart['name'] }}</legend>
           <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
           <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
-          <form style="display: none" action="stk_analysis" method="post">
+          <form style="display: none" target="_blank" rel="noopener noreferrer" action="stk_analysis" method="post">
             <input type="hidden" name="stk" value="{{ chart['name'] }}">
             <input type="hidden" name="stk_dt" value="{{ market_dt }}">
             <input type="hidden" name="market_name" value="{{ market_name }}">
@@ -28,7 +28,7 @@
           <legend>{{ chart['name'] }}</legend>
           <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
           <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
-          <form style="display: none" action="stk_analysis" method="post">
+          <form style="display: none" target="_blank" rel="noopener noreferrer" action="stk_analysis" method="post">
             <input type="hidden" name="stk" value="{{ chart['name'] }}">
             <input type="hidden" name="stk_dt" value="{{ market_dt }}">
             <input type="hidden" name="market_name" value="{{ market_name }}">
