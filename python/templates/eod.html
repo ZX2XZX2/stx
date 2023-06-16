@@ -13,6 +13,7 @@
           <legend>{{ chart['name'] }}</legend>
           <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
           <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+          <br>
           <form style="display: none" target="_blank" rel="noopener noreferrer" action="stk_analysis" method="post">
             <input type="hidden" name="stk" value="{{ chart['name'] }}">
             <input type="hidden" name="stk_dt" value="{{ market_dt }}">
@@ -20,6 +21,12 @@
             <button type="submit" id="button_to_link"> </button>
           </form>
           <label style="text-decoration: underline" for="button_to_link"> Analysis </label>
+          <form style="display: none" target="_blank" rel="noopener noreferrer" action="wl_mgmt" method="post">
+            <input type="hidden" name="stk" value="{{ chart['name'] }}">
+            <input type="hidden" name="market_name" value="{{ market_name }}">
+            <button type="submit" id="button_wl_mgmt"> </button>
+          </form>
+          <label style="text-decoration: underline" for="button_to_link"> Add to Watchlist </label>
         </fieldset>
       {% endfor %}
       <h4> {{ indicator_name}} DOWN </h4>
@@ -28,6 +35,7 @@
           <legend>{{ chart['name'] }}</legend>
           <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
           <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+          <br>
           <form style="display: none" target="_blank" rel="noopener noreferrer" action="stk_analysis" method="post">
             <input type="hidden" name="stk" value="{{ chart['name'] }}">
             <input type="hidden" name="stk_dt" value="{{ market_dt }}">
@@ -35,6 +43,12 @@
             <button type="submit" id="button_to_link"> </button>
           </form>
           <label style="text-decoration: underline" for="button_to_link"> Analysis </label>
+          <form style="display: none" target="_blank" rel="noopener noreferrer" action="wl_mgmt" method="post">
+            <input type="hidden" name="stk" value="{{ chart['name'] }}">
+            <input type="hidden" name="market_name" value="{{ market_name }}">
+            <button type="submit" id="button_wl_mgmt"> </button>
+          </form>
+          <label style="text-decoration: underline" for="button_to_link"> Add to Watchlist </label>
         </fieldset>
       {% endfor %}
     {% endfor %}
