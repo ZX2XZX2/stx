@@ -27,7 +27,11 @@
             <input type="hidden" name="market_name" value="{{ market_name }}">
             <button type="submit" id="button_wl_mgmt"> </button>
           </form>
-          <label style="text-decoration: underline" for="button_to_link"> Add to Watchlist </label>
+          {% if chart['name'] in watchlist %}
+            <label style="text-decoration: underline" for="button_to_link"> Remove from Watchlist </label>
+          {% else %}
+            <label style="text-decoration: underline" for="button_to_link"> Add to Watchlist </label>
+          {% endif %}
         </fieldset>
       {% endfor %}
       <h4> {{ indicator_name}} DOWN </h4>
