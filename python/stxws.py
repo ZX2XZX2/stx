@@ -357,6 +357,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
             market_dt=mkt_dt,
             pf_charts=pf_charts,
             wl_charts=wl_charts,
+            watchlist=['NFLX'],
             indicator_charts=indicator_charts
         )
     else:
@@ -542,3 +543,13 @@ def markets():
         num_down=num_down,
         min_activity=min_activity,
     )
+
+@app.route('/wl_mgmt', methods=['POST'])
+def watchlist_mgmt():
+    print(f"{json.dumps(request.form)}")
+    if request.form['action'] == 'Add':
+        logging.info(f"Adding {request.form['stk']} to watchlist")
+        return f"Added {request.form['stk']} to watchlist"
+    else:
+        logging.info(f"Removing {request.form['stk']} from watchlist")
+        return f"Removed {request.form['stk']} from watchlist"
