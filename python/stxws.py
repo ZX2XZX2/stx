@@ -553,3 +553,10 @@ def watchlist_mgmt():
     else:
         logging.info(f"Removing {request.form['stk']} from watchlist")
         return f"Removed {request.form['stk']} from watchlist"
+
+@app.route('/stk_analysis', methods=['POST'])
+def stk_analysis():
+    stk = request.form['stk']
+    dt = request.form['stk_dt']
+    market_name = request.form['market_name']
+    return f"Market {market_name}: analyzing {stk} as of {dt}"
