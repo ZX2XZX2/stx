@@ -446,7 +446,6 @@ def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
                     id_days1=None, frequency1=None):
     charts = []
     end_date, _ = end_dt.split()
-    start_iddate = stxcal.move_busdays(end_date, -id_days + 1)
     freq = int(frequency[:-3])
     for stk in stk_list:
         sp = StxPlotBin(_lib, stk, eod_days, end_dt, intraday=False)
@@ -557,6 +556,22 @@ def watchlist_mgmt():
 @app.route('/stk_analysis', methods=['POST'])
 def stk_analysis():
     stk = request.form['stk']
-    dt = request.form['stk_dt']
+    dt = request.form['stk_dt'].replace("16:00:00", "15:55:00")
     market_name = request.form['market_name']
-    return f"Market {market_name}: analyzing {stk} as of {dt}"
+    logging.info(f"Market {market_name}: analyzing {stk} as of {dt}")
+    include_spy = False
+    stk_list = [stk]
+    if include_spy:
+        stk_list.append('SPY')
+    logging.info(f"dt is of type: {dt.__class__}")
+    charts = []
+    dt_date, dt_time = stxcal.current_intraday_busdatetime()
+    # TODO: later replace with market configuration
+    eod_days = 120
+    id_days1 = 20
+    id_days2 = 2
+    freq1 = '60min'
+    freq2 = '5min'
+    charts = generate_charts(stk_list, dt, eod_days, id_days1, freq1,
+        id_days2, freq2)
+    return render_template('stk_analysis.html', charts=charts)
