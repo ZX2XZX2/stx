@@ -553,8 +553,7 @@ def watchlist_mgmt():
         logging.info(f"Removing {request.form['stk']} from watchlist")
         return f"Removed {request.form['stk']} from watchlist"
 
-@app.route('/stk_analysis', methods=['POST'])
-def stk_analysis():
+def gen_analysis_page(request):
     stk = request.form['stk']
     dt = request.form['stk_dt'].replace("16:00:00", "15:55:00")
     market_name = request.form['market_name']
@@ -574,4 +573,15 @@ def stk_analysis():
     freq2 = '5min'
     charts = generate_charts(stk_list, dt, eod_days, id_days1, freq1,
         id_days2, freq2)
-    return render_template('stk_analysis.html', charts=charts)
+    return charts, dt
+
+@app.route('/stk_analysis', methods=['POST'])
+def stk_analysis():
+    charts, dt = gen_analysis_page(request)
+    return render_template('stk_analysis.html', charts=charts, dt=dt, trade=False)
+    # return render_template('stk_analysis.html', charts=charts, dt=request.form['stk_dt'])
+
+@app.route('/trade', methods=['POST'])
+def trade():
+    charts, dt = gen_analysis_page(request)
+    return render_template('stk_analysis.html', charts=charts, dt=dt, trade=True)
