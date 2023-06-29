@@ -403,6 +403,15 @@ int main() {
         "PRIMARY KEY(mkt_name))";
     create_table_if_missing(cnx, "market_caches", create_market_caches);
 
+    /**
+     *  This table stores the watchlists for each market
+     */
+    char* create_market_watch = "CREATE TABLE market_watch( "   \
+        "mkt VARCHAR(128) NOT NULL, "                           \
+        "stk VARCHAR(16) NOT NULL, "                            \
+        "PRIMARY KEY(mkt, stk))";
+    create_table_if_missing(cnx, "market_watch", create_market_watch);
+
     PQfinish(cnx);
     return 0;
 }
