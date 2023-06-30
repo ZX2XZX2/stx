@@ -307,6 +307,21 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_date, datetime.date):
         mkt_date = mkt_date.strftime("%Y-%m-%d")
     eod_market = mkt_dt.endswith('16:00:00')
+    q = sql.Composed([
+        sql.SQL("SELECT"),
+        sql.Identifier("stk"),
+        sql.SQL("FROM"),
+        sql.Identifier("market_watch"),
+        sql.SQL("WHERE"),
+        sql.Identifier("mkt"),
+        sql.SQL("="),
+        sql.Literal(mkt_name)
+    ])
+    res_db = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    logging.info(f"res_db = {res_db}")
+    watchlist = [x[0] for x in res_db]
+    logging.info(f"watchlist = {watchlist}")
+
     if eod_market:
         min_activity = mkt_cache.get('min_activity', 10000)
         up_limit = mkt_cache.get('up_limit', 8)
@@ -325,15 +340,15 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         _lib.stx_free_text.restype = None
         _lib.stx_free_text(ctypes.c_void_p(res))
         portfolio = res_json.get('portfolio')
-        watchlist = res_json.get('watchlist')
+        # watchlist = res_json.get('watchlist')
         indicators = res_json.get('indicators')
         pf_charts, wl_charts, indicator_charts = [], [], {}
         if portfolio:
             pass
         #     pf_charts = generate_charts(...)
         if watchlist:
-            pass
-        #     wl_charts = generate_charts(...)
+             wl_charts = generate_charts(watchlist, f'{mkt_date} 15:55:00',
+                                         120, 20, '60min')
         if indicators:
             for indicator in indicators:
                 indicator_name = indicator.get('name')
@@ -357,7 +372,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
             market_dt=mkt_dt,
             pf_charts=pf_charts,
             wl_charts=wl_charts,
-            watchlist=['NFLX'],
+            watchlist=watchlist,
             indicator_charts=indicator_charts
         )
     else:
