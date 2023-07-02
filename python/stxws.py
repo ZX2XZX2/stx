@@ -560,10 +560,25 @@ def markets():
 
 @app.route('/wl_mgmt', methods=['POST'])
 def watchlist_mgmt():
-    print(f"{json.dumps(request.form)}")
-    if request.form['action'] == 'Add':
-        logging.info(f"Adding {request.form['stk']} to watchlist")
-        return f"Added {request.form['stk']} to watchlist"
+    stk = request.form.get("stk")
+    market_name = request.form.get("market_name")
+    action = request.form.get("action")
+    if action == 'Add':
+        q = sql.Composed([
+            sql.SQL("INSERT INTO"),
+            sql.Identifier("market_watch"),
+            sql.SQL("VALUES ("),
+            sql.SQL(',').join([
+                sql.Literal(market_name),
+                sql.Literal(stk)
+            ]),
+            sql.SQL(") ON CONFLICT DO NOTHING")
+        ])
+        try:
+            stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        except:
+            return f'Failed to add {stk} to {market_name} watchlist:<br>{tb.print_exc()}'
+        return f"Added {stk} to {market_name} watchlist"
     else:
         logging.info(f"Removing {request.form['stk']} from watchlist")
         return f"Removed {request.form['stk']} from watchlist"
