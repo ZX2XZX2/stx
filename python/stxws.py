@@ -580,8 +580,24 @@ def watchlist_mgmt():
             return f'Failed to add {stk} to {market_name} watchlist:<br>{tb.print_exc()}'
         return f"Added {stk} to {market_name} watchlist"
     else:
-        logging.info(f"Removing {request.form['stk']} from watchlist")
-        return f"Removed {request.form['stk']} from watchlist"
+        q = sql.Composed([
+            sql.SQL("DELETE FROM"),
+            sql.Identifier("market_watch"),
+            sql.SQL("WHERE"),
+            sql.Identifier("stk"),
+            sql.SQL("="),
+            sql.Literal(stk),
+            sql.SQL("AND"),
+            sql.Identifier("mkt"),
+            sql.SQL("="),
+            sql.Literal(market_name)
+        ])
+        try:
+            print(f"DELETE SQL: {q.as_string(stxdb.db_get_cnx())}")
+            stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        except:
+            return f'Failed to remove {stk} from {market_name} watchlist:<br>{tb.print_exc()}'
+        return f"Removed {stk} from {market_name} watchlist"
 
 def gen_analysis_page(request):
     stk = request.form['stk']
