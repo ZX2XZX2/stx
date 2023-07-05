@@ -192,26 +192,24 @@ int main() {
         "PRIMARY KEY(dt, analysis))";
     create_table_if_missing(cnx, "analyses", create_analyses);
 
+    /**
+     * Store for now only stock trades, no worry about options
+     * 'direction' is either long (1), or short (-1)
+     * 'action' is buy (-1), or sell(1)
+     * 'price' is the price at which trade took place
+     * By summing the 'quantity' per stock at a specific time,
+     * one can rebuild the portfolio at that time
+     */
     char* create_trades = "CREATE TABLE trades("         \
-        "tag VARCHAR(32) NOT NULL,"                              \
-        "in_dt DATE NOT NULL,"                           \
-        "out_dt DATE NOT NULL,"                          \
+        "market VARCHAR(32) NOT NULL,"                   \
         "stk VARCHAR(16) NOT NULL,"                      \
-        "setup VARCHAR(16) NOT NULL,"                    \
-        "cp VARCHAR(1) NOT NULL,"                        \
-        "exp_dt DATE NOT NULL,"                          \
-        "strike INTEGER NOT NULL,"                       \
-        "in_ask INTEGER,"                                \
-        "out_bid INTEGER,"                               \
-        "opt_pnl INTEGER NOT NULL,"                      \
-        "opt_pct_pnl INTEGER NOT NULL,"                  \
-        "moneyness INTEGER NOT NULL,"                    \
-        "in_spot INTEGER NOT NULL,"                      \
-        "in_range INTEGER NOT NULL,"                     \
-        "out_spot INTEGER NOT NULL,"                     \
-        "spot_pnl INTEGER NOT NULL,"                     \
-        "num_contracts INTEGER NOT NULL,"                \
-        "PRIMARY KEY(tag, in_dt, out_dt, stk, setup, cp, exp_dt, strike))";
+        "dt TIMESTAMP NOT NULL,"                         \
+        "direction SMALLINT NOT NULL, "                  \
+        "action SMALLINT NOT NULL, "                     \
+        "price INTEGER NOT NULL,"                        \
+        "quantity INTEGER NOT NULL,"                     \
+        "info JSONB NOT NULL DEFAULT '{}',"              \
+        "PRIMARY KEY(market, stk, dt, direction, action))";
     create_table_if_missing(cnx, "trades", create_trades);
 
     /* ALTER TABLE jl_setups ADD COLUMN tm TIME NOT NULL DEFAULT '20:00'; */
