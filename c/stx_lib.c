@@ -276,6 +276,71 @@ void stx_free_text(char *text) {
     }
 }
 
+/**
+ * @brief Get JSON number of shares / average price for in/out positions
+ * 
+ * @param portfolio - porfolio JSON object
+ * @param market - market name
+ * @param dt_date - as of date (yyyy-mm-dd)
+ * @param dt_time - as of time (HH:MM:SS)
+ * @param position_type -1 for initiated positions, 1 for closed positions
+ */
+void get_portfolio_positions(cJSON *portfolio, char *market, char *dt_date,
+                             char *dt_time, int position_type) {
+    char sql_cmd[256];
+    /**
+     * @brief get number of shares and average price for initiated positions
+     * 
+     */
+    memset(sql_cmd, 0, 256 * sizeof(char));
+    sprintf(
+        sql_cmd, "SELECT stk, direction, SUM(quantity), "
+        "SUM(price * quantity) / SUM(quantity) FROM trades "
+        "WHERE market = '%s' AND DATE(dt) = '%s' AND dt <= '%s %s' "
+        "AND action * direction = %d GROUP BY stk, direction",
+        market, dt_date, dt_date, dt_time, position_type);
+    PGresult *res = db_query(sql_cmd);
+    int num_recs = PQntuples(res);
+    for(int ix = 0; ix < num_recs; ix++) {
+        char *stk = PQgetvalue(res, ix, 0);
+        int direction = atoi(PQgetvalue(res, ix, 1));
+        int quantity = atoi(PQgetvalue(res, ix, 2));
+        float avg_price = atof(PQgetvalue(res, ix, 3));
+        cJSON *stk_entry = cJSON_GetObjectItem(portfolio, stk);
+        if (stk_entry == NULL)
+            stk_entry = cJSON_AddObjectToObject(portfolio, stk);
+        cJSON *dir_entry = cJSON_GetObjectItem(stk_entry, 
+            (direction == 1)? "Long": "Short");
+        if (dir_entry == NULL)
+            dir_entry = cJSON_AddObjectToObject(stk_entry, 
+                (direction == 1)? "Long": "Short");
+        cJSON_AddNumberToObject(dir_entry,
+            position_type == -1? "in_shares": "out_shares", (double)quantity);
+        cJSON_AddNumberToObject(dir_entry, 
+            position_type == -1? "avg_in_price": "avg_out_price",
+            (double)avg_price);
+    }
+    PQclear(res);
+    res = NULL;
+}
+
+/**
+ * @brief Get the portfolio object, for now only works intraday
+ * 
+ * @param market - name of the market
+ * @param dt_date - as of date (yyyy-mm-dd)
+ * @param dt_time - as of time (HH:MM:SS)
+ * @return char* - serialized JSON stk/dir/(num_shares, avg_price)
+ */
+char* stx_get_portfolio(char *market, char *dt_date, char *dt_time) {
+    cJSON *portfolio = cJSON_CreateObject();
+    get_portfolio_positions(portfolio, market, dt_date, dt_time, -1);
+    get_portfolio_positions(portfolio, market, dt_date, dt_time, 1);
+    char *res = cJSON_Print(portfolio);
+    cJSON_Delete(portfolio);
+    return res;
+}
+
 int main(int argc, char** argv) {
     char stk[16], ed[20];
     strcpy(stk, "TSLA");
@@ -320,5 +385,12 @@ int main(int argc, char** argv) {
         free(res_json);
         res_json = NULL;
     }
+    res_json = stx_get_portfolio("market-3", "2023-06-06", "14:00:00");
+    if (res_json != NULL) {
+        LOGINFO("res_json = \n%s\n", res_json);
+        free(res_json);
+        res_json = NULL;
+    }
+
     return 0;
 }
