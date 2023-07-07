@@ -281,12 +281,13 @@ void stx_free_text(char *text) {
  * 
  * @param portfolio - porfolio JSON object
  * @param market - market name
+ * @param dt - as of datetime (yyyy-mm-dd HH:MM:SS)
  * @param dt_date - as of date (yyyy-mm-dd)
  * @param dt_time - as of time (HH:MM:SS)
  * @param position_type -1 for initiated positions, 1 for closed positions
  */
-void get_portfolio_positions(cJSON *portfolio, char *market, char *dt_date,
-                             char *dt_time, int position_type) {
+void get_portfolio_positions(cJSON *portfolio, char *market, char *dt,
+                             char *dt_date, char *dt_time, int position_type) {
     char sql_cmd[256];
     /**
      * @brief get number of shares and average price for initiated positions
@@ -319,6 +320,13 @@ void get_portfolio_positions(cJSON *portfolio, char *market, char *dt_date,
         cJSON_AddNumberToObject(dir_entry, 
             position_type == -1? "avg_in_price": "avg_out_price",
             (double)avg_price);
+        cJSON *crt_price = cJSON_GetObjectItem(dir_entry, "current_price");
+        if (crt_price == NULL) {
+            stx_data_ptr id_data = NULL, eod_data = NULL;
+            stx_get_stx_data_ptrs(stk, dt, true, &eod_data, &id_data);
+            cJSON_AddNumberToObject(dir_entry, "current_price",
+                (double) id_data->data[id_data->pos].close);
+        }
     }
     PQclear(res);
     res = NULL;
@@ -328,14 +336,15 @@ void get_portfolio_positions(cJSON *portfolio, char *market, char *dt_date,
  * @brief Get the portfolio object, for now only works intraday
  * 
  * @param market - name of the market
+ * @param dt - as of datetime (yyyy-mm-dd HH:MM:SS)
  * @param dt_date - as of date (yyyy-mm-dd)
  * @param dt_time - as of time (HH:MM:SS)
  * @return char* - serialized JSON stk/dir/(num_shares, avg_price)
  */
-char* stx_get_portfolio(char *market, char *dt_date, char *dt_time) {
+char* stx_get_portfolio(char *market, char *dt, char *dt_date, char *dt_time) {
     cJSON *portfolio = cJSON_CreateObject();
-    get_portfolio_positions(portfolio, market, dt_date, dt_time, -1);
-    get_portfolio_positions(portfolio, market, dt_date, dt_time, 1);
+    get_portfolio_positions(portfolio, market, dt, dt_date, dt_time, -1);
+    get_portfolio_positions(portfolio, market, dt, dt_date, dt_time, 1);
     char *res = cJSON_Print(portfolio);
     cJSON_Delete(portfolio);
     return res;
@@ -385,7 +394,8 @@ int main(int argc, char** argv) {
         free(res_json);
         res_json = NULL;
     }
-    res_json = stx_get_portfolio("market-3", "2023-06-06", "14:00:00");
+    res_json = stx_get_portfolio("market-3", "2023-06-06 14:00:00",
+        "2023-06-06", "14:00:00");
     if (res_json != NULL) {
         LOGINFO("res_json = \n%s\n", res_json);
         free(res_json);
