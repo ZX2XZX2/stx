@@ -6,6 +6,39 @@
   <br>
   <h3>Market {{ market_name }} </h3>
   <p>The market date is {{ market_date }}, the datetime is {{ market_dt }}</p>
+      {% if pf_charts|length > 0 %}
+      <h4>Portfolio</h4>
+      {% for chart in pf_charts %}
+      <fieldset>
+        <legend>{{ chart['name'] }}</legend>
+        <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+        <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+        <br>
+        <form style="display: none" target="_blank" rel="noopener noreferrer" action="/stk_analysis" method="post">
+          <input type="hidden" name="stk" value="{{ chart['name'] }}">
+          <input type="hidden" name="stk_dt" value="{{ market_dt }}">
+          <input type="hidden" name="market_name" value="{{ market_name }}">
+          <button type="submit" id="button_analysis_{{ chart['name'] }}"> </button>
+        </form>
+        <label style="text-decoration: underline" for="button_analysis_{{ chart['name'] }}"> Analysis </label>
+        &nbsp&nbsp
+        <form style="display: none" target="_blank" rel="noopener noreferrer" action="/wl_mgmt" method="post">
+          <input type="hidden" name="stk" value="{{ chart['name'] }}">
+          <input type="hidden" name="market_name" value="{{ market_name }}">
+          {% if chart['name'] in watchlist %}
+            <button type="submit" id="button_wl_mgmt_{{ chart['name'] }}" name="action" value="Remove"></button>
+          {% else %}
+            <button type="submit" id="button_wl_mgmt_{{ chart['name'] }}" name="action" value="Add"></button>
+          {% endif %}
+        </form>
+        {% if chart['name'] in watchlist %}
+          <label style="text-decoration: underline" for="button_wl_mgmt_{{ chart['name'] }}"> Remove from Watchlist </label>
+        {% else %}
+          <label style="text-decoration: underline" for="button_wl_mgmt_{{ chart['name'] }}"> Add to Watchlist </label>
+        {% endif %}
+      </fieldset>
+      {% endfor %}
+    {% endif %}
     {% if wl_charts|length > 0 %}
       <h4>Watchlist</h4>
       {% for chart in wl_charts %}
@@ -37,8 +70,7 @@
           <label style="text-decoration: underline" for="button_wl_mgmt_{{ chart['name'] }}"> Add to Watchlist </label>
         {% endif %}
       </fieldset>
-    {% endfor %}
-
+      {% endfor %}
     {% endif %}
     {% for indicator_name, indicator_data in indicator_charts.items() %}
       <h4> {{ indicator_name}} UP </h4>
