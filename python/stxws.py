@@ -300,6 +300,47 @@ def eod_market_analysis():
                            id_days=id_days,
                            frequencydict=frequencydict, freq=freq)
 
+def get_portfolio(mkt_name, mkt_dt):
+    dt_date, dt_time = mkt_dt.split()
+    _lib.stx_get_portfolio.restype = ctypes.c_void_p
+    res = _lib.stx_get_portfolio(
+        ctypes.c_char_p(mkt_name.encode('UTF-8')),
+        ctypes.c_char_p(mkt_dt.encode('UTF-8')),
+        ctypes.c_char_p(dt_date.encode('UTF-8')),
+        ctypes.c_char_p(dt_time.encode('UTF-8'))
+    )
+    portfolio_str = ctypes.cast(res, ctypes.c_char_p).value
+    portfolio_json = json.loads(portfolio_str)
+    logging.info(f"portfolio_json = {json.dumps(portfolio_json, indent=2)}")
+    _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
+    _lib.stx_free_text.restype = None
+    _lib.stx_free_text(ctypes.c_void_p(res))
+    open_positions, closed_positions = [], []
+    for stk, position in portfolio_json.items():
+        pos = position.get('Long')
+        if pos:
+            direction = 'Long'
+            dir = 1
+        else:
+            pos = position.get('Short')
+            direction = 'Short'
+            dir = -1
+        open_shares = pos['in_shares'] - pos['out_shares']
+        unrealized_pnl = open_shares * dir * (pos['current_price'] -
+            pos['avg_in_price'])
+        realized_pnl = pos['out_shares'] * dir * (pos['avg_out_price'] -
+            pos['avg_in_price'])
+        portfolio_line = [
+            stk, direction, open_shares, pos['avg_in_price'],
+            pos['current_price'], unrealized_pnl,
+            pos['in_shares'], pos['avg_in_price'],
+            pos['out_shares'], pos['avg_out_price'], realized_pnl
+        ]
+        if open_shares != 0:
+            open_positions.append(portfolio_line)
+        else:
+            closed_positions.append(portfolio_line)
+    return open_positions + closed_positions
 
 def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_dt, datetime.datetime):
@@ -307,6 +348,8 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_date, datetime.date):
         mkt_date = mkt_date.strftime("%Y-%m-%d")
     eod_market = mkt_dt.endswith('16:00:00')
+    portfolio = get_portfolio(mkt_name,
+        mkt_dt.replace('16:00:00', '15:55:00'))
     q = sql.Composed([
         sql.SQL("SELECT"),
         sql.Identifier("stk"),
@@ -339,16 +382,17 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
         _lib.stx_free_text.restype = None
         _lib.stx_free_text(ctypes.c_void_p(res))
-        portfolio = res_json.get('portfolio')
+        # portfolio = res_json.get('portfolio')
         # watchlist = res_json.get('watchlist')
         indicators = res_json.get('indicators')
+        pf_list = [x[0] for x in portfolio]
         pf_charts, wl_charts, indicator_charts = [], [], {}
-        if portfolio:
-            pass
-        #     pf_charts = generate_charts(...)
+        if pf_list:
+            pf_charts = generate_charts(pf_list, f'{mkt_date} 15:55:00',
+                                        120, 20, '60min')
         if watchlist:
-             wl_charts = generate_charts(watchlist, f'{mkt_date} 15:55:00',
-                                         120, 20, '60min')
+            wl_charts = generate_charts(watchlist, f'{mkt_date} 15:55:00',
+                                        120, 20, '60min')
         if indicators:
             for indicator in indicators:
                 indicator_name = indicator.get('name')
