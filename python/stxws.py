@@ -417,7 +417,8 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
             pf_charts=pf_charts,
             wl_charts=wl_charts,
             watchlist=watchlist,
-            indicator_charts=indicator_charts
+            indicator_charts=indicator_charts,
+            portfolio=portfolio
         )
     else:
         return f"Intraday market {mkt_name}, datetime = {mkt_dt}"
