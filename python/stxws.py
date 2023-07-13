@@ -669,10 +669,13 @@ def gen_analysis_page(request):
 @app.route('/stk_analysis', methods=['POST'])
 def stk_analysis():
     charts, dt = gen_analysis_page(request)
-    return render_template('stk_analysis.html', charts=charts, dt=dt, trade=False)
+    return render_template('stk_analysis.html', chart=charts[0], dt=dt)
     # return render_template('stk_analysis.html', charts=charts, dt=request.form['stk_dt'])
 
-@app.route('/trade', methods=['POST'])
-def trade():
-    charts, dt = gen_analysis_page(request)
-    return render_template('stk_analysis.html', charts=charts, dt=dt, trade=True)
+@app.route('/input_trade', methods=['GET', 'POST'])
+def input_trade():
+    if request.method == 'POST':
+        return f"Trade for {request.form['stk']} as of {request.form['stk_dt']}, market = {request.form['market_name']}"
+    return "this is the trading block"
+    # charts, dt = gen_analysis_page(request)
+    # return render_template('stk_analysis.html', charts=charts, dt=dt, trade=True)
