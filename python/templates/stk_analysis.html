@@ -2,27 +2,19 @@
 
 {% block content %}
   <p></p>
-  {% for chart in charts %}
-    {% if 'id1_png' in chart %}
-      <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
-    {% endif %}
-    <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
-    <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
-    <br>
-    {% if not trade %}
-      <form style="display: none" target="_blank" rel="noopener noreferrer" action="/trade" method="post">
-        <input type="hidden" name="stk" value="{{ chart['name'] }}">
-        <input type="hidden" name="stk_dt" value="{{ dt }}">
-        <input type="hidden" name="market_name" value="{{ market_name }}">
-        {% if dt.endswith("16:00:00") %}
-          <button type="submit" id="button_trade_{{ chart['name'] }}" disabled> </button>
-        {% else %}
-          <button type="submit" id="button_trade_{{ chart['name'] }}"> </button>
-        {% endif %}
-      </form>
-      <label style="text-decoration: underline" for="button_trade_{{ chart['name'] }}"> Trade </label>
-    {% else %}
-      <p>This is the trading block</p>
-    {% endif %}
-  {% endfor %}
+  {% if 'id1_png' in chart %}
+    <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
+  {% endif %}
+  <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+  <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+  <br>
+  <form action="/input_trade" style="display: none" target="trade_iframe" method="post">
+    <input type="hidden" name="stk" value="{{ chart['name'] }}">
+    <input type="hidden" name="stk_dt" value="{{ dt }}">
+    <input type="hidden" name="market_name" value="{{ market_name }}">
+    <button type="submit" id="button_trade"> </button>
+  </form>
+  <label style="text-decoration: underline" for="button_trade"> Trade </label>
+  <br>
+  <iframe name="trade_iframe" src=""></iframe>
 {% endblock %}
