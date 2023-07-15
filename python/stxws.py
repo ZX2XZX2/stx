@@ -677,5 +677,9 @@ def input_trade():
     if request.method == 'POST':
         return f"Trade for {request.form['stk']} as of {request.form['stk_dt']}, market = {request.form['market_name']}"
     return "this is the trading block"
-    # charts, dt = gen_analysis_page(request)
-    # return render_template('stk_analysis.html', charts=charts, dt=dt, trade=True)
+
+@app.route('/support_resistance', methods=['GET', 'POST'])
+def support_resistance():
+    if request.method == 'POST':
+        return f"S/R setup for {request.form['stk']} as of {request.form['stk_dt']}, market = {request.form['market_name']}"
+    return "this is the S/R block"
