@@ -18,10 +18,10 @@
         </form>
         <label style="text-decoration: underline" for="button_trade"> Trade </label>
         <br>
-        <iframe name="trade_iframe" src=""></iframe>
+        <iframe name="trade_iframe" style="border: none;"  width="90%%" src=""></iframe>
       </td>
       <td>
-        <form action="/support_resistance" style="display: none" target="sr_iframe" method="post">
+        <form action="/support_resistance" style="display: none;" target="sr_iframe" method="post">
         <input type="hidden" name="stk" value="{{ chart['name'] }}">
         <input type="hidden" name="stk_dt" value="{{ dt }}">
         <input type="hidden" name="market_name" value="{{ market_name }}">
@@ -29,7 +29,7 @@
         </form>
         <label style="text-decoration: underline" for="button_sr"> SR </label>
         <br>
-        <iframe name="sr_iframe" src=""></iframe>
+        <iframe name="sr_iframe" style="border: none;" width="90%" src=""></iframe>
       </td>
     </tr>
   </table>
