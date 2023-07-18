@@ -668,8 +668,9 @@ def gen_analysis_page(request):
 
 @app.route('/stk_analysis', methods=['POST'])
 def stk_analysis():
+    market_name = request.form['market_name']
     charts, dt = gen_analysis_page(request)
-    return render_template('stk_analysis.html', chart=charts[0], dt=dt)
+    return render_template('stk_analysis.html', chart=charts[0], dt=dt, market_name=market_name)
     # return render_template('stk_analysis.html', charts=charts, dt=request.form['stk_dt'])
 
 @app.route('/input_trade', methods=['GET', 'POST'])
