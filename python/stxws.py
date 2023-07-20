@@ -673,14 +673,14 @@ def stk_analysis():
     return render_template('stk_analysis.html', chart=charts[0], dt=dt, market_name=market_name)
     # return render_template('stk_analysis.html', charts=charts, dt=request.form['stk_dt'])
 
-@app.route('/input_trade', methods=['GET', 'POST'])
-def input_trade():
+@app.route('/trade', methods=['GET', 'POST'])
+def trade():
     if request.method == 'POST':
         stk = request.form['stk']
         dt = request.form['stk_dt']
         market_name = request.form['market_name']
         in_price = 23.09
-        return render_template('input_trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
+        return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
     return "this is the trading block"
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
