@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    </head>
+    <body>
+        <form method="post" action="/trade">
+            <input type="hidden" name="stk" value="{{ stk }}">
+            <input type="hidden" name="stk_dt" value="{{ dt }}">
+            <input type="hidden" name="market_name" value="{{ market_name }}">
+            <table>
+                <tr>
+                    <td><label for="crt_price">Current Price</label></td>
+                    <td><input type="text" name="crt_price" placeholder="Price" value="{{ current_price }}" maxlength="6" style='max-width:100px' /></td>
+                    <td></td>
+                    <td>Reward-Risk Ratio</td>
+                    <td>{{ reward_risk_ratio }}</td>
+                </tr>
+                <tr>
+                    <td><label for="stop_loss">Stop Loss</label></td>
+                    <td><input type="text" name="stop_loss" placeholder="Stop Loss" value="{{ stop_loss }}" maxlength="6" style='max-width:100px'/></td>
+                    <td></td>
+                    <td>Max Profit</td>
+                    <td>{{ max_profit }}</td>
+                </tr>
+                <tr>
+                    <td><label for="target">Target</label></td>
+                    <td><input type="text" name="target" placeholder="Target" value=""{{ target }} maxlength="6" style='max-width:100px'/></td>
+                    <td></td>
+                    <td>Max Loss</td>
+                    <td>{{ max_loss }}</td>
+                </tr>
+                <tr>
+                    <td><label for="size">Size</label></td>
+                    <td><input type="text" name="size" placeholder="Size" value="{{ size }}" maxlength="6" style='max-width:100px'/></td>
+                    <td></td>
+                    <td>Size Constraint</td>
+                    <td>{{ size_explain }}</td>
+                </tr>
+                <tr>
+                    <td><button type="submit" name="action" value="Trade">Trade</button></td>
+                    <td><button type="submit" name="action" value="RiskMgmt">Risk</button></td>
+                    <td></td>
+                </tr>
+            </table>
+        </form>
+    </body>
+</html>
