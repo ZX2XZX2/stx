@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Market</title>
+    <script>
+        function autoRefresh() {
+            window.location = window.location.href;
+        }
+        setInterval('autoRefresh()', "{{ refresh }}");
+    </script>
+</head>
+<body>
+    <h2>Welcome To Market</h2>
+    <p>The datetime is {{ datetime }}.</p>
+    {% block content %}
+    <p></p>
+    {% for chart in charts %}
+    <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+    <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+    {% endfor %}
+  {% endblock %}
+  </body>
+</html>
