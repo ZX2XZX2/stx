@@ -673,18 +673,48 @@ def stk_analysis():
     return render_template('stk_analysis.html', chart=charts[0], dt=dt, market_name=market_name)
     # return render_template('stk_analysis.html', charts=charts, dt=request.form['stk_dt'])
 
-@app.route('/trade', methods=['GET', 'POST'])
+def init_trade(request):
+    stk = request.form['stk']
+    dt = request.form['dt']
+    market_name = request.form['market_name']
+    in_price = 23.09
+    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
+
+def risk_mgmt(request):
+    stk = request.form['stk']
+    dt = request.form['dt']
+    market_name = request.form['market_name']
+    in_price = 23.09
+    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
+
+def exec_trade(request):
+    stk = request.form['stk']
+    dt = request.form['dt']
+    market_name = request.form['market_name']
+    in_price = 23.09
+    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
+
+@app.route('/trade', methods=['POST'])
 def trade():
-    if request.method == 'POST':
-        stk = request.form['stk']
-        dt = request.form['stk_dt']
-        market_name = request.form['market_name']
-        in_price = 23.09
-        return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
-    return "this is the trading block"
+    requested_action = request.form.get('action')
+    logging.info(f"The action requested is {requested_action}")
+    if not requested_action:
+        logging.error('No action specified; this page was reached by error')
+        return 'No action specified; this page was reached by error'
+    if requested_action == 'init_trade':
+        return init_trade(request)
+    elif requested_action == 'risk_mgmt':
+        return risk_mgmt(request)
+    elif requested_action == 'exec_trade':
+        return exec_trade(request)
+    else:
+        logging.error(f"Wrong action '{requested_action}'specified; should be "
+                       "one of 'init_trade', 'risk_mgmt', or 'exec_trade'")
+        return f"Wrong action '{requested_action}'specified; should be "\
+            "one of 'init_trade', 'risk_mgmt', or 'exec_trade'"
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
     if request.method == 'POST':
-        return f"S/R setup for {request.form['stk']} as of {request.form['stk_dt']}, market = {request.form['market_name']}"
+        return f"S/R setup for {request.form['stk']} as of {request.form['dt']}, market = {request.form['market_name']}"
     return "this is the S/R block"
