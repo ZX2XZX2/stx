@@ -5,7 +5,7 @@
     <body>
         <form method="post" action="/trade">
             <input type="hidden" name="stk" value="{{ stk }}">
-            <input type="hidden" name="stk_dt" value="{{ dt }}">
+            <input type="hidden" name="dt" value="{{ dt }}">
             <input type="hidden" name="market_name" value="{{ market_name }}">
             <table>
                 <tr>
@@ -37,8 +37,8 @@
                     <td>{{ size_explain }}</td>
                 </tr>
                 <tr>
-                    <td><button type="submit" name="action" value="Trade">Trade</button></td>
-                    <td><button type="submit" name="action" value="RiskMgmt">Risk</button></td>
+                    <td><button type="submit" name="action" value="exec_trade">Trade</button></td>
+                    <td><button type="submit" name="action" value="risk_mgmt">Risk</button></td>
                     <td></td>
                 </tr>
             </table>
