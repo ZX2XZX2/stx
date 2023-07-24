@@ -684,8 +684,12 @@ def risk_mgmt(request):
     stk = request.form['stk']
     dt = request.form['dt']
     market_name = request.form['market_name']
-    in_price = 23.09
-    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
+    in_price = request.form.get('current_price')
+    stop_loss = request.form.get('stop_loss')
+    target = request.form.get('target')
+
+    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name,
+        current_price=in_price, stop_loss=stop_loss, target=target)
 
 def exec_trade(request):
     stk = request.form['stk']
