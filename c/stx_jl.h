@@ -1058,4 +1058,18 @@ int jl_pivot_bounce_channel(jl_pivot_ptr pivot, jl_channel_ptr channel) {
         return 1;
     return 0;
 }
+
+int jl_get_avg_volume(jl_data_ptr jl_recs) {
+    int res = 0;
+    for (int ix = 0; ix < jl_recs->window; ix++)
+        res += jl_recs->volumes[ix];
+    return res / jl_recs->window;
+}
+
+int jl_get_avg_range(jl_data_ptr jl_recs) {
+    int res = 0;
+    for (int ix = 0; ix < jl_recs->window; ix++)
+        res += jl_recs->rgs[ix];
+    return res / jl_recs->window;
+}
 #endif
