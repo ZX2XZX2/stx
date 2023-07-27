@@ -350,6 +350,25 @@ char* stx_get_portfolio(char *market, char *dt, char *dt_date, char *dt_time) {
     return res;
 }
 
+char* stx_get_trade_input(char *stk, char *dt) {
+    cJSON *trade_input = cJSON_CreateObject();
+    stx_data_ptr id_data = NULL, eod_data = NULL;
+    bool intraday = true, jl_intraday = false;
+    stx_get_stx_data_ptrs(stk, dt, intraday, &eod_data, &id_data);
+    jl_data_ptr jl_recs = stx_get_jl_data_ptr(stk, dt, JL_100, JLF_100,
+        jl_intraday);
+    int ix = ts_find_date_record(id_data, dt, 0);
+    cJSON_AddNumberToObject(trade_input, "current_price",
+        (double)id_data->data[ix].close);
+    int avg_vol = jl_get_avg_volume(jl_recs);
+    int avg_rg = jl_get_avg_range(jl_recs);
+    cJSON_AddNumberToObject(trade_input, "avg_volume", (double)avg_vol);
+    cJSON_AddNumberToObject(trade_input, "avg_range", (double)avg_rg);
+    char *res = cJSON_Print(trade_input);
+    cJSON_Delete(trade_input);
+    return res;
+}
+
 int main(int argc, char** argv) {
     char stk[16], ed[20];
     strcpy(stk, "TSLA");
@@ -401,6 +420,11 @@ int main(int argc, char** argv) {
         free(res_json);
         res_json = NULL;
     }
-
+    res_json = stx_get_trade_input(stk, ed);
+    if (res_json != NULL) {
+        LOGINFO("res_json = \n%s\n", res_json);
+        free(res_json);
+        res_json = NULL;
+    }
     return 0;
 }
