@@ -677,8 +677,33 @@ def init_trade(request):
     stk = request.form['stk']
     dt = request.form['dt']
     market_name = request.form['market_name']
-    in_price = 23.09
-    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
+    _lib.stx_get_trade_input.restype = ctypes.c_void_p
+    res = _lib.stx_get_trade_input(
+        ctypes.c_char_p(stk.encode('UTF-8')),
+        ctypes.c_char_p(dt.encode('UTF-8'))
+    )
+    trade_input_str = ctypes.cast(res, ctypes.c_char_p).value
+    trade_input_json = json.loads(trade_input_str)
+    logging.info(f"trade_input_json = {json.dumps(trade_input_json, indent=2)}")
+    _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
+    _lib.stx_free_text.restype = None
+    _lib.stx_free_text(ctypes.c_void_p(res))
+    in_price = trade_input_json['current_price']
+    avg_volume = trade_input_json["avg_volume"]
+    avg_range = trade_input_json["avg_range"]
+    # TODO: replace 30000 with market parameters
+    size = avg_volume /100
+    logging.info(f'volume size = {size}')
+    volatility_size = 30000 * 5 / (3 * avg_range)
+    logging.info(f'volatility_size = {volatility_size}')
+    if size > volatility_size:
+        size = volatility_size
+    trading_power_size = 30000 * 100 / in_price
+    logging.info(f'trading_power_size = {trading_power_size}')
+    if size > trading_power_size:
+        size = trading_power_size
+    logging.info(f'size = {size}')
+    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price, size=int(size))
 
 def risk_mgmt(request):
     stk = request.form['stk']
