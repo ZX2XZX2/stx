@@ -709,12 +709,21 @@ def risk_mgmt(request):
     stk = request.form['stk']
     dt = request.form['dt']
     market_name = request.form['market_name']
-    in_price = request.form.get('current_price')
-    stop_loss = request.form.get('stop_loss')
-    target = request.form.get('target')
-
+    in_price = int(request.form.get('current_price'))
+    stop_loss = int(request.form.get('stop_loss'))
+    target = int(request.form.get('target'))
+    size = int(request.form.get('size'))
+    # TODO: replace with market params
+    max_loss_size = 30000 * 2 / (abs(stop_loss - in_price))
+    if size > max_loss_size:
+        size = max_loss_size
+    max_loss = size * (abs(stop_loss - in_price))
+    max_profit = size * (abs(target - in_price))
+    reward_risk_ratio = 100 * max_profit // max_loss * 0.01
     return render_template('trade.html', stk=stk, dt=dt, market_name=market_name,
-        current_price=in_price, stop_loss=stop_loss, target=target)
+        current_price=in_price, stop_loss=stop_loss, target=target, size=size,
+        max_loss=max_loss, max_profit=max_profit,
+        reward_risk_ratio=reward_risk_ratio)
 
 def exec_trade(request):
     stk = request.form['stk']
