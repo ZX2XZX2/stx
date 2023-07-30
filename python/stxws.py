@@ -325,16 +325,19 @@ def get_portfolio(mkt_name, mkt_dt):
             pos = position.get('Short')
             direction = 'Short'
             dir = -1
-        open_shares = pos['in_shares'] - pos['out_shares']
+        out_shares = pos.get('out_shares', 0)
+        open_shares = pos['in_shares'] - out_shares
         unrealized_pnl = open_shares * dir * (pos['current_price'] -
             pos['avg_in_price'])
-        realized_pnl = pos['out_shares'] * dir * (pos['avg_out_price'] -
+        avg_out_price = pos.get('avg_out_price', -1)
+        realized_pnl = out_shares * dir * (avg_out_price -
             pos['avg_in_price'])
         portfolio_line = [
             stk, direction, open_shares, pos['avg_in_price'],
             pos['current_price'], unrealized_pnl,
             pos['in_shares'], pos['avg_in_price'],
-            pos['out_shares'], pos['avg_out_price'], realized_pnl
+            out_shares, '' if avg_out_price == -1 else avg_out_price,
+            realized_pnl
         ]
         if open_shares != 0:
             open_positions.append(portfolio_line)
