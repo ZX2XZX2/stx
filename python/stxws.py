@@ -732,8 +732,48 @@ def exec_trade(request):
     stk = request.form['stk']
     dt = request.form['dt']
     market_name = request.form['market_name']
-    in_price = 23.09
-    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price)
+    in_price = int(request.form.get('current_price'))
+    stop_loss = int(request.form.get('stop_loss'))
+    target = int(request.form.get('target'))
+    size = int(request.form.get('size'))
+    if in_price > stop_loss and in_price < target and size > 0:
+        action = -1
+        direction = 1
+        action_str = "BOT"
+    elif in_price < stop_loss and in_price > target and size > 0:
+        action = 1
+        direction = -1
+        action_str = 'SSD'
+    else:
+        action = 0 # this means the trade is invalid
+        direction = 0 # this means the trade is invalid
+        return "Invalid trade. Check the input and try again"
+    trd_info = {}
+    trd_info['stop-loss'] = stop_loss
+    trd_info['target'] = target
+    q = sql.Composed([
+        sql.SQL("INSERT INTO"),
+        sql.Identifier("trades"),
+        sql.SQL("VALUES ("),
+        sql.SQL(',').join([
+            sql.Literal(market_name),
+            sql.Literal(stk),
+            sql.Literal(dt),
+            sql.Literal(direction),
+            sql.Literal(action),
+            sql.Literal(in_price),
+            sql.Literal(size),
+            sql.Literal(json.dumps(trd_info))
+        ]),
+        sql.SQL(") ON CONFLICT DO NOTHING")
+    ])
+    log_msg = f"{market_name}, {stk}, {dt}, {action_str}, {in_price}, {size}, "\
+        f"{trd_info['stop-loss']}, {trd_info['target']}"
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        return f'Failed to trade {log_msg}:<br>{tb.print_exc()}'
+    return log_msg
 
 @app.route('/trade', methods=['POST'])
 def trade():
