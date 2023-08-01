@@ -370,8 +370,8 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
 
     if eod_market:
         min_activity = mkt_cache.get('min_activity', 10000)
-        up_limit = mkt_cache.get('up_limit', 8)
-        down_limit = mkt_cache.get('down_limit', 8)
+        up_limit = mkt_cache.get('up_limit', 2)
+        down_limit = mkt_cache.get('down_limit', 2)
         _lib.stx_eod_analysis.restype = ctypes.c_void_p
         ind_names = 'CS_45'
         res = _lib.stx_eod_analysis(
@@ -392,7 +392,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         pf_charts, wl_charts, indicator_charts = [], [], {}
         if pf_list:
             pf_charts = generate_charts(pf_list, f'{mkt_date} 15:55:00',
-                                        120, 20, '60min')
+                                        120, 2, '5min')
         if watchlist:
             wl_charts = generate_charts(watchlist, f'{mkt_date} 15:55:00',
                                         120, 20, '60min')
@@ -799,3 +799,59 @@ def support_resistance():
     if request.method == 'POST':
         return f"S/R setup for {request.form['stk']} as of {request.form['dt']}, market = {request.form['market_name']}"
     return "this is the S/R block"
+
+@app.route('/portfolio', methods=['GET'])
+def portfolio():
+    request_args = request.args.to_dict()
+    mkt_name = request_args['mkt']
+    mkt_dt = request_args['dt'].replace('16:00:00', '15:55:00')
+    dt_date, dt_time = mkt_dt.split()
+    _lib.stx_get_portfolio.restype = ctypes.c_void_p
+    res = _lib.stx_get_portfolio(
+        ctypes.c_char_p(mkt_name.encode('UTF-8')),
+        ctypes.c_char_p(mkt_dt.encode('UTF-8')),
+        ctypes.c_char_p(dt_date.encode('UTF-8')),
+        ctypes.c_char_p(dt_time.encode('UTF-8'))
+    )
+    portfolio_str = ctypes.cast(res, ctypes.c_char_p).value
+    portfolio_json = json.loads(portfolio_str)
+    logging.info(f"portfolio_json = {json.dumps(portfolio_json, indent=2)}")
+    _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
+    _lib.stx_free_text.restype = None
+    _lib.stx_free_text(ctypes.c_void_p(res))
+    open_positions, closed_positions = [], []
+    for stk, position in portfolio_json.items():
+        pos = position.get('Long')
+        if pos:
+            direction = 'Long'
+            dir = 1
+        else:
+            pos = position.get('Short')
+            direction = 'Short'
+            dir = -1
+        out_shares = pos.get('out_shares', 0)
+        open_shares = pos['in_shares'] - out_shares
+        unrealized_pnl = open_shares * dir * (pos['current_price'] -
+            pos['avg_in_price'])
+        avg_out_price = pos.get('avg_out_price', -1)
+        realized_pnl = out_shares * dir * (avg_out_price -
+            pos['avg_in_price'])
+        portfolio_line = [
+            stk, direction, open_shares, pos['avg_in_price'],
+            pos['current_price'], unrealized_pnl,
+            pos['in_shares'], pos['avg_in_price'],
+               out_shares, '' if avg_out_price == -1 else avg_out_price,
+            realized_pnl
+        ]
+        if open_shares != 0:
+            open_positions.append(portfolio_line)
+        else:
+            closed_positions.append(portfolio_line)
+        portfolio = open_positions + closed_positions
+
+    return render_template(
+        'portfolio.html',
+        portfolio=portfolio,
+        market_nmae=mkt_name,
+        market_dt=mkt_dt
+    )
