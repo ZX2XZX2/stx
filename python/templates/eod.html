@@ -6,45 +6,14 @@
   <br>
   <h3>Market {{ market_name }} </h3>
   <p>The market date is {{ market_date }}, the datetime is {{ market_dt }}</p>
-  <h4>Portfolio</h4>
-  <table>
-    <tr>
-      <th>Stock</th>
-      <th>Direction</th>
-      <th>Shares</th>
-      <th>In Price</th>
-      <th>Current Price</th>
-      <th>Unrealized PnL</th>
-      <th>In Shares</th>
-      <th>In Avg Price</th>
-      <th>Out Shares</th>
-      <th>Out Avg Price</th>
-      <th>Realized PnL</th>
-    </tr>
-    {% for pf_line in portfolio %}
-      <tr>
-        <td>{{ pf_line[0] }}</td>
-        <td>{{ pf_line[1] }}</td>
-        <td>{{ pf_line[2] }}</td>
-        <td>{{ pf_line[3] }}</td>
-        <td>{{ pf_line[4] }}</td>
-        <td>{{ pf_line[5] }}</td>
-        <td>{{ pf_line[6] }}</td>
-        <td>{{ pf_line[7] }}</td>
-        <td>{{ pf_line[8] }}</td>
-        <td>{{ pf_line[9] }}</td>
-        <td>{{ pf_line[10] }}</td>
-      </tr>
-    {% endfor %}
-  </table>
-  <br>
+
+  <iframe name="portfolio_iframe" style="border: none;"  width="100%%" src="/portfolio?mkt={{ market_name }}&dt={{ market_dt }}"></iframe>
   <br>
   {% if pf_charts|length > 0 %}
     {% for chart in pf_charts %}
     <fieldset>
       <legend>{{ chart['name'] }}</legend>
       <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
-      <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
       <br>
       <form style="display: none" target="_blank" rel="noopener noreferrer" action="/stk_analysis" method="post">
         <input type="hidden" name="stk" value="{{ chart['name'] }}">
@@ -53,21 +22,6 @@
         <button type="submit" id="button_analysis_{{ chart['name'] }}"> </button>
       </form>
       <label style="text-decoration: underline" for="button_analysis_{{ chart['name'] }}"> Analysis </label>
-      &nbsp&nbsp
-      <form style="display: none" target="_blank" rel="noopener noreferrer" action="/wl_mgmt" method="post">
-        <input type="hidden" name="stk" value="{{ chart['name'] }}">
-        <input type="hidden" name="market_name" value="{{ market_name }}">
-        {% if chart['name'] in watchlist %}
-          <button type="submit" id="button_wl_mgmt_{{ chart['name'] }}" name="action" value="Remove"></button>
-        {% else %}
-          <button type="submit" id="button_wl_mgmt_{{ chart['name'] }}" name="action" value="Add"></button>
-        {% endif %}
-      </form>
-      {% if chart['name'] in watchlist %}
-        <label style="text-decoration: underline" for="button_wl_mgmt_{{ chart['name'] }}"> Remove from Watchlist </label>
-      {% else %}
-        <label style="text-decoration: underline" for="button_wl_mgmt_{{ chart['name'] }}"> Add to Watchlist </label>
-      {% endif %}
     </fieldset>
     {% endfor %}
   {% endif %}
