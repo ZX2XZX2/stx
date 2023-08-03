@@ -392,7 +392,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         pf_charts, wl_charts, indicator_charts = [], [], {}
         if pf_list:
             pf_charts = generate_charts(pf_list, f'{mkt_date} 15:55:00',
-                                        120, 2, '5min')
+                                        0, 2, '5min')
         if watchlist:
             wl_charts = generate_charts(watchlist, f'{mkt_date} 15:55:00',
                                         120, 20, '60min')
@@ -511,14 +511,16 @@ def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
     end_date, _ = end_dt.split()
     freq = int(frequency[:-3])
     for stk in stk_list:
-        sp = StxPlotBin(_lib, stk, eod_days, end_dt, intraday=False)
+        if eod_days != 0:
+            sp = StxPlotBin(_lib, stk, eod_days, end_dt, intraday=False)
         spid = StxPlotBin(_lib, stk, id_days, end_dt, intraday=True,
             period=freq)
         chartdict = {
             'name': stk,
-            'eod_png': sp.b64_png(),
             'id_png': spid.b64_png()
         }
+        if eod_days != 0:
+            chartdict['eod_png'] = sp.b64_png()
         if id_days1 is not None:
             if frequency1 is not None:
                 freq1 = int(frequency1[:-3])
