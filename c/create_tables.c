@@ -410,6 +410,18 @@ int main() {
         "PRIMARY KEY(mkt, stk))";
     create_table_if_missing(cnx, "market_watch", create_market_watch);
 
+    /**
+     *  Store stoploss/target for a long or short stock position
+     */
+    char* create_stx_risk = "CREATE TABLE stx_risk( "   \
+        "stk VARCHAR(16) NOT NULL, "                    \
+        "dt TIMESTAMP NOT NULL,"                        \
+        "direction CHAR(1) NOT NULL, "                  \
+        "sl INTEGER NOT NULL, "                         \
+        "tgt INTEGER NOT NULL, "                        \
+        "PRIMARY KEY(stk, dt, direction))";
+    create_table_if_missing(cnx, "stx_risk", create_stx_risk);
+
     PQfinish(cnx);
     return 0;
 }
