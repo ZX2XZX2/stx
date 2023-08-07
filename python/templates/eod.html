@@ -7,7 +7,32 @@
   <h3>Market {{ market_name }} </h3>
   <p>The market date is {{ market_date }}, the datetime is {{ market_dt }}</p>
 
-  <iframe name="portfolio_iframe" style="border: none;"  width="100%%" src="/portfolio?mkt={{ market_name }}&dt={{ market_dt }}"></iframe>
+  <h4>Portfolio</h4>
+  <table>
+    <tr>
+        <th>Stock</th>
+        <th>Direction</th>
+        <th>Shares</th>
+        <th>In Price</th>
+        <th>Current Price</th>
+        <th>PnL</th>
+        <th>Target</th>
+        <th>Stop-Loss</th>
+        <th>RRR</th>
+    </tr>
+      {% for pf_line in portfolio %}
+        <tr>
+            <td>{{ pf_line[0] }}</td>
+            <td>{{ pf_line[1] }}</td>
+            <td>{{ pf_line[2] }}</td>
+            <td>{{ pf_line[3] }}</td>
+            <td>{{ pf_line[4] }}</td>
+            <td>{{ pf_line[5] }}</td>
+            <td>{{ pf_line[6] }}</td>
+            <td>{{ pf_line[7] }}</td>
+        </tr>
+      {% endfor %}
+  </table>
   <br>
   {% if pf_charts|length > 0 %}
     {% for chart in pf_charts %}
