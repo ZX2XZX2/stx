@@ -307,13 +307,13 @@ void get_portfolio_positions(cJSON *portfolio, char *market, char *stk,
     PGresult *res = db_query(sql_cmd);
     int num_recs = PQntuples(res);
     for(int ix = 0; ix < num_recs; ix++) {
-        char *stk = PQgetvalue(res, ix, 0);
+        char *stock = PQgetvalue(res, ix, 0);
         int direction = atoi(PQgetvalue(res, ix, 1));
         int quantity = atoi(PQgetvalue(res, ix, 2));
         float avg_price = atof(PQgetvalue(res, ix, 3));
-        cJSON *stk_entry = cJSON_GetObjectItem(portfolio, stk);
+        cJSON *stk_entry = cJSON_GetObjectItem(portfolio, stock);
         if (stk_entry == NULL)
-            stk_entry = cJSON_AddObjectToObject(portfolio, stk);
+            stk_entry = cJSON_AddObjectToObject(portfolio, stock);
         cJSON *dir_entry = cJSON_GetObjectItem(stk_entry, 
             (direction == 1)? "Long": "Short");
         if (dir_entry == NULL)
@@ -327,9 +327,28 @@ void get_portfolio_positions(cJSON *portfolio, char *market, char *stk,
         cJSON *crt_price = cJSON_GetObjectItem(dir_entry, "current_price");
         if (crt_price == NULL) {
             stx_data_ptr id_data = NULL, eod_data = NULL;
-            stx_get_stx_data_ptrs(stk, dt, true, &eod_data, &id_data);
+            stx_get_stx_data_ptrs(stock, dt, true, &eod_data, &id_data);
             cJSON_AddNumberToObject(dir_entry, "current_price",
                 (double) id_data->data[id_data->pos].close);
+        }
+        cJSON *sl_entry = cJSON_GetObjectItem(dir_entry, "stop_loss");
+        cJSON *tgt_entry = cJSON_GetObjectItem(dir_entry, "target");
+        if (sl_entry == NULL || tgt_entry == NULL) {
+            int stop_loss = -1, target = -1;
+            sprintf(
+                sql_cmd, "SELECT * FROM stx_risk WHERE stk='%s' AND "
+                "DATE(dt)='%s' AND dt<='%s %s' AND direction=%d ORDER by dt "
+                "DESC LIMIT 1", stock, dt_date, dt_date, dt_time, direction);
+            PGresult *rsk_res = db_query(sql_cmd);
+            int num_risk_recs = PQntuples(rsk_res);
+            if (num_risk_recs == 1) {
+                stop_loss = atoi(PQgetvalue(rsk_res, 0, 3));
+                target = atoi(PQgetvalue(rsk_res, 0, 4));
+            }
+            PQclear(rsk_res);
+            rsk_res = NULL;
+            cJSON_AddNumberToObject(dir_entry, "stop_loss", (double) stop_loss);
+            cJSON_AddNumberToObject(dir_entry, "target", (double) target);
         }
     }
     PQclear(res);
@@ -422,10 +441,18 @@ int main(int argc, char** argv) {
     res_json = stx_get_portfolio("market-3", "*", "2023-06-06 14:00:00",
         "2023-06-06", "14:00:00");
     if (res_json != NULL) {
-        LOGINFO("res_json = \n%s\n", res_json);
+        LOGINFO("res_json (14:00:00) = \n%s\n", res_json);
         free(res_json);
         res_json = NULL;
     }
+    res_json = stx_get_portfolio("market-3", "*", "2023-06-06 15:10:00",
+        "2023-06-06", "15:10:00");
+    if (res_json != NULL) {
+        LOGINFO("res_json (15:10:00) = \n%s\n", res_json);
+        free(res_json);
+        res_json = NULL;
+    }
+
     res_json = stx_get_trade_input(stk, ed);
     if (res_json != NULL) {
         LOGINFO("res_json = \n%s\n", res_json);

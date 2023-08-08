@@ -416,7 +416,7 @@ int main() {
     char* create_stx_risk = "CREATE TABLE stx_risk( "   \
         "stk VARCHAR(16) NOT NULL, "                    \
         "dt TIMESTAMP NOT NULL,"                        \
-        "direction CHAR(1) NOT NULL, "                  \
+        "direction SMALLINT NOT NULL, "                 \
         "sl INTEGER NOT NULL, "                         \
         "tgt INTEGER NOT NULL, "                        \
         "PRIMARY KEY(stk, dt, direction))";
