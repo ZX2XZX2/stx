@@ -712,24 +712,46 @@ def init_trade(request):
     if size > trading_power_size:
         size = trading_power_size
     logging.info(f'size = {size}')
-    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name, current_price=in_price, size=int(size))
+    return render_template('trade.html', stk=stk, dt=dt,
+        market_name=market_name, current_price=in_price, size=int(size)
+    )
+
+def check_trade_params(request):
+    try:
+        stop_loss = int(request.form.get('stop_loss'))
+    except:
+        stop_loss = 'N/A'
+    try:
+        target = int(request.form.get('target'))
+    except:
+        target = 'N/A'
+    try:
+        size = int(request.form.get('size'))
+    except:
+        size = 'N/A'
+    valid_params = (stop_loss != 'N/A' and target != 'N/A' and size != 'N/A')
+    return valid_params, stop_loss, target, size
 
 def risk_mgmt(request):
     stk = request.form['stk']
     dt = request.form['dt']
     market_name = request.form['market_name']
     in_price = int(request.form.get('current_price'))
-    stop_loss = int(request.form.get('stop_loss'))
-    target = int(request.form.get('target'))
-    size = int(request.form.get('size'))
-    # TODO: replace with market params
-    max_loss_size = 30000 * 2 / (abs(stop_loss - in_price))
-    if size > max_loss_size:
-        size = max_loss_size
-    max_loss = size * (abs(stop_loss - in_price))
-    max_profit = size * (abs(target - in_price))
-    reward_risk_ratio = 100 * max_profit // max_loss * 0.01
-    return render_template('trade.html', stk=stk, dt=dt, market_name=market_name,
+    valid_params, stop_loss, target, size = check_trade_params(request)
+    if valid_params:
+        # TODO: replace with market params
+        max_loss_size = 30000 * 2 / (abs(stop_loss - in_price))
+        if size > max_loss_size:
+            size = max_loss_size
+        max_loss = size * (abs(stop_loss - in_price))
+        max_profit = size * (abs(target - in_price))
+        reward_risk_ratio = 100 * max_profit // max_loss * 0.01
+    else:
+        max_loss = 'N/A'
+        max_profit = 'N/A'
+        reward_risk_ratio = 'N/A'
+    return render_template(
+        'trade.html', stk=stk, dt=dt, market_name=market_name,
         current_price=in_price, stop_loss=stop_loss, target=target, size=size,
         max_loss=max_loss, max_profit=max_profit,
         reward_risk_ratio=reward_risk_ratio)
@@ -739,46 +761,49 @@ def exec_trade(request):
     dt = request.form['dt']
     market_name = request.form['market_name']
     in_price = int(request.form.get('current_price'))
-    stop_loss = int(request.form.get('stop_loss'))
-    target = int(request.form.get('target'))
-    size = int(request.form.get('size'))
-    if in_price > stop_loss and in_price < target and size > 0:
-        action = -1
-        direction = 1
-        action_str = "BOT"
-    elif in_price < stop_loss and in_price > target and size > 0:
-        action = 1
-        direction = -1
-        action_str = 'SSD'
+    valid_params, stop_loss, target, size = check_trade_params(request)
+    if valid_params:
+        if in_price > stop_loss and in_price < target and size > 0:
+            action = -1
+            direction = 1
+            action_str = "BOT"
+        elif in_price < stop_loss and in_price > target and size > 0:
+            action = 1
+            direction = -1
+            action_str = 'SSD'
+        else:
+            action = 0 # this means the trade is invalid
+            direction = 0 # this means the trade is invalid
+            return "Invalid trade. Check the input and try again"
+        trd_info = {}
+        trd_info['stop-loss'] = stop_loss
+        trd_info['target'] = target
+        q = sql.Composed([
+            sql.SQL("INSERT INTO"),
+            sql.Identifier("trades"),
+            sql.SQL("VALUES ("),
+            sql.SQL(',').join([
+                sql.Literal(market_name),
+                sql.Literal(stk),
+                sql.Literal(dt),
+                sql.Literal(direction),
+                sql.Literal(action),
+                sql.Literal(in_price),
+                sql.Literal(size),
+                sql.Literal(json.dumps(trd_info))
+            ]),
+            sql.SQL(") ON CONFLICT DO NOTHING")
+        ])
+        log_msg = f"{market_name}, {stk}, {dt}, {action_str}, {in_price}, "\
+            f"{size}, {trd_info['stop-loss']}, {trd_info['target']}"
+        try:
+            stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        except:
+            return f'Failed to trade {log_msg}:<br>{tb.print_exc()}'
     else:
-        action = 0 # this means the trade is invalid
-        direction = 0 # this means the trade is invalid
-        return "Invalid trade. Check the input and try again"
-    trd_info = {}
-    trd_info['stop-loss'] = stop_loss
-    trd_info['target'] = target
-    q = sql.Composed([
-        sql.SQL("INSERT INTO"),
-        sql.Identifier("trades"),
-        sql.SQL("VALUES ("),
-        sql.SQL(',').join([
-            sql.Literal(market_name),
-            sql.Literal(stk),
-            sql.Literal(dt),
-            sql.Literal(direction),
-            sql.Literal(action),
-            sql.Literal(in_price),
-            sql.Literal(size),
-            sql.Literal(json.dumps(trd_info))
-        ]),
-        sql.SQL(") ON CONFLICT DO NOTHING")
-    ])
-    log_msg = f"{market_name}, {stk}, {dt}, {action_str}, {in_price}, {size}, "\
-        f"{trd_info['stop-loss']}, {trd_info['target']}"
-    try:
-        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
-    except:
-        return f'Failed to trade {log_msg}:<br>{tb.print_exc()}'
+        log_msg = f"Invalid trade inputs: {'size ' if size == 'N/A' else ''}"\
+            f"{'stop-loss ' if stop_loss == 'N/A' else ''}"\
+            f"{'target ' if target == 'N/A' else ''}"
     return log_msg
 
 @app.route('/trade', methods=['POST'])
