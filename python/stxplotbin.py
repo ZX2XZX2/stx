@@ -69,6 +69,7 @@ class StxPlotBin:
         self.plot_df = idf
         self.intraday = intraday
         self.stk = stk
+        self.num_days = num_days
         self.s = 'yahoo'
         if intraday and period > 5:
             resample_period = f'{period}T'
@@ -94,12 +95,20 @@ class StxPlotBin:
         fig.subplots_adjust(hspace=0)
         xticks, xticklabels = [], []
         if self.intraday:
-            day = -1
-            for i, dt in enumerate(self.plot_df.index):
-                if dt.day != day:
-                    xticks.append(i)
-                    xticklabels.append(datetime.strftime(dt, '%b %d'))
-                    day = dt.day
+            if self.num_days > 3:
+                day = -1
+                for i, dt in enumerate(self.plot_df.index):
+                    if dt.day != day:
+                        xticks.append(i)
+                        xticklabels.append(datetime.strftime(dt, '%b %d'))
+                        day = dt.day
+            else:
+                hr = -1
+                for i, dt in enumerate(self.plot_df.index):
+                    if dt.hour != hr:
+                        xticks.append(i)
+                        xticklabels.append(datetime.strftime(dt, '%b %d'))
+                        hr = dt.hour
         else:
             mth = -1
             for i, dt in enumerate(self.plot_df.index):
