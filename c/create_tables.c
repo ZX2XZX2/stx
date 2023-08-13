@@ -424,6 +424,9 @@ int main() {
 
     /**
      *  Store support/resistance level for stocks
+     *  if dt1 == dt2 and px1 == px2, it is a horizontal line
+     *  if dt1/dt2 are in YYYY-mm-dd 00:00:00 or YYYY-mm-dd 16:00:00 format,
+     *  then these are daily support/resistance levels
      */
     char* create_stx_sr = "CREATE TABLE stx_sr( "   \
         "stk VARCHAR(16) NOT NULL, "                \
