@@ -174,6 +174,38 @@ jl_rec_ptr stx_jl_pivots(char *stk, char *dt, bool intraday, int *num_recs) {
     return pivot_list;
 }
 
+char* stx_get_jl(char *stk, char *dt) {
+    bool intraday = true;
+    cJSON *jl_json_recs = cJSON_CreateArray();
+    jl_data_ptr jld = stx_get_jl_data_ptr(stk, dt, JL_100, JLF_100, intraday);
+    for(int ix = 0; ix <= jld->pos; ix++) {
+        jl_record_ptr jlr = &(jld->recs[ix]);
+        if (jlr->state == NONE)
+            continue;
+        cJSON *jlrj = cJSON_CreateObject();
+        cJSON_AddStringToObject(jlrj, "date", jld->data->data[ix].date);
+        cJSON_AddNumberToObject(jlrj, "state", (double)jlr->state);
+        cJSON_AddNumberToObject(jlrj, "price", (double)jlr->price);
+        cJSON_AddBoolToObject(jlrj, "pivot", jlr->pivot);
+        cJSON_AddNumberToObject(jlrj, "range", (double)jlr->rg);
+        cJSON_AddNumberToObject(jlrj, "obv", (double)jlr->piv_obv);
+        cJSON_AddItemToArray(jl_json_recs, jlrj);
+        if(jlr->state2 != NONE) {
+            cJSON *jlrj2 = cJSON_CreateObject();
+            cJSON_AddStringToObject(jlrj2, "date", jld->data->data[ix].date);
+            cJSON_AddNumberToObject(jlrj2, "state", (double)jlr->state2);
+            cJSON_AddNumberToObject(jlrj2, "price", (double)jlr->price2);
+            cJSON_AddBoolToObject(jlrj2, "pivot", jlr->pivot2);
+            cJSON_AddNumberToObject(jlrj2, "range", (double)jlr->rg);
+            cJSON_AddNumberToObject(jlrj2, "obv", (double)jlr->piv_obv2);
+            cJSON_AddItemToArray(jl_json_recs, jlrj2);
+        }
+    }
+    char *res = cJSON_Print(jl_json_recs);
+    cJSON_Delete(jl_json_recs);
+    return res;
+}
+
 void stx_free_jl_pivots(jl_rec_ptr *pivots) {
     if (*pivots != NULL) {
         free(*pivots);
@@ -452,8 +484,13 @@ int main(int argc, char** argv) {
         free(res_json);
         res_json = NULL;
     }
-
     res_json = stx_get_trade_input(stk, ed);
+    if (res_json != NULL) {
+        LOGINFO("res_json = \n%s\n", res_json);
+        free(res_json);
+        res_json = NULL;
+    }
+    res_json = stx_get_jl("AMD", "2023-06-06 14:00:00");
     if (res_json != NULL) {
         LOGINFO("res_json = \n%s\n", res_json);
         free(res_json);
