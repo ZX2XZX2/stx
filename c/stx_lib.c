@@ -465,36 +465,27 @@ int main(int argc, char** argv) {
     memset(ind_names, 0, 64 * sizeof(char));
     strcpy(ind_names, "CS_45,OBV_45");
     char *res_json = stx_eod_analysis("2023-04-28", ind_names, 10000, 5, 5);
-    if (res_json != NULL) {
+    if (res_json != NULL)
         LOGINFO("res_json = \n%s\n", res_json);
-        free(res_json);
-        res_json = NULL;
-    }
+    stx_free_text(res_json);
     res_json = stx_get_portfolio("market-3", "*", "2023-06-06 14:00:00",
         "2023-06-06", "14:00:00");
-    if (res_json != NULL) {
+    if (res_json != NULL)
         LOGINFO("res_json (14:00:00) = \n%s\n", res_json);
-        free(res_json);
-        res_json = NULL;
-    }
+    stx_free_text(res_json);
     res_json = stx_get_portfolio("market-3", "*", "2023-06-06 15:10:00",
         "2023-06-06", "15:10:00");
-    if (res_json != NULL) {
+    if (res_json != NULL)
         LOGINFO("res_json (15:10:00) = \n%s\n", res_json);
-        free(res_json);
-        res_json = NULL;
-    }
+    stx_free_text(res_json);
     res_json = stx_get_trade_input(stk, ed);
-    if (res_json != NULL) {
+    if (res_json != NULL)
         LOGINFO("res_json = \n%s\n", res_json);
-        free(res_json);
-        res_json = NULL;
-    }
+    stx_free_text(res_json);
     res_json = stx_get_jl("AMD", "2023-06-06 14:00:00");
-    if (res_json != NULL) {
+    if (res_json != NULL)
         LOGINFO("res_json = \n%s\n", res_json);
-        free(res_json);
-        res_json = NULL;
-    }
+    stx_free_text(res_json);
+
     return 0;
 }
