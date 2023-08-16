@@ -827,6 +827,20 @@ def trade():
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
-    if request.method == 'POST':
-        return f"S/R setup for {request.form['stk']} as of {request.form['dt']}, market = {request.form['market_name']}"
-    return "this is the S/R block"
+    stk = request.form.get('stk')
+    dt = request.form.get('dt')
+    market = request.form.get('market_name')
+    _lib.stx_get_jl.restype = ctypes.c_void_p    
+    res = _lib.stx_get_jl(
+        ctypes.c_char_p(stk.encode('UTF-8')),
+        ctypes.c_char_p(dt.encode('UTF-8'))
+    )
+    jl_str = ctypes.cast(res, ctypes.c_char_p).value
+    jl_json = json.loads(jl_str)
+    logging.info(f"trade_input_json = {json.dumps(jl_json, indent=2)}")
+    _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
+    _lib.stx_free_text.restype = None
+    _lib.stx_free_text(ctypes.c_void_p(res))
+    
+    return f"JL = {json.dumps(jl_json, indent=2)}"
+
