@@ -862,7 +862,7 @@ void jl_print_rec(char* date, int state, int price, bool pivot, int rg,
 }
 
 jl_data_ptr jl_jl(stx_data_ptr data, char* end_date, float factor) {
-    jl_data_ptr jl = jl_init20(data, factor);
+    jl_data_ptr jl = jl_init(data, factor, (data->intraday? 156: 20));
     int res = 0;
     while((strcmp(jl->data->data[jl->pos].date, end_date) < 0) && (res != -1))
         res = jl_next(jl);
