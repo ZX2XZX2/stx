@@ -841,6 +841,19 @@ def support_resistance():
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
-    
-    return f"JL = {json.dumps(jl_json, indent=2)}"
+
+    jl_html = '<table>\n  <tr><th>Datetime</th><th>SRa</th><th>NRa</th>'\
+        '<th>UT</th><th>DT</th><th>NRa</th><th>SRa</th></tr>\n'
+    for jl_rec in jl_json:
+        jl_row_html = f"  <tr><td>"\
+            f"{jl_rec.get('date', 'YYYY-mm-dd HH:MM:SS')[5:]}</td>"
+        for _ in range(jl_rec.get('state', 0)):
+            jl_row_html += '<td></td>'
+        jl_row_html += f"<td>{jl_rec.get('price', -1)}</td>"
+        for _ in range(5 - jl_rec.get('state', 5)):
+            jl_row_html += '<td></td>'
+        jl_row_html += '</tr>\n'
+        jl_html += jl_row_html
+    jl_html += '</table>'
+    return render_template('jl.html', jl_html=jl_html)
 
