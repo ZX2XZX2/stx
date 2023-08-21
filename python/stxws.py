@@ -847,10 +847,20 @@ def support_resistance():
     for jl_rec in jl_json:
         jl_row_html = f"  <tr><td>"\
             f"{jl_rec.get('date', 'YYYY-mm-dd HH:MM:SS')[5:]}</td>"
-        for _ in range(jl_rec.get('state', 0)):
+        jl_state = jl_rec.get('state', 0)
+        jl_pivot = jl_rec.get('pivot', False)
+        for _ in range(jl_state):
             jl_row_html += '<td></td>'
-        jl_row_html += f"<td>{jl_rec.get('price', -1)}</td>"
-        for _ in range(5 - jl_rec.get('state', 5)):
+        # style="background-color:#ffaaaa; color: #ffffff"
+        jl_style = ''
+        if jl_state == 2:
+            jl_style = ' style="color: #006600;"'
+        elif jl_state == 3:
+            jl_style = ' style="color: #660000;"'
+        start_u = "<u>" if jl_pivot else ""
+        end_u = "</u>" if jl_pivot else ""
+        jl_row_html += f"<td{jl_style}>{start_u}{jl_rec.get('price', -1)}{end_u}</td>"
+        for _ in range(5 - jl_state):
             jl_row_html += '<td></td>'
         jl_row_html += '</tr>\n'
         jl_html += jl_row_html
