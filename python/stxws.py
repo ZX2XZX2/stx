@@ -825,11 +825,7 @@ def trade():
         return f"Wrong action '{requested_action}'specified; should be "\
             "one of 'init_trade', 'risk_mgmt', or 'exec_trade'"
 
-@app.route('/support_resistance', methods=['GET', 'POST'])
-def support_resistance():
-    stk = request.form.get('stk')
-    dt = request.form.get('dt')
-    market = request.form.get('market_name')
+def get_jl_html(stk, dt):
     _lib.stx_get_jl.restype = ctypes.c_void_p    
     res = _lib.stx_get_jl(
         ctypes.c_char_p(stk.encode('UTF-8')),
@@ -841,7 +837,6 @@ def support_resistance():
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
-
     jl_html = '<table>\n  <tr><th>Datetime</th><th>SRa</th><th>NRa</th>'\
         '<th>UT</th><th>DT</th><th>NRa</th><th>SRa</th></tr>\n'
     for jl_rec in jl_json:
@@ -851,7 +846,6 @@ def support_resistance():
         jl_pivot = jl_rec.get('pivot', False)
         for _ in range(jl_state):
             jl_row_html += '<td></td>'
-        # style="background-color:#ffaaaa; color: #ffffff"
         jl_style = ''
         if jl_state == 2:
             jl_style = ' style="color: #006600;"'
@@ -859,11 +853,19 @@ def support_resistance():
             jl_style = ' style="color: #660000;"'
         start_u = "<u>" if jl_pivot else ""
         end_u = "</u>" if jl_pivot else ""
-        jl_row_html += f"<td{jl_style}>{start_u}{jl_rec.get('price', -1)}{end_u}</td>"
+        jl_row_html += f"<td{jl_style}>{start_u}{jl_rec.get('price', -1)}"\
+            f"{end_u}</td>"
         for _ in range(5 - jl_state):
             jl_row_html += '<td></td>'
         jl_row_html += '</tr>\n'
         jl_html += jl_row_html
     jl_html += '</table>'
-    return render_template('jl.html', jl_html=jl_html)
+    return jl_html
 
+@app.route('/support_resistance', methods=['GET', 'POST'])
+def support_resistance():
+    stk = request.form.get('stk')
+    dt = request.form.get('dt')
+    market = request.form.get('market_name')
+    jl_html = get_jl_html(stk, dt)
+    return render_template('jl.html', jl_html=jl_html)
