@@ -679,8 +679,10 @@ def gen_analysis_page(request):
 def stk_analysis():
     market_name = request.form['market_name']
     charts, dt = gen_analysis_page(request)
-    return render_template('stk_analysis.html', chart=charts[0], dt=dt, market_name=market_name)
-    # return render_template('stk_analysis.html', charts=charts, dt=request.form['stk_dt'])
+    stk = request.form['stk']
+    jl_html = get_jl_html(stk, dt)
+    return render_template('stk_analysis.html', chart=charts[0], dt=dt,
+        market_name=market_name, jl_html=jl_html)
 
 def init_trade(request):
     stk = request.form['stk']
