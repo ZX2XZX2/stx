@@ -2,11 +2,33 @@
 
 {% block content %}
   <p></p>
-  {% if 'id1_png' in chart %}
-    <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
-  {% endif %}
-  <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
-  <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+  <table>
+    <tr>
+      <td>
+        <table>
+          <tr>
+            <td>
+              <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+            </td>
+          </tr>
+          {% if 'id1_png' in chart %}
+            <tr>
+              <td>
+                <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
+              </td>
+            </tr>
+          {% endif %}
+          <tr>
+            <td>
+              <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+            </td>
+          </tr>
+        </table>
+      </td>
+      <td>
+        {{ jl_html | safe }}
+      </td>
+    </tr>
   <table>
     <tr>
       <td>
