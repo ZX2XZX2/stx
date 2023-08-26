@@ -839,8 +839,22 @@ def get_jl_html(stk, dt):
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
-    jl_html = '<table>\n  <tr><th>Datetime</th><th>SRa</th><th>NRa</th>'\
-        '<th>UT</th><th>DT</th><th>NRa</th><th>SRa</th></tr>\n'
+    jl_table_style = ''
+    jl_html = '\n'.join([
+        '<table style="overflow-y: scroll; border-collapse: collapse;"',
+        '  <thead>',
+        '    <tr>',
+        '      <th>Datetime</th>',
+        '      <th>SRa</th>',
+        '      <th>NRa</th>',
+        '      <th>UT</th>',
+        '      <th>DT</th>',
+        '      <th>NRe</th>',
+        '      <th>SRe</th>',
+        '    </tr>',
+        '  </thead>',
+        '  <tbody>'
+    ])
     for jl_rec in jl_json:
         jl_row_html = f"  <tr><td>"\
             f"{jl_rec.get('date', 'YYYY-mm-dd HH:MM:SS')[5:]}</td>"
@@ -861,6 +875,7 @@ def get_jl_html(stk, dt):
             jl_row_html += '<td></td>'
         jl_row_html += '</tr>\n'
         jl_html += jl_row_html
+    jl_html += '</tbody>'
     jl_html += '</table>'
     return jl_html
 
