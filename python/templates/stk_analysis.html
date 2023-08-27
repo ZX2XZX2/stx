@@ -5,30 +5,25 @@
   <table>
     <tr>
       <td>
-        <table>
-          <tr>
-            <td>
-              <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
-            </td>
-          </tr>
-          {% if 'id1_png' in chart %}
-            <tr>
-              <td>
-                <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
-              </td>
-            </tr>
-          {% endif %}
-          <tr>
-            <td>
-              <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
-            </td>
-          </tr>
-        </table>
+        <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
       </td>
       <td>
-        {{ jl_html | safe }}
+        {% if 'id1_png' in chart %}
+          <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
+        {% endif %}
       </td>
     </tr>
+    <tr>
+      <td>
+        <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+      </td>
+      <td>
+        <div style="overflow-y: scroll; height: 500px;">
+          {{ jl_html | safe }}
+        </div>
+      </td>
+    </tr>
+  </table>
   <table>
     <tr>
       <td>
