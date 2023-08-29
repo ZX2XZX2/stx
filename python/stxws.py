@@ -881,8 +881,4 @@ def get_jl_html(stk, dt):
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
-    stk = request.form.get('stk')
-    dt = request.form.get('dt')
-    market = request.form.get('market_name')
-    jl_html = get_jl_html(stk, dt)
-    return render_template('jl.html', jl_html=jl_html)
+    return render_template('sr.html')
