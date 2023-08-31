@@ -881,4 +881,22 @@ def get_jl_html(stk, dt):
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
-    return render_template('sr.html')
+    requested_action = request.form.get('action')
+    logging.info(f"The action requested is {requested_action}")
+    if not requested_action:
+        logging.error('No action specified; this page was reached by error')
+        return 'No action specified; this page was reached by error'
+    if requested_action == 'sr_init':
+        return render_template('sr.html')
+        return init_trade(request)
+    elif requested_action == 'sr_delete_selected':
+        return render_template('sr.html')
+        return risk_mgmt(request)
+    elif requested_action == 'sr_add':
+        return render_template('sr.html')
+        return exec_trade(request)
+    else:
+        logging.error(f"Wrong action '{requested_action}'specified; should be "
+                       "one of 'sr_init', 'sr_delete_selected', or 'sr_add'")
+        return f"Wrong action '{requested_action}'specified; should be "\
+            "one of 'sr_init', 'sr_delete_selected', or 'sr_add'"
