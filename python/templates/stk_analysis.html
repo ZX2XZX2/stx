@@ -39,10 +39,10 @@
       </td>
       <td>
         <form action="/support_resistance" style="display: none;" target="sr_iframe" method="post">
-        <input type="hidden" name="stk" value="{{ chart['name'] }}">
-        <input type="hidden" name="dt" value="{{ dt }}">
-        <input type="hidden" name="market_name" value="{{ market_name }}">
-        <button type="submit" id="button_sr"> </button>
+          <input type="hidden" name="stk" value="{{ chart['name'] }}">
+          <input type="hidden" name="dt" value="{{ dt }}">
+          <input type="hidden" name="market_name" value="{{ market_name }}">
+          <button type="submit" name="action" value="sr_init" id="button_sr"> </button>
         </form>
         <label style="text-decoration: underline" for="button_sr"> SR </label>
         <br>
