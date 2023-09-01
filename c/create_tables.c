@@ -430,11 +430,12 @@ int main() {
      */
     char* create_stx_sr = "CREATE TABLE stx_sr( "   \
         "stk VARCHAR(16) NOT NULL, "                \
+        "mkt VARCHAR(128) NOT NULL, "               \
         "dt1 TIMESTAMP NOT NULL,"                   \
         "px1 INTEGER NOT NULL, "                    \
         "dt2 TIMESTAMP NOT NULL,"                   \
         "px2 INTEGER NOT NULL, "                    \
-        "PRIMARY KEY(stk, dt1, px1, dt2, px2))";
+        "PRIMARY KEY(stk, mkt, dt1, px1, dt2, px2))";
     create_table_if_missing(cnx, "stx_sr", create_stx_sr);
 
     PQfinish(cnx);
