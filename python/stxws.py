@@ -857,7 +857,7 @@ def get_jl_html(stk, dt):
     ])
     for jl_rec in jl_json:
         jl_row_html = f"  <tr><td>"\
-            f"{jl_rec.get('date', 'YYYY-mm-dd HH:MM:SS')[5:]}</td>"
+            f"{jl_rec.get('date', 'YYYY-mm-dd HH:MM:SS')}</td>"
         jl_state = jl_rec.get('state', 0)
         jl_pivot = jl_rec.get('pivot', False)
         for _ in range(jl_state):
@@ -879,6 +879,13 @@ def get_jl_html(stk, dt):
     jl_html += '</table>'
     return jl_html
 
+def init_sr(request):
+    # get existing support/resistance from DB
+    # load into dictionary
+    # pass to template
+    return render_template('sr.html')
+
+
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
     requested_action = request.form.get('action')
@@ -887,7 +894,7 @@ def support_resistance():
         logging.error('No action specified; this page was reached by error')
         return 'No action specified; this page was reached by error'
     if requested_action == 'sr_init':
-        return render_template('sr.html')
+        return init_sr(request)
         return init_trade(request)
     elif requested_action == 'sr_delete_selected':
         return render_template('sr.html')
