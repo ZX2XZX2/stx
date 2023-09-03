@@ -5,20 +5,49 @@
         <script id="insert"></script>
     </head>
     <body style="font-family:Arial, Helvetica, sans-serif;">
-        <input type="checkbox" id="checkAll" />
-        <form action="/support_resistance" method="POST">
-            <input type="checkbox" name="fruits[]" value="Apple"> Apple</input>
-            <input type="checkbox" name="fruits[]" value="Banana"> Banana</input>
-            <input type="checkbox" name="fruits[]" value="Orange"> Orange</input>
-            <input type="checkbox" name="fruits[]" value="Mango"> Mango</input>
-            <button type="submit" name="action" value="sr_delete_selected">Delete Selected</button>
-        </form>    
+        <table>
+            <tr>
+                <td>
+                    <input type="checkbox" id="checkAll" />
+                    <form action="/support_resistance" method="POST">
+                        <input type="checkbox" name="fruits[]" value="Apple"> Apple</input>
+                        <input type="checkbox" name="fruits[]" value="Banana"> Banana</input>
+                        <input type="checkbox" name="fruits[]" value="Orange"> Orange</input>
+                        <input type="checkbox" name="fruits[]" value="Mango"> Mango</input>
+                        <button type="submit" name="action" value="sr_delete_selected">Delete Selected</button>
+                    </form>
+                </td>
+                <td>
+                    <form action="/support_resistance" method="POST">
+                        <input type="hidden" name="stk" value="{{ stk }}">
+                        <input type="hidden" name="market_name" value="{{ market_name }}">
+                        <table>
+                            <tr>
+                                <td><label for="dt1">Datetime-1</label></td>
+                                <td><input type="text" name="dt1" placeholder="Datetime 1" value="" maxlength="20" style='max-width:125px' /></td>
+                                <td><label for="price1">Price-1</label></td>
+                                <td><input type="text" name="price1" placeholder="Price 1" value="" maxlength="6" style='max-width:50px' /></td>
+                            </tr>
+                            <tr>
+                                <td><label for="dt2">Datetime-2</label></td>
+                                <td><input type="text" name="dt2" placeholder="Datetime 2" value="" maxlength="20" style='max-width:125px' /></td>
+                                <td><label for="price2">Price-2</label></td>
+                                <td><input type="text" name="price2" placeholder="Price 2" value="" maxlength="6" style='max-width:50px' /></td>
+                            </tr>
+                            <tr>
+                                <td></td><td><button type="submit" name="action" value="sr_add">Add S/R Level</button></td>
+                            </tr>
+                        </table>
+                    </form>
+                </td>
+            </tr>
+        </table>
         <script type="text/javascript">//<![CDATA[
             $(document).ready(function() {
-            $("#checkAll").click(function() {
-                var checked = $(this).prop("checked");
-                $("input:checkbox").prop("checked", checked);
-            });
+                $("#checkAll").click(function() {
+                    var checked = $(this).prop("checked");
+                    $("input:checkbox").prop("checked", checked);
+                });
             });
         //]]></script>
     </body>
