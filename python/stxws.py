@@ -879,29 +879,75 @@ def get_jl_html(stk, dt):
     jl_html += '</table>'
     return jl_html
 
-def init_sr(request):
+def get_sr(stk, mkt):
     # get existing support/resistance from DB
-    # load into dictionary
-    # pass to template
-    return render_template('sr.html')
+    q = sql.Composed([
+        sql.SQL("SELECT * FROM"),
+        sql.Identifier("stx_sr"),
+        sql.SQL("WHERE"),
+        sql.Identifier("mkt"),
+        sql.SQL("="),
+        sql.Literal(mkt),
+        sql.SQL("AND"),
+        sql.Identifier("stk"),
+        sql.SQL("="),
+        sql.Literal(stk),
+        sql.SQL("ORDER BY"),
+        sql.Identifier('dt2')
+    ])
+    res_db = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    logging.info(f"res_db = {res_db}")
+    sr_levels = [(x[2], x[3], x[4], x[5]) for x in res_db]
+    return render_template('sr.html', stk=stk, market_name=mkt,
+        sr_levels=sr_levels)
 
+def add_sr(stk, mkt, dt1, price1, dt2, price2):
+    if not dt2:
+        dt2 = dt1
+    if not price2:
+        price2 = price1
+    q = sql.Composed([
+        sql.SQL("INSERT INTO"),
+        sql.Identifier("stx_sr"),
+        sql.SQL("VALUES ("),
+        sql.SQL(',').join(
+            [
+                sql.Literal(stk),
+                sql.Literal(mkt),
+                sql.Literal(dt1),
+                sql.Literal(price1),
+                sql.Literal(dt2),
+                sql.Literal(price2)
+            ]
+        ),
+        sql.SQL(") ON CONFLICT DO NOTHING")
+    ])
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        return f'Create SR ({dt1}, {price1}), ({dt2}, {price2}) failed:<br>'\
+            f'{tb.print_exc()}'
+    return get_sr(stk, mkt)
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
     requested_action = request.form.get('action')
     logging.info(f"The action requested is {requested_action}")
+    stk = request.form.get('stk')
+    mkt = request.form.get('market_name')
     if not requested_action:
         logging.error('No action specified; this page was reached by error')
         return 'No action specified; this page was reached by error'
     if requested_action == 'sr_init':
-        return init_sr(request)
-        return init_trade(request)
+       return get_sr(stk, mkt)
     elif requested_action == 'sr_delete_selected':
         return render_template('sr.html')
-        return risk_mgmt(request)
     elif requested_action == 'sr_add':
-        return render_template('sr.html')
-        return exec_trade(request)
+        dt1 = request.form.get('dt1')
+        price1 = request.form.get('price1')
+        dt2 = request.form.get('dt2')
+        price2 = request.form.get('price2')
+        return add_sr(stk, mkt, dt1, price1, dt2, price2)
     else:
         logging.error(f"Wrong action '{requested_action}'specified; should be "
                        "one of 'sr_init', 'sr_delete_selected', or 'sr_add'")
