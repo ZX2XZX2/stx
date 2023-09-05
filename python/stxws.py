@@ -893,11 +893,12 @@ def get_sr(stk, mkt):
         sql.SQL("="),
         sql.Literal(stk),
         sql.SQL("ORDER BY"),
-        sql.Identifier('dt2')
+        sql.Identifier('px1')
     ])
     res_db = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
     logging.info(f"res_db = {res_db}")
-    sr_levels = [(x[2], x[3], x[4], x[5]) for x in res_db]
+    sr_levels = [(x[2], x[3], x[4], x[5], f"{x[2]}_{x[3]}_{x[4]}_{x[5]}")
+        for x in res_db]
     return render_template('sr.html', stk=stk, market_name=mkt,
         sr_levels=sr_levels)
 
@@ -929,6 +930,9 @@ def add_sr(stk, mkt, dt1, price1, dt2, price2):
             f'{tb.print_exc()}'
     return get_sr(stk, mkt)
 
+def delete_sr(stk, mkt, selected_srs):
+    return get_sr(stk, mkt)
+
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
     requested_action = request.form.get('action')
@@ -941,7 +945,10 @@ def support_resistance():
     if requested_action == 'sr_init':
        return get_sr(stk, mkt)
     elif requested_action == 'sr_delete_selected':
-        return render_template('sr.html')
+        print(f"request form: {request.form}")
+        selected_srs = request.form.getlist('sr_list')
+        print(f"SRs selected: {','.join(selected_srs)}")
+        return delete_sr(stk, mkt, selected_srs)
     elif requested_action == 'sr_add':
         dt1 = request.form.get('dt1')
         price1 = request.form.get('price1')
