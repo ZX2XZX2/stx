@@ -931,6 +931,41 @@ def add_sr(stk, mkt, dt1, price1, dt2, price2):
     return get_sr(stk, mkt)
 
 def delete_sr(stk, mkt, selected_srs):
+    for sr in selected_srs:
+        dt1, price1, dt2, price2 = sr.split('_')
+        q = sql.Composed([
+            sql.SQL("DELETE FROM"),
+            sql.Identifier("stx_sr"),
+            sql.SQL("WHERE"),
+            sql.Identifier("mkt"),
+            sql.SQL("="),
+            sql.Literal(mkt),
+            sql.SQL("AND"),
+            sql.Identifier("stk"),
+            sql.SQL("="),
+            sql.Literal(stk),
+            sql.SQL("AND"),
+            sql.Identifier("dt1"),
+            sql.SQL("="),
+            sql.Literal(dt1),
+            sql.SQL("AND"),
+            sql.Identifier("px1"),
+            sql.SQL("="),
+            sql.Literal(price1),
+            sql.SQL("AND"),
+            sql.Identifier("dt2"),
+            sql.SQL("="),
+            sql.Literal(dt2),
+            sql.SQL("AND"),
+            sql.Identifier("px2"),
+            sql.SQL("="),
+            sql.Literal(price2)
+        ])
+        try:
+            stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        except:
+            return f'Delete SR ({dt1}, {price1}), ({dt2}, {price2}) failed:<br>'\
+                f'{tb.print_exc()}'
     return get_sr(stk, mkt)
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
