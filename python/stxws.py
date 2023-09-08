@@ -897,8 +897,14 @@ def get_sr(stk, mkt):
     ])
     res_db = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
     logging.info(f"res_db = {res_db}")
-    sr_levels = [(x[2], x[3], x[4], x[5], f"{x[2]}_{x[3]}_{x[4]}_{x[5]}")
-        for x in res_db]
+    sr_levels = [(x[2], x[3], x[4], x[5]) for x in res_db]
+    return sr_levels
+
+def get_sr_html(stk, mkt):
+    sr_lines = get_sr(stk, mkt)
+    sr_levels = [(x[0], x[1], x[2], x[3], f"{x[0]}_{x[1]}_{x[2]}_{x[3]}")
+        for x in sr_lines]
+    logging.info(f"sr_levels = {sr_levels}")
     return render_template('sr.html', stk=stk, market_name=mkt,
         sr_levels=sr_levels)
 
@@ -928,7 +934,7 @@ def add_sr(stk, mkt, dt1, price1, dt2, price2):
     except:
         return f'Create SR ({dt1}, {price1}), ({dt2}, {price2}) failed:<br>'\
             f'{tb.print_exc()}'
-    return get_sr(stk, mkt)
+    return get_sr_html(stk, mkt)
 
 def delete_sr(stk, mkt, selected_srs):
     for sr in selected_srs:
@@ -966,7 +972,7 @@ def delete_sr(stk, mkt, selected_srs):
         except:
             return f'Delete SR ({dt1}, {price1}), ({dt2}, {price2}) failed:<br>'\
                 f'{tb.print_exc()}'
-    return get_sr(stk, mkt)
+    return get_sr_html(stk, mkt)
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
@@ -978,7 +984,7 @@ def support_resistance():
         logging.error('No action specified; this page was reached by error')
         return 'No action specified; this page was reached by error'
     if requested_action == 'sr_init':
-       return get_sr(stk, mkt)
+       return get_sr_html(stk, mkt)
     elif requested_action == 'sr_delete_selected':
         print(f"request form: {request.form}")
         selected_srs = request.form.getlist('sr_list')
