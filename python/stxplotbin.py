@@ -23,7 +23,8 @@ class ChartStruct(ctypes.Structure):
 
 class StxPlotBin:
 
-    def __init__(self, _lib, stk, num_days, end_dt, intraday, period=5):
+    def __init__(self, _lib, stk, num_days, end_dt, intraday, period=5,
+                 alines=[], hlines=[]):
         logging.info('start')
         num_recs = ctypes.c_int(0)
         self._lib = _lib
@@ -70,6 +71,8 @@ class StxPlotBin:
         self.intraday = intraday
         self.stk = stk
         self.num_days = num_days
+        self.hlines = hlines
+        self.alines = alines
         self.s = 'yahoo'
         if intraday and period > 5:
             resample_period = f'{period}T'
@@ -123,21 +126,13 @@ class StxPlotBin:
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(xticklabels)
         ax2.set_xticklabels(xticklabels)
-        # if not self.trend_lines:
-        if not apd:
-            mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
-                     axtitle=self.stk, warn_too_much_data=10000)
-        else:
-            mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
-                     axtitle=self.stk, addplot=apd, warn_too_much_data=10000)
+        # if not apd:
+        mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
+                 axtitle=self.stk, warn_too_much_data=10000,
+                 hlines=self.hlines, alines=self.alines)
         # else:
-        #     if not apd:
-        #         mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
-        #                  axtitle=self.title, alines=self.trend_lines)
-        #     else:
-        #         mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
-        #                  axtitle=self.title, alines=self.trend_lines,
-        #                  addplot=apd)
+        #     mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
+        #              axtitle=self.stk, addplot=apd, warn_too_much_data=10000)
         return fig
 
     def plotchart(self, savefig=True):
