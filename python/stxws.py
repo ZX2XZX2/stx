@@ -392,7 +392,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         # portfolio = res_json.get('portfolio')
         # watchlist = res_json.get('watchlist')
         indicators = res_json.get('indicators')
-        pf_list = [x[0] for x in portfolio]
+        pf_list = [[x[0], x[3], x[7]] for x in portfolio]
         pf_charts, wl_charts, indicator_charts = [], [], {}
         if pf_list:
             pf_charts = generate_charts(pf_list, f'{mkt_date} 15:55:00',
@@ -515,10 +515,17 @@ def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
     end_date, _ = end_dt.split()
     freq = int(frequency[:-3])
     for stk in stk_list:
+        if type(stk).__name__ == 'list':
+            hlines = stk[1:]
+            stk = stk[0]
+            alines = []
+        else:
+            hlines = []
+            alines = []
         if eod_days != 0:
             sp = StxPlotBin(_lib, stk, eod_days, end_dt, intraday=False)
         spid = StxPlotBin(_lib, stk, id_days, end_dt, intraday=True,
-            period=freq)
+            period=freq, hlines=hlines, alines=alines)
         chartdict = {
             'name': stk,
             'id_png': spid.b64_png()
