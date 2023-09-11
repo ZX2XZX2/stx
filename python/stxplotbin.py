@@ -91,10 +91,10 @@ class StxPlotBin:
         fig = mpf.figure(figsize=(10, 6), style='yahoo')
         ax1 = fig.add_subplot(3, 1, (1, 2))
         ax2 = fig.add_subplot(3, 1, 3, sharex=ax1)
-        apd = None
+        addp = []
         if ('SMA50' in self.plot_df.columns and
             'SMA200' in self.plot_df.columns):
-            apd = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']], ax=ax1)
+            addp = mpf.make_addplot(self.plot_df[['SMA50', 'SMA200']], ax=ax1)
         fig.subplots_adjust(hspace=0)
         xticks, xticklabels = [], []
         if self.intraday:
@@ -122,17 +122,12 @@ class StxPlotBin:
                         xticklabels.append(datetime.strftime(dt, '%b %d'))
                     else:
                         xticklabels.append(datetime.strftime(dt, '%d'))
-        # print(f'xticklabels = {xticklabels}')
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(xticklabels)
         ax2.set_xticklabels(xticklabels)
-        # if not apd:
         mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
                  axtitle=self.stk, warn_too_much_data=10000,
-                 hlines=self.hlines, alines=self.alines)
-        # else:
-        #     mpf.plot(self.plot_df, type='candle', ax=ax1, volume=ax2,
-        #              axtitle=self.stk, addplot=apd, warn_too_much_data=10000)
+                 hlines=self.hlines, alines=self.alines, addplot=addp)
         return fig
 
     def plotchart(self, savefig=True):
