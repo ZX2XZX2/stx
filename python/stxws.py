@@ -19,27 +19,13 @@ from flask import Flask, render_template, request, url_for, flash
 import matplotlib
 from stxplotbin import StxPlotBin
 matplotlib.use('Agg')
-from stx247 import StxAnalyzer
 from stxplot import StxPlot
 from stxplotid import StxPlotID
-from stxtsid import StxTSID
 
 ixxx = 0
 refresh = 1 # refrsh time in minutes. for realtime, it is 5 minutes
 
 app = Flask(__name__)
-indicators='CS_10,CS_20,CS_45,OBV_10,OBV_20,OBV_45,RS_10,RS_252,RS_4,RS_45'
-indicator_list = indicators.split(',')
-indicator_tenor_list = [x.split('_') for x in indicator_list]
-indicators_df = pd.DataFrame(indicator_tenor_list,
-                             columns=['indicator', 'tenor'])
-indicators_df['tenor'] = indicators_df['tenor'].astype('int')
-indicators_df.sort_values(by=['indicator', 'tenor'], inplace=True)
-indicator_names = sorted(indicators_df['indicator'].unique())
-indicator_tenors = sorted(indicators_df['tenor'].unique())
-display_days = 90
-
-stx_ana = StxAnalyzer(indicator_names, indicator_tenors, display_days)
 
 market_date = '2023-05-01'
 market_time = '15:45'
@@ -185,120 +171,6 @@ def analysis():
                            dt_date=dt_date, dt_time=dt_time,
                            eod_days=eod_days, id_days=id_days, freq=freq,
                            frequencydict=frequencydict)
-
-@app.route('/eod_market', methods=('GET', 'POST'))
-def eod_market_analysis():
-    charts = []
-    stks = ''
-    end_date, end_time = stxcal.current_intraday_busdatetime()
-    min_up_cs = 90
-    max_down_cs = 10
-    eod_days = 90
-    id_days = 20
-    freq = '60min'
-    """1. Get all the JC_1234 and JC_5DAYS setups for the current day.
-    2. Use the same DB query as in the report generator
-    3. Filter on the indicators
-    4. Check, by using the intraday data, which setups have been
-    triggered as of the current date and time.  Calculate the time
-    when it was triggered.
-    5. Generate the eod and intraday charts for each triggered setup
-    6. Replace the setup time retrieved from the database with the
-    setup time calculated in 4.
-    """
-    end_dt = ''
-    if request.method == 'POST':
-        end_date = request.form['dt_date']
-        end_time = "15:55:00"
-        end_dt = f'{end_date} {end_time}'
-        eod_days = int(request.form['eod_days'])
-        id_days = int(request.form['id_days'])
-        freq = request.form['frequency']
-        if not end_dt:
-            flash('Date is required!')
-            return render_template(
-                'eod_market.html', charts=[], end_date='', end_time='',
-                eod_days=eod_days, id_days=id_days,
-                min_up_cs=min_up_cs, max_down_cs=max_down_cs,
-                frequencydict=frequencydict, freq=freq)
-        # num_recs = ctypes.c_int(0)
-        # self._lib = _lib
-        # self._lib.stx_get_ohlcv.argtypes = (
-        #     ctypes.c_char_p,
-        #     ctypes.c_char_p,
-        #     ctypes.c_int,
-        #     ctypes.c_bool,
-        #     ctypes.c_bool,
-        #     ctypes.POINTER(ctypes.c_int),
-        # )
-        # self._lib.stx_get_ohlcv.restype = ctypes.POINTER(ChartStruct)
-        # realtime = False
-        # logging.info('getting stock data')
-        # res = self._lib.stx_get_ohlcv(
-        #     ctypes.c_char_p(stk.encode('UTF-8')),
-        #     ctypes.c_char_p(end_dt.encode('UTF-8')),
-        #     ctypes.c_int(num_days),
-        #     ctypes.c_bool(intraday),
-        #     ctypes.c_bool(realtime),
-        #     ctypes.byref(num_recs)
-        # )
-
-        if request.form.get('untriggered') is not None:
-            eod = True
-            triggered = False
-        else:
-            eod = False
-            triggered = True
-            if request.form['action'] == 'Next':
-                end_date, end_time = stxcal.next_intraday(end_dt)
-                end_dt = f'{end_date} {end_time}'
-        end_date, end_time = end_dt.split(' ')
-        start_date = stxcal.move_busdays(end_date, -220)
-        date_1 = stxcal.prev_busday(end_date)
-        frequency = int(freq[:-3])
-        # Return all triggered setups for the day
-        if not eod:
-            setup_df = stx_ana.get_triggered_setups(
-                end_date, eod, triggered)
-        else:
-            setup_df = stx_ana.get_triggered_setups(
-                stxcal.next_busday(end_date), eod, triggered)
-        min_up_cs = int(request.form['min_up_cs'])
-        max_down_cs = int(request.form['max_down_cs'])
-        # Filter out:
-        # 1. UP setups with CS_45 rank below a threshold
-        # 2. DOWN setups with CS_45 rank above a threshold
-        sdf = setup_df.query("(direction=='U' and bucket_rank>=@min_up_cs) or "
-                             "(direction=='D' and bucket_rank<=@max_down_cs)")
-        sdf = stx_ana.add_indicators(sdf, end_date, indicator_list, eod)
-        # 3. Setups not triggered yet
-        for _, row in sdf.iterrows():
-            try:
-                tsid = StxTSID(row['stk'], start_date, end_date, end_time)
-                tsid.mpf_id(end_date)
-                if ((not eod and row['direction'] == 'U' and
-                     tsid.df.loc[end_date, 'High']<tsid.df.loc[date_1, 'High'])
-                    or (not eod and row['direction'] == 'D' and
-                        tsid.df.loc[end_date,'Low']>tsid.df.loc[date_1,'Low'])):
-                    continue
-                res = tsid.getchartstreams(end_dt, eod_days=eod_days,
-                                           id_days1=id_days,
-                                           id_mins1=frequency)
-                indicator_tbl = stx_ana.build_indicators_table(row)
-                res['indicator_table'] = ''.join(indicator_tbl)
-                charts.append(res)
-            except:
-                logging.error(f"Intraday analysis failed for {row['stk']}")
-                tb.print_exc()
-    else:
-        min_up_cs = 90
-        max_down_cs = 10
-    return render_template('eod_market.html', charts=charts, dt_date=end_date,
-                           dt_time=end_time, min_up_cs=min_up_cs,
-                           max_down_cs=max_down_cs,
-                           eod_days=eod_days,
-                           id_days=id_days,
-                           frequencydict=frequencydict, freq=freq)
 
 def get_portfolio(mkt_name, stx, mkt_dt):
     dt_date, dt_time = mkt_dt.split()
