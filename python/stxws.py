@@ -166,7 +166,7 @@ def analysis():
                 end_dt = f'{end_date} {end_time}'
                 dt_date = end_date
                 dt_time = end_time
-            charts = generate_charts(stk_list, end_dt, eod_days, id_days, freq)
+            charts = generate_charts(None, stk_list, end_dt, eod_days, id_days, freq)
     return render_template('analysis.html', charts=charts, stx=stks,
                            dt_date=dt_date, dt_time=dt_time,
                            eod_days=eod_days, id_days=id_days, freq=freq,
@@ -267,10 +267,12 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         pf_list = [[x[0], x[3], x[7]] for x in portfolio]
         pf_charts, wl_charts, indicator_charts = [], [], {}
         if pf_list:
-            pf_charts = generate_charts(pf_list, f'{mkt_date} 15:55:00',
+            pf_charts = generate_charts(mkt_name, pf_list,
+                                        f'{mkt_date} 15:55:00',
                                         0, 2, '5min')
         if watchlist:
-            wl_charts = generate_charts(watchlist, f'{mkt_date} 15:55:00',
+            wl_charts = generate_charts(mkt_name, watchlist,
+                                        f'{mkt_date} 15:55:00',
                                         120, 20, '60min')
         if indicators:
             for indicator in indicators:
@@ -279,9 +281,9 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                 ind_down = indicator.get('Down')
                 stx_up = [x['ticker'] for x in ind_up]
                 stx_down = [x['ticker'] for x in ind_down]
-                up_charts = generate_charts(stx_up, f'{mkt_date} 15:55:00',
+                up_charts = generate_charts(mkt_name, stx_up, f'{mkt_date} 15:55:00',
                                             120, 20, '60min')
-                down_charts = generate_charts(stx_down, f'{mkt_date} 15:55:00',
+                down_charts = generate_charts(mkt_name, stx_down, f'{mkt_date} 15:55:00',
                                               120, 20, '60min')
                 indicator_charts[indicator_name] = {
                     "up": up_charts,
@@ -381,10 +383,9 @@ def delete_market():
         return f'Market {mkt_name} delete failed:<br>{tb.print_exc()}'
     return f'Market {mkt_name} successfully deleted'
 
-def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
+def generate_charts(mkt_name, stk_list, end_dt, eod_days, id_days, frequency,
                     id_days1=None, frequency1=None):
     charts = []
-    end_date, _ = end_dt.split()
     freq = int(frequency[:-3])
     for stk in stk_list:
         if type(stk).__name__ == 'list':
@@ -394,8 +395,15 @@ def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
         else:
             hlines = []
             alines = []
+            sr_lines = get_sr(stk, mkt_name)
+            for dt1, x1, dt2, x2 in sr_lines:
+                if x1 == x2:
+                    hlines.append(x1)
+                else:
+                    alines.append([(dt1, x1), (dt2, x2)])
         if eod_days != 0:
             sp = StxPlotBin(_lib, stk, eod_days, end_dt, intraday=False)
+
         spid = StxPlotBin(_lib, stk, id_days, end_dt, intraday=True,
             period=freq, hlines=hlines, alines=alines)
         chartdict = {
@@ -410,7 +418,7 @@ def generate_charts(stk_list, end_dt, eod_days, id_days, frequency,
             else:
                 freq1 = int(frequency[:-3])
             spid1 = StxPlotBin(_lib, stk, id_days1, end_dt, intraday=True,
-                               period=freq1)
+                               period=freq1, hlines=hlines, alines=alines)
             chartdict['id1_png'] = spid1.b64_png()
         charts.append(chartdict)
     return charts
@@ -550,8 +558,8 @@ def gen_analysis_page(request):
     id_days2 = 2
     freq1 = '60min'
     freq2 = '5min'
-    charts = generate_charts(stk_list, dt, eod_days, id_days1, freq1,
-        id_days2, freq2)
+    charts = generate_charts(market_name, stk_list, dt, eod_days, id_days1,
+                             freq1, id_days2, freq2)
     return charts, dt
 
 @app.route('/stk_analysis', methods=['POST'])
