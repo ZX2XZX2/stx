@@ -1016,6 +1016,33 @@ char *cal_last_intraday_date() {
     return last_intraday_date;
 }
 
+/**
+ * @brief Format dt: YYYY-MM-dd for EOD, YYYY-MM-dd HH:MM:SS for intraday
+ *
+ * @param dt - datetime to format
+ * @param intraday - true for intraday, false for EOD
+ * @return char* - formatted datetime
+ */
+char* cal_sanitize_dt(char *dt, bool intraday) {
+    static char _retval[20];
+    strcpy(_retval, dt);
+    char *crs = strchr(_retval, ' ');
+    if (intraday) {
+        /** Ensure that HH:MM:SS exists in intraday dates
+         *  If not there, append 15:55:00 to the date
+         */
+        if (crs == NULL)
+            sprintf(_retval, "%s 15:55:00", dt);
+        /** TODO: Ensure that HH:MM:SS are between 09:30:00 and 15:55:00 */
+    } else {
+        /** Remove HH:MM:SS from datetimes used in EOD records */
+        if (crs != NULL)
+            *crs = '\0';
+    }
+    return _retval;
+}
+
+
 /** These two hashtables keep in memory data or JL records calculated
  *  for various equities
  */
