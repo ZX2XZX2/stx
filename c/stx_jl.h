@@ -864,14 +864,16 @@ void jl_print_rec(char* date, int state, int price, bool pivot, int rg,
 jl_data_ptr jl_jl(stx_data_ptr data, char* end_date, float factor) {
     jl_data_ptr jl = jl_init(data, factor, (data->intraday? 156: 20));
     int res = 0;
-    while((strcmp(jl->data->data[jl->pos].date, end_date) < 0) && (res != -1))
+    char *san_end_date = cal_sanitize_dt(end_date, data->intraday);
+    while((strcmp(jl->data->data[jl->pos].date, san_end_date) < 0) && (res != -1))
         res = jl_next(jl);
     return jl;
 }
 
 int jl_advance(jl_data_ptr jl, char* end_date) {
     int res = 0, num_days = 0;
-    while((strcmp(jl->data->data[jl->pos].date, end_date) < 0) &&
+    char *san_end_date = cal_sanitize_dt(end_date, jl->data->intraday);
+    while((strcmp(jl->data->data[jl->pos].date, san_end_date) < 0) &&
           (res != -1)) {
         res = jl_next(jl);
         num_days++;
