@@ -172,6 +172,61 @@ def analysis():
                            eod_days=eod_days, id_days=id_days, freq=freq,
                            frequencydict=frequencydict)
 
+def get_portfolio_py(mkt_name, stx, mkt_dt):
+    dt_date, _ = mkt_dt.split()
+    stk_filter = "" if stx == '*' else f" AND stk='{stx}' "
+    sql_cmd = f"SELECT stk, direction, SUM(quantity) AS in_shares, "\
+        f"SUM(price * quantity) / SUM(quantity) AS in_price FROM trades "\
+        f"WHERE market = '{mkt_name}' AND DATE(dt) = '{dt_date}' "\
+        f"AND dt <= '{mkt_dt}' {stk_filter} AND action * direction = -1 "\
+        f"GROUP BY stk, direction"
+    df_in = pd.read_sql(sql_cmd, stxdb.db_get_cnx())
+    if len(df_in) == 0:
+        return []
+    sql_cmd = f"SELECT stk, direction, SUM(quantity) AS out_shares, "\
+        f"SUM(price * quantity) / SUM(quantity) AS out_price FROM trades "\
+        f"WHERE market = '{mkt_name}' AND DATE(dt) = '{dt_date}' "\
+        f"AND dt <= '{mkt_dt}' {stk_filter} AND action * direction = 1 "\
+        f"GROUP BY stk, direction"
+    df_out = pd.read_sql(sql_cmd, stxdb.db_get_cnx())
+    df_pf = df_in.merge(df_out, on='stk', how='outer')
+    df_pf = df_pf.fillna(0)
+    df_pf['open_shares'] = df_pf['in_shares'] - df_pf['out_shares']
+    df_pf['direction'] = df_pf.apply(lambda r: 'Long' if r['direction_x'] == 1 else 'Short', axis=1)
+
+    open_df = df_pf.query('open_shares>0').copy()
+    pf_list = open_df[['stk', 'direction', 'open_shares', 'in_price', 'direction_x']].values.tolist()
+    for x in pf_list:
+        # get current price and pnl
+        sql_cmd = sql.Composed([
+            sql.SQL("SELECT "), sql.Identifier('c'), sql.SQL(" FROM "),
+            sql.Identifier('intraday'), sql.SQL(" WHERE "),
+            sql.Identifier('stk'), sql.SQL('='), sql.Literal(x[0]),
+            sql.SQL(" AND "),
+            sql.Identifier('dt'), sql.SQL("="), sql.Literal(mkt_dt)
+        ])
+        c_res = stxdb.db_read_cmd(sql_cmd)
+        # get stop-loss and target
+        sql_cmd = sql.Composed([
+            sql.SQL("SELECT * FROM "), sql.Identifier('stx_risk'),
+            sql.SQL(" WHERE "),
+            sql.Identifier('stk'), sql.SQL("="), sql.Literal(x[0]),
+            sql.SQL(" AND DATE("), sql.Identifier('dt'), sql.SQL(")="),
+            sql.Literal(dt_date), sql.SQL(" AND "), sql.Identifier('dt'),
+            sql.SQL("<="), sql.Literal(mkt_dt), sql.SQL( "AND "),
+            sql.Identifier('direction'), sql.SQL("="), sql.Literal(x[-1]),
+            sql.SQL(" ORDER BY "), sql.Identifier('dt'),
+            sql.SQL(" DESC LIMIT 1")
+        ])
+        risk_res = stxdb.db_read_cmd(sql_cmd)
+        direction = x.pop()
+        x.append(c_res[0][0])
+        logging.info(f"direction = {direction}, x[2] = {x[2]}, c_res[0] = {c_res[0]}, x[3] = {x[3]} risk_res[3] = {risk_res[0][3]}")
+        x.append(int(direction * x[2] * (c_res[0][0] - x[3])))
+        x.append(risk_res[0][3])
+        x.append(risk_res[0][4])
+    return pf_list
+
 def get_portfolio(mkt_name, stx, mkt_dt):
     dt_date, dt_time = mkt_dt.split()
     _lib.stx_get_portfolio.restype = ctypes.c_void_p
@@ -183,8 +238,9 @@ def get_portfolio(mkt_name, stx, mkt_dt):
         ctypes.c_char_p(dt_time.encode('UTF-8'))
     )
     portfolio_str = ctypes.cast(res, ctypes.c_char_p).value
+    logging.debug(f"portfolio_str = {portfolio_str}")
     portfolio_json = json.loads(portfolio_str)
-    logging.info(f"portfolio_json = {json.dumps(portfolio_json, indent=2)}")
+    logging.debug(f"portfolio_json = {json.dumps(portfolio_json, indent=2)}")
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
@@ -227,7 +283,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_date, datetime.date):
         mkt_date = mkt_date.strftime("%Y-%m-%d")
     eod_market = mkt_dt.endswith('16:00:00')
-    portfolio = get_portfolio(mkt_name, '*',
+    portfolio = get_portfolio_py(mkt_name, '*',
         mkt_dt.replace('16:00:00', '15:55:00'))
     q = sql.Composed([
         sql.SQL("SELECT"),
@@ -564,25 +620,26 @@ def gen_analysis_page(request):
 
 @app.route('/stk_analysis', methods=['POST'])
 def stk_analysis():
-    market_name = request.form['market_name']
+    mkt = request.form['market_name']
     charts, dt = gen_analysis_page(request)
     stk = request.form['stk']
     jl_html = get_jl_html(stk, dt)
     return render_template('stk_analysis.html', chart=charts[0], dt=dt,
-        market_name=market_name, jl_html=jl_html)
+        market_name=mkt, jl_html=jl_html)
 
 def init_trade(request):
     stk = request.form['stk']
     dt = request.form['dt']
-    market_name = request.form['market_name']
+    mkt = request.form['market_name']
     _lib.stx_get_trade_input.restype = ctypes.c_void_p
     res = _lib.stx_get_trade_input(
         ctypes.c_char_p(stk.encode('UTF-8')),
         ctypes.c_char_p(dt.encode('UTF-8'))
     )
     trade_input_str = ctypes.cast(res, ctypes.c_char_p).value
+    logging.debug(f"trade_input_str = {trade_input_str}")
     trade_input_json = json.loads(trade_input_str)
-    logging.info(f"trade_input_json = {json.dumps(trade_input_json, indent=2)}")
+    logging.debug(f"trade_input_json = {json.dumps(trade_input_json, indent=2)}")
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
@@ -601,8 +658,11 @@ def init_trade(request):
     if size > trading_power_size:
         size = trading_power_size
     logging.info(f'size = {size}')
-    return render_template('trade.html', stk=stk, dt=dt,
-        market_name=market_name, current_price=in_price, size=int(size)
+    portfolio = get_portfolio_py(mkt, stk, dt.replace('16:00:00', '15:55:00'))
+    logging.info(f'portfolio = {portfolio}')
+
+    return render_template('trade.html', stk=stk, dt=dt, portfolio=portfolio,
+        market_name=mkt, current_price=in_price, size=int(size)
     )
 
 def check_trade_params(request):
@@ -722,7 +782,7 @@ def get_jl_html(stk, dt):
     )
     jl_str = ctypes.cast(res, ctypes.c_char_p).value
     jl_json = json.loads(jl_str)
-    logging.info(f"trade_input_json = {json.dumps(jl_json, indent=2)}")
+    logging.debug(f"JL records = {json.dumps(jl_json, indent=2)}")
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
