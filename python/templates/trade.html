@@ -3,6 +3,36 @@
     <head>
     </head>
     <body style="font-family:Arial, Helvetica, sans-serif;">
+        {% if portfolio|length > 0 %}
+            <table>
+                <tr>
+                    <th>Stock</th>
+                    <th>Direction</th>
+                    <th>Shares</th>
+                    <th>In Price</th>
+                    <th>Current Price</th>
+                    <th>PnL</th>
+                    <th>Target</th>
+                    <th>Stop-Loss</th>
+                    <th>RRR</th>
+                </tr>
+                {% for pf_line in portfolio %}
+                <tr>
+                    <td>{{ pf_line[0] }}</td>
+                    <td>{{ pf_line[1] }}</td>
+                    <td>{{ pf_line[2] }}</td>
+                    <td>{{ pf_line[3] }}</td>
+                    <td>{{ pf_line[4] }}</td>
+                    <td>{{ pf_line[5] }}</td>
+                    <td>{{ pf_line[6] }}</td>
+                    <td>{{ pf_line[7] }}</td>
+                    <td>{{ pf_line[8] }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            <br>
+        {% endif %}
+
         <form method="post" action="/trade">
             <input type="hidden" name="stk" value="{{ stk }}">
             <input type="hidden" name="dt" value="{{ dt }}">
