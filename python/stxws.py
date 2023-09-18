@@ -172,7 +172,7 @@ def analysis():
                            eod_days=eod_days, id_days=id_days, freq=freq,
                            frequencydict=frequencydict)
 
-def get_portfolio_py(mkt_name, stx, mkt_dt):
+def get_portfolio(mkt_name, stx, mkt_dt):
     dt_date, _ = mkt_dt.split()
     stk_filter = "" if stx == '*' else f" AND stk='{stx}' "
     sql_cmd = f"SELECT stk, direction, SUM(quantity) AS in_shares, "\
@@ -227,63 +227,13 @@ def get_portfolio_py(mkt_name, stx, mkt_dt):
         x.append(risk_res[0][4])
     return pf_list
 
-def get_portfolio(mkt_name, stx, mkt_dt):
-    dt_date, dt_time = mkt_dt.split()
-    _lib.stx_get_portfolio.restype = ctypes.c_void_p
-    res = _lib.stx_get_portfolio(
-        ctypes.c_char_p(mkt_name.encode('UTF-8')),
-        ctypes.c_char_p(stx.encode('UTF-8')),
-        ctypes.c_char_p(mkt_dt.encode('UTF-8')),
-        ctypes.c_char_p(dt_date.encode('UTF-8')),
-        ctypes.c_char_p(dt_time.encode('UTF-8'))
-    )
-    portfolio_str = ctypes.cast(res, ctypes.c_char_p).value
-    logging.debug(f"portfolio_str = {portfolio_str}")
-    portfolio_json = json.loads(portfolio_str)
-    logging.debug(f"portfolio_json = {json.dumps(portfolio_json, indent=2)}")
-    _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
-    _lib.stx_free_text.restype = None
-    _lib.stx_free_text(ctypes.c_void_p(res))
-    open_positions, closed_positions = [], []
-    for stk, position in portfolio_json.items():
-        pos = position.get('Long')
-        if pos:
-            direction = 'Long'
-            dir = 1
-        else:
-            pos = position.get('Short')
-            direction = 'Short'
-            dir = -1
-        out_shares = pos.get('out_shares', 0)
-        open_shares = pos['in_shares'] - out_shares
-        stop_loss = pos['stop_loss']
-        target = pos['target']
-        crt_price = pos['current_price']
-        avg_in_price = pos['avg_in_price']
-        unrealized_pnl = open_shares * dir * (crt_price - avg_in_price)
-        rrr = -1
-        if target != -1 and stop_loss != -1:
-            rrr = (target - crt_price) / (crt_price - stop_loss)
-        portfolio_line = [
-            stk, direction, open_shares, pos['avg_in_price'],
-            pos['current_price'], unrealized_pnl,
-            '' if target == -1 else target,
-            '' if stop_loss == -1 else stop_loss,
-            '' if rrr == -1 else int(100 * rrr) / 100.0
-        ]
-        if open_shares != 0:
-            open_positions.append(portfolio_line)
-        else:
-            closed_positions.append(portfolio_line)
-    return open_positions
-
 def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_dt, datetime.datetime):
         mkt_dt = mkt_dt.strftime("%Y-%m-%d %H:%M:%S")
     if isinstance(mkt_date, datetime.date):
         mkt_date = mkt_date.strftime("%Y-%m-%d")
     eod_market = mkt_dt.endswith('16:00:00')
-    portfolio = get_portfolio_py(mkt_name, '*',
+    portfolio = get_portfolio(mkt_name, '*',
         mkt_dt.replace('16:00:00', '15:55:00'))
     q = sql.Composed([
         sql.SQL("SELECT"),
@@ -658,7 +608,7 @@ def init_trade(request):
     if size > trading_power_size:
         size = trading_power_size
     logging.info(f'size = {size}')
-    portfolio = get_portfolio_py(mkt, stk, dt.replace('16:00:00', '15:55:00'))
+    portfolio = get_portfolio(mkt, stk, dt.replace('16:00:00', '15:55:00'))
     logging.info(f'portfolio = {portfolio}')
 
     return render_template('trade.html', stk=stk, dt=dt, portfolio=portfolio,
