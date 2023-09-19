@@ -28,8 +28,6 @@ void stx_free_ohlcv(ohlcv_record_ptr *ohlcvs);
 
 char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
                        int up_limit, int down_limit);
-char* stx_get_portfolio(char *market, char* stk, char *dt, char *dt_date,
-                        char *dt_time);
 char* stx_get_trade_input(char *stk, char *dt);
 
 void stx_free_text(char *text);
