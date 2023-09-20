@@ -3,69 +3,69 @@
     <head>
     </head>
     <body style="font-family:Arial, Helvetica, sans-serif;">
-        {% if portfolio|length > 0 %}
-            <table>
-                <tr>
-                    <th>Stock</th>
-                    <th>Direction</th>
-                    <th>Shares</th>
-                    <th>In Price</th>
-                    <th>Current Price</th>
-                    <th>PnL</th>
-                    <th>Target</th>
-                    <th>Stop-Loss</th>
-                    <th>RRR</th>
-                </tr>
-                {% for pf_line in portfolio %}
-                <tr>
-                    <td>{{ pf_line[0] }}</td>
-                    <td>{{ pf_line[1] }}</td>
-                    <td>{{ pf_line[2] }}</td>
-                    <td>{{ pf_line[3] }}</td>
-                    <td>{{ pf_line[4] }}</td>
-                    <td>{{ pf_line[5] }}</td>
-                    <td>{{ pf_line[6] }}</td>
-                    <td>{{ pf_line[7] }}</td>
-                    <td>{{ pf_line[8] }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-            <br>
-        {% endif %}
-
         <form method="post" action="/trade">
             <input type="hidden" name="stk" value="{{ stk }}">
             <input type="hidden" name="dt" value="{{ dt }}">
             <input type="hidden" name="market_name" value="{{ market_name }}">
-            <table>
-                <tr>
-                    <td><label for="crt_price">Current Price</label></td>
-                    <td><input type="text" name="current_price" placeholder="Price" value="{{ current_price }}" maxlength="6" style='max-width:100px' /></td>
-                    <td></td>
-                    <td>Reward-Risk Ratio</td>
-                    <td>{{ reward_risk_ratio }}</td>
-                </tr>
-                <tr>
-                    <td><label for="stop_loss">Stop Loss</label></td>
-                    <td><input type="text" name="stop_loss" placeholder="Stop Loss" value="{{ stop_loss }}" maxlength="6" style='max-width:100px'/></td>
-                    <td></td>
-                    <td>Max Profit</td>
-                    <td>{{ max_profit }}</td>
-                </tr>
-                <tr>
-                    <td><label for="target">Target</label></td>
-                    <td><input type="text" name="target" placeholder="Target" value="{{ target }}" maxlength="6" style='max-width:100px'/></td>
-                    <td></td>
-                    <td>Max Loss</td>
-                    <td>{{ max_loss }}</td>
-                </tr>
-                <tr>
-                    <td><label for="size">Size</label></td>
-                    <td><input type="text" name="size" placeholder="Size" value="{{ size }}" maxlength="6" style='max-width:100px'/></td>
-                    <td></td>
-                    <td>Size Constraint</td>
-                    <td>{{ size_explain }}</td>
-                </tr>
+            {% if portfolio|length > 0 %}
+                <table>
+                    <tr>
+                        <td><label>{{ portfolio[0][0]}}</label></td>
+                        <td><label>{{ portfolio[0][1]}}</label></td>
+                        <td><label for="num_shares">Shares</label>
+                            <input type="text" name="num_shares" placeholder="Shares" value="{{ portfolio[0][2] }}" maxlength="6" style='max-width:100px' />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label> InPrice: {{ portfolio[0][3]}}</label></td>
+                        <td><label> CurrentPrice: {{ portfolio[0][4]}}</label></td>
+                        <td><label> PnL: {{ portfolio[0][5]}}</label></td>
+                    </tr>
+                    <tr>
+                        <td><label for="target-new">Target</label>
+                            <input type="text" name="target-new" placeholder="Target" value="{{ portfolio[0][7] }}" maxlength="6" style='max-width:100px' />
+                        </td>
+                        <td><label for="stop-loss-new">Stop-Loss</label>
+                            <input type="text" name="stop-loss-new" placeholder="Stop-Loss" value="{{ portfolio[0][6] }}" maxlength="6" style='max-width:100px' />
+                        </td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><label> RRR: {{ portfolio[0][8]}}</label></td>
+                        <td><label> Max Gain: </label></td>
+                        <td><label> Max Loss: </label></td>
+                    </tr>
+            {% else %}
+                <table>
+                    <tr>
+                        <td><label for="crt_price">Current Price</label></td>
+                        <td><input type="text" name="current_price" placeholder="Price" value="{{ current_price }}" maxlength="6" style='max-width:100px' /></td>
+                        <td></td>
+                        <td>Reward-Risk Ratio</td>
+                        <td>{{ reward_risk_ratio }}</td>
+                    </tr>
+                    <tr>
+                        <td><label for="stop_loss">Stop Loss</label></td>
+                        <td><input type="text" name="stop_loss" placeholder="Stop Loss" value="{{ stop_loss }}" maxlength="6" style='max-width:100px'/></td>
+                        <td></td>
+                        <td>Max Profit</td>
+                        <td>{{ max_profit }}</td>
+                    </tr>
+                    <tr>
+                        <td><label for="target">Target</label></td>
+                        <td><input type="text" name="target" placeholder="Target" value="{{ target }}" maxlength="6" style='max-width:100px'/></td>
+                        <td></td>
+                        <td>Max Loss</td>
+                        <td>{{ max_loss }}</td>
+                    </tr>
+                    <tr>
+                        <td><label for="size">Size</label></td>
+                        <td><input type="text" name="size" placeholder="Size" value="{{ size }}" maxlength="6" style='max-width:100px'/></td>
+                        <td></td>
+                        <td>Size Constraint</td>
+                        <td>{{ size_explain }}</td>
+                    </tr>
+            {% endif%}
                 <tr>
                     <td><button type="submit" name="action" value="exec_trade">Trade</button></td>
                     <td><button type="submit" name="action" value="risk_mgmt">Risk</button></td>
