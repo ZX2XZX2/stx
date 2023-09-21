@@ -631,6 +631,30 @@ def check_trade_params(request):
     valid_params = (stop_loss != 'N/A' and target != 'N/A' and size != 'N/A')
     return valid_params, stop_loss, target, size
 
+def get_risk(request):
+    stk = request.form['stk']
+    dt = request.form['dt']
+    market_name = request.form['market_name']
+    in_price = int(request.form.get('current_price'))
+    valid_params, stop_loss, target, size = check_trade_params(request)
+    if valid_params:
+        # TODO: replace with market params
+        max_loss_size = 30000 * 2 / (abs(stop_loss - in_price))
+        if size > max_loss_size:
+            size = max_loss_size
+        max_loss = size * (abs(stop_loss - in_price))
+        max_profit = size * (abs(target - in_price))
+        reward_risk_ratio = 100 * max_profit // max_loss * 0.01
+    else:
+        max_loss = 'N/A'
+        max_profit = 'N/A'
+        reward_risk_ratio = 'N/A'
+    return render_template(
+        'trade.html', stk=stk, dt=dt, market_name=market_name,
+        current_price=in_price, stop_loss=stop_loss, target=target, size=size,
+        max_loss=max_loss, max_profit=max_profit,
+        reward_risk_ratio=reward_risk_ratio)
+
 def risk_mgmt(request):
     stk = request.form['stk']
     dt = request.form['dt']
@@ -716,13 +740,16 @@ def trade():
         return init_trade(request)
     elif requested_action == 'risk_mgmt':
         return risk_mgmt(request)
+    elif requested_action == 'get_risk':
+        return get_risk(request)
     elif requested_action == 'exec_trade':
         return exec_trade(request)
     else:
         logging.error(f"Wrong action '{requested_action}'specified; should be "
-                       "one of 'init_trade', 'risk_mgmt', or 'exec_trade'")
+                       f"one of 'init_trade', 'get_risk', 'risk_mgmt', or "
+                       f"'exec_trade'")
         return f"Wrong action '{requested_action}'specified; should be "\
-            "one of 'init_trade', 'risk_mgmt', or 'exec_trade'"
+            "one of 'init_trade', 'get_risk', 'risk_mgmt', or 'exec_trade'"
 
 def get_jl_html(stk, dt):
     _lib.stx_get_jl.restype = ctypes.c_void_p    
