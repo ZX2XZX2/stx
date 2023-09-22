@@ -593,7 +593,7 @@ def init_trade(request):
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
-    in_price = trade_input_json['current_price']
+    current_price = trade_input_json['current_price']
     avg_volume = trade_input_json["avg_volume"]
     avg_range = trade_input_json["avg_range"]
     # TODO: replace 30000 with market parameters
@@ -603,16 +603,32 @@ def init_trade(request):
     logging.info(f'volatility_size = {volatility_size}')
     if size > volatility_size:
         size = volatility_size
-    trading_power_size = 30000 * 100 / in_price
+    trading_power_size = 30000 * 100 / current_price
     logging.info(f'trading_power_size = {trading_power_size}')
     if size > trading_power_size:
         size = trading_power_size
     logging.info(f'size = {size}')
     portfolio = get_portfolio(mkt, stk, dt.replace('16:00:00', '15:55:00'))
     logging.info(f'portfolio = {portfolio}')
+    if portfolio:
+        direction_str = portfolio[0][1]
+        direction = 1 if direction_str == 'Long' else -1
+        size = portfolio[0][2]
+        in_price = portfolio[0][3]
+        current_price = portfolio[0][4]
+        stop_loss = portfolio[0][6]
+        target = portfolio[0][7]
+    else:
+        direction = 0
+        direction_str = ''
+        target = ''
+        stop_loss = ''
+        in_price = current_price
 
-    return render_template('trade.html', stk=stk, dt=dt, portfolio=portfolio,
-        market_name=mkt, current_price=in_price, size=int(size)
+    return render_template('trade.html', stk=stk, dt=dt, direction=direction,
+        direction_str=direction_str, market_name=mkt, in_price=in_price,
+        current_price=current_price, size=int(size), target=target,
+        stop_loss=stop_loss
     )
 
 def check_trade_params(request):
