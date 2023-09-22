@@ -7,65 +7,61 @@
             <input type="hidden" name="stk" value="{{ stk }}">
             <input type="hidden" name="dt" value="{{ dt }}">
             <input type="hidden" name="market_name" value="{{ market_name }}">
-            {% if portfolio|length > 0 %}
-                <table>
-                    <tr>
-                        <td><label>{{ portfolio[0][0]}}</label></td>
-                        <td><label>{{ portfolio[0][1]}}</label></td>
-                        <td><label for="num_shares">Shares</label>
-                            <input type="text" name="num_shares" placeholder="Shares" value="{{ portfolio[0][2] }}" maxlength="6" style='max-width:100px' />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><label> InPrice: {{ portfolio[0][3]}}</label></td>
-                        <td><label> CurrentPrice: {{ portfolio[0][4]}}</label></td>
-                        <td><label> PnL: {{ portfolio[0][5]}}</label></td>
-                    </tr>
-                    <tr>
-                        <td><label for="target-new">Target</label>
-                            <input type="text" name="target-new" placeholder="Target" value="{{ portfolio[0][7] }}" maxlength="6" style='max-width:100px' />
-                        </td>
-                        <td><label for="stop-loss-new">Stop-Loss</label>
-                            <input type="text" name="stop-loss-new" placeholder="Stop-Loss" value="{{ portfolio[0][6] }}" maxlength="6" style='max-width:100px' />
-                        </td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td><label> RRR: {{ portfolio[0][8]}}</label></td>
-                        <td><label> Max Gain: </label></td>
-                        <td><label> Max Loss: </label></td>
-                    </tr>
-            {% else %}
-                <table>
-                    <tr>
-                        <td><label for="crt_price">Current Price</label></td>
-                        <td><input type="text" name="current_price" placeholder="Price" value="{{ current_price }}" maxlength="6" style='max-width:100px' /></td>
-                        <td></td>
-                        <td>Reward-Risk Ratio</td>
-                        <td>{{ reward_risk_ratio }}</td>
-                    </tr>
-                    <tr>
-                        <td><label for="stop_loss">Stop Loss</label></td>
-                        <td><input type="text" name="stop_loss" placeholder="Stop Loss" value="{{ stop_loss }}" maxlength="6" style='max-width:100px'/></td>
-                        <td></td>
-                        <td>Max Profit</td>
-                        <td>{{ max_profit }}</td>
-                    </tr>
-                    <tr>
-                        <td><label for="target">Target</label></td>
-                        <td><input type="text" name="target" placeholder="Target" value="{{ target }}" maxlength="6" style='max-width:100px'/></td>
-                        <td></td>
-                        <td>Max Loss</td>
-                        <td>{{ max_loss }}</td>
-                    </tr>
-                    <tr>
-                        <td><label for="size">Size</label></td>
-                        <td><input type="text" name="size" placeholder="Size" value="{{ size }}" maxlength="6" style='max-width:100px'/></td>
-                        <td></td>
-                        <td>Size Constraint</td>
-                        <td>{{ size_explain }}</td>
-                    </tr>
-            {% endif%}
+            <table>
+                <tr>
+                    <td><label>{{ stk }}</label></td>
+                    <td>
+                        {% if direction_str|length %}
+                            <label>{{ direction_str }}</label>
+                        {% else %}
+                            <select name="direction_str">
+                                <option value="none"></option>
+                                <option value="long">Long</option>
+                                <option value="short">Short</option>
+                            </select>
+                        {% endif %}
+                    </td>
+                    <td><label for="num_shares">Shares</label>
+                        <input type="text" name="num_shares" placeholder="Shares" value="{{ size }}" maxlength="6" style='max-width:100px' />
+                    </td>
+                </tr>
+                <tr>
+                    <td><label> InPrice: {{ in_price }}</label></td>
+                    <td><label> CurrentPrice: {{ current_price }}</label></td>
+                    <td><label> PnL: {{ size * direction * (current_price - in_price) }}</label></td>
+                </tr>
+                <tr>
+                    <td><label for="target">Target</label>
+                        <input type="text" name="target" placeholder="Target" value="{{ target }}" maxlength="6" style='max-width:100px' />
+                    </td>
+                    <td><label for="stop-loss">Stop-Loss</label>
+                        <input type="text" name="stop-loss" placeholder="Stop-Loss" value="{{ stop_loss }}" maxlength="6" style='max-width:100px' />
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>
+                        {% if (target|int != 0 and stop_loss|int != 0) %}
+                            <label> RRR: {{ (100 * (target - current_price) / (current_price - stop_loss)) | int / 100.0 }}</label>
+                        {% else %}
+                            <label> RRR: -</label>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if (target|int != 0) %}
+                            <label> Max Gain: {{ size * (target - current_price) }}</label>
+                        {% else %}
+                            <label> Max Gain: -</label>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if (stop_loss|int != 0) %}
+                            <label> Max Loss: {{ size * (current_price - stop_loss) }}</label>
+                        {% else %}
+                            <label> Max Loss: -</label>
+                        {% endif %}
+                    </td>
+                </tr>
                 <tr>
                     <td><button type="submit" name="action" value="exec_trade">Trade</button></td>
                     <td><button type="submit" name="action" value="get_risk">Get Risk</button></td>
