@@ -650,26 +650,31 @@ def check_trade_params(request):
 def get_risk(request):
     stk = request.form['stk']
     dt = request.form['dt']
-    market_name = request.form['market_name']
-    in_price = int(request.form.get('current_price'))
+    mkt = request.form['market_name']
+    current_price = int(request.form.get('current_price'))
+    in_price = int(request.form.get('in_price'))
+    direction_str = request.form.get('direction_str')
+    direction = int(request.form.get('direction'))
+    print(f"direction = #{direction}#")
     valid_params, stop_loss, target, size = check_trade_params(request)
+    print(f"valid_params = {valid_params}, stop_loss = {stop_loss}, target = {target}, size = {size}")
+
     if valid_params:
         # TODO: replace with market params
-        max_loss_size = 30000 * 2 / (abs(stop_loss - in_price))
+        max_loss_size = 30000 * 2 / (abs(stop_loss - current_price))
         if size > max_loss_size:
             size = max_loss_size
-        max_loss = size * (abs(stop_loss - in_price))
-        max_profit = size * (abs(target - in_price))
-        reward_risk_ratio = 100 * max_profit // max_loss * 0.01
-    else:
-        max_loss = 'N/A'
-        max_profit = 'N/A'
-        reward_risk_ratio = 'N/A'
-    return render_template(
-        'trade.html', stk=stk, dt=dt, market_name=market_name,
-        current_price=in_price, stop_loss=stop_loss, target=target, size=size,
-        max_loss=max_loss, max_profit=max_profit,
-        reward_risk_ratio=reward_risk_ratio)
+        if direction == 0:
+            if target < current_price:
+                direction = -1
+            else:
+                direction = 1
+    print(f"direction = #{direction}#")
+    return render_template('trade.html', stk=stk, dt=dt, direction=direction,
+        direction_str=direction_str, market_name=mkt, in_price=in_price,
+        current_price=current_price, size=int(size), target=target,
+        stop_loss=stop_loss
+    )
 
 def risk_mgmt(request):
     stk = request.form['stk']
