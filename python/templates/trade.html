@@ -10,6 +10,7 @@
             <input type="hidden" name="current_price" value="{{ current_price }}">
             <input type="hidden" name="direction_str" value="{{ direction_str }}">
             <input type="hidden" name="direction" value="{{ direction }}">
+            <input type="hidden" name="size" value="{{ size }}">
             {% if direction_str|length %}
                 <input type="hidden" name="in_price" value="{{ in_price }}">
             {% else %}
@@ -20,17 +21,16 @@
                     <td><label>{{ stk }}</label></td>
                     <td>
                         {% if direction_str|length %}
-                            <label>{{ direction_str }}</label>
+                            <label> {{ direction_str }} {{ size }} shares </label>
                         {% else %}
-                            <select name="direction_str">
-                                <option value="none"></option>
-                                <option value="long">Long</option>
-                                <option value="short">Short</option>
-                            </select>
+                            <label> 0 shares </label>
                         {% endif %}
                     </td>
-                    <td><label for="size">Shares</label>
-                        <input type="text" name="size" placeholder="Shares" value="{{ size }}" maxlength="6" style='max-width:100px' />
+                    <td><label for="shares">Shares</label>
+                        <input type="text" name="shares" placeholder="Shares" value="{{ shares }}" maxlength="6" style='max-width:50px' />
+                    </td>
+                    <td><button type="submit" name="action" value="buy">Buy</button>
+                        <button type="submit" name="action" value="sell">Sell</button>
                     </td>
                 </tr>
                 <tr>
@@ -40,12 +40,17 @@
                 </tr>
                 <tr>
                     <td><label for="target">Target</label>
-                        <input type="text" name="target" placeholder="Target" value="{{ target }}" maxlength="6" style='max-width:100px' />
+                        <input type="text" name="target" placeholder="Target" value="{{ target }}" maxlength="6" style='max-width:50px' />
                     </td>
                     <td><label for="stop_loss">Stop-Loss</label>
-                        <input type="text" name="stop_loss" placeholder="Stop-Loss" value="{{ stop_loss }}" maxlength="6" style='max-width:100px' />
+                        <input type="text" name="stop_loss" placeholder="Stop-Loss" value="{{ stop_loss }}" maxlength="6" style='max-width:50px' />
                     </td>
-                    <td></td>
+                    {% if direction_str|length %}
+                        <td><button type="submit" name="action" value="risk_mgmt">Manage Risk</button></td>
+                    {% else %}
+                        <td><button type="submit" name="action" value="risk_mgmt" disabled>Manage Risk</button></td>
+                    {% endif %}
+                    <td><button type="submit" name="action" value="get_risk">Get Risk</button></td>
                 </tr>
                 <tr>
                     <td>
@@ -57,23 +62,18 @@
                     </td>
                     <td>
                         {% if (target|int != 0) %}
-                            <label> Max Gain: {{ size * direction * (target - current_price) }}</label>
+                            <label> Max Gain: {{ shares * direction * (target - current_price) }}</label>
                         {% else %}
                             <label> Max Gain: -</label>
                         {% endif %}
                     </td>
                     <td>
                         {% if (stop_loss|int != 0) %}
-                            <label> Max Loss: {{ size * direction * (current_price - stop_loss) }}</label>
+                            <label> Max Loss: {{ shares * direction * (current_price - stop_loss) }}</label>
                         {% else %}
                             <label> Max Loss: -</label>
                         {% endif %}
                     </td>
-                </tr>
-                <tr>
-                    <td><button type="submit" name="action" value="exec_trade">Trade</button></td>
-                    <td><button type="submit" name="action" value="get_risk">Get Risk</button></td>
-                    <td><button type="submit" name="action" value="risk_mgmt">Manage Risk</button></td>
                 </tr>
             </table>
         </form>
