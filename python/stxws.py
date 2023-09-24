@@ -41,6 +41,7 @@ frequencydict = {
 _lib_name = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
 _lib = ctypes.CDLL(_lib_name)
 
+
 @app.route('/')
 def index():
     charts = []
@@ -132,6 +133,7 @@ def idcharts():
         dt_date=end_date, dt_time=end_time, num_days=num_days,
         frequencydict=frequencydict, freq=freq)
 
+
 @app.route('/analysis', methods=('GET', 'POST'))
 def analysis():
     logging.info('Start analysis')
@@ -166,7 +168,8 @@ def analysis():
                 end_dt = f'{end_date} {end_time}'
                 dt_date = end_date
                 dt_time = end_time
-            charts = generate_charts(None, stk_list, end_dt, eod_days, id_days, freq)
+            charts = generate_charts(None, stk_list, end_dt, eod_days, id_days,
+                                     freq)
     return render_template('analysis.html', charts=charts, stx=stks,
                            dt_date=dt_date, dt_time=dt_time,
                            eod_days=eod_days, id_days=id_days, freq=freq,
@@ -192,10 +195,12 @@ def get_portfolio(mkt_name, stx, mkt_dt):
     df_pf = df_in.merge(df_out, on='stk', how='outer')
     df_pf = df_pf.fillna(0)
     df_pf['open_shares'] = df_pf['in_shares'] - df_pf['out_shares']
-    df_pf['direction'] = df_pf.apply(lambda r: 'Long' if r['direction_x'] == 1 else 'Short', axis=1)
+    df_pf['direction'] = df_pf.apply(lambda r:
+        'Long' if r['direction_x'] == 1 else 'Short', axis=1)
 
     open_df = df_pf.query('open_shares>0').copy()
-    pf_list = open_df[['stk', 'direction', 'open_shares', 'in_price', 'direction_x']].values.tolist()
+    pf_list = open_df[['stk', 'direction', 'open_shares', 'in_price',
+                       'direction_x']].values.tolist()
     for x in pf_list:
         # get current price and pnl
         sql_cmd = sql.Composed([
@@ -221,7 +226,6 @@ def get_portfolio(mkt_name, stx, mkt_dt):
         risk_res = stxdb.db_read_cmd(sql_cmd)
         direction = x.pop()
         x.append(c_res[0][0])
-        logging.info(f"direction = {direction}, x[2] = {x[2]}, c_res[0] = {c_res[0]}, x[3] = {x[3]} risk_res[3] = {risk_res[0][3]}")
         x.append(int(direction * x[2] * (c_res[0][0] - x[3])))
         x.append(risk_res[0][3])
         x.append(risk_res[0][4])
@@ -287,10 +291,12 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                 ind_down = indicator.get('Down')
                 stx_up = [x['ticker'] for x in ind_up]
                 stx_down = [x['ticker'] for x in ind_down]
-                up_charts = generate_charts(mkt_name, stx_up, f'{mkt_date} 15:55:00',
-                                            120, 20, '60min')
-                down_charts = generate_charts(mkt_name, stx_down, f'{mkt_date} 15:55:00',
-                                              120, 20, '60min')
+                up_charts = generate_charts(mkt_name, stx_up,
+                                            f'{mkt_date} 15:55:00', 120, 20,
+                                            '60min')
+                down_charts = generate_charts(mkt_name, stx_down,
+                                              f'{mkt_date} 15:55:00', 120, 20,
+                                              '60min')
                 indicator_charts[indicator_name] = {
                     "up": up_charts,
                     "down": down_charts
@@ -352,6 +358,7 @@ def create_market():
         return f'Market {mkt_name} create failed:<br>{tb.print_exc()}'
     return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
 
+
 @app.route('/load_market', methods=('GET', 'POST'))
 def load_market():
     mkt_name = request.form.get('market_name')
@@ -371,6 +378,7 @@ def load_market():
     mkt_cache = res[0][3]
     mkt_realtime = res[0][4]
     return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
+
 
 @app.route('/delete_market', methods=('GET', 'POST'))
 def delete_market():
@@ -456,11 +464,12 @@ def market():
         frequency_1 = int(freq_1[:-3])
         frequency_2 = int(freq_2[:-3])
         for stk in stk_list:
-            # sp = StxPlotBin(_lib, stk, eod_days, market_datetime, intraday=False)
-            spid_1 = StxPlotBin(_lib, stk, id_days_1, market_datetime, intraday=True,
-                period=frequency_1)
-            spid_2 = StxPlotBin(_lib, stk, id_days_2, market_datetime, intraday=True,
-                period=frequency_2)
+            # sp = StxPlotBin(_lib, stk, eod_days, market_datetime,
+            #                 intraday=False)
+            spid_1 = StxPlotBin(_lib, stk, id_days_1, market_datetime,
+                                intraday=True, period=frequency_1)
+            spid_2 = StxPlotBin(_lib, stk, id_days_2, market_datetime,
+                                intraday=True, period=frequency_2)
             chartdict = {
                 'eod_png': spid_1.b64_png(),
                 'id_png': spid_2.b64_png()
@@ -470,15 +479,22 @@ def market():
         logging.debug(f'exec_end_time = {exec_end_time}')
         exec_time = exec_end_time - exec_start_time
         logging.debug(f'exec_time = {exec_time}')
-        refresh_time = 60000 * refresh - int( 1000 * exec_time.total_seconds())
+        refresh_time = 60000 * refresh - int( 1000 *
+            exec_time.total_seconds())
         logging.debug(f'refresh_time = {refresh_time}')
-        return render_template('market.html', refresh=refresh_time, charts=charts,
-                                datetime=market_datetime)
+        return render_template('market.html', refresh=refresh_time,
+                                charts=charts, datetime=market_datetime)
     return render_template('eod.html', datetime=market_datetime)
+
 
 @app.route('/markets')
 def markets():
-    q = sql.Composed([sql.SQL("SELECT DISTINCT mkt_name FROM market_caches")])
+    q = sql.Composed([
+        sql.SQL("SELECT DISTINCT "),
+        sql.Identifier("mkt_name"),
+        sql.SQL(" FROM "),
+        sql.Identifier("market_caches")
+    ])
     cnx = stxdb.db_get_cnx()
     market_list = []
     with cnx.cursor() as crs:
@@ -505,6 +521,7 @@ def markets():
         min_activity=min_activity,
     )
 
+
 @app.route('/wl_mgmt', methods=['POST'])
 def watchlist_mgmt():
     stk = request.form.get("stk")
@@ -524,7 +541,8 @@ def watchlist_mgmt():
         try:
             stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
         except:
-            return f'Failed to add {stk} to {market_name} watchlist:<br>{tb.print_exc()}'
+            return f'Failed to add {stk} to {market_name} watchlist:'\
+                f'<br>{tb.print_exc()}'
         return f"Added {stk} to {market_name} watchlist"
     else:
         q = sql.Composed([
@@ -543,7 +561,8 @@ def watchlist_mgmt():
             print(f"DELETE SQL: {q.as_string(stxdb.db_get_cnx())}")
             stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
         except:
-            return f'Failed to remove {stk} from {market_name} watchlist:<br>{tb.print_exc()}'
+            return f'Failed to remove {stk} from {market_name} watchlist:'\
+                f'<br>{tb.print_exc()}'
         return f"Removed {stk} from {market_name} watchlist"
 
 def gen_analysis_page(request):
@@ -568,6 +587,7 @@ def gen_analysis_page(request):
                              freq1, id_days2, freq2)
     return charts, dt
 
+
 @app.route('/stk_analysis', methods=['POST'])
 def stk_analysis():
     mkt = request.form['market_name']
@@ -589,7 +609,7 @@ def init_trade(request):
     trade_input_str = ctypes.cast(res, ctypes.c_char_p).value
     logging.debug(f"trade_input_str = {trade_input_str}")
     trade_input_json = json.loads(trade_input_str)
-    logging.debug(f"trade_input_json = {json.dumps(trade_input_json, indent=2)}")
+    logging.debug(f"trade input: {json.dumps(trade_input_json, indent=2)}")
     _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
     _lib.stx_free_text.restype = None
     _lib.stx_free_text(ctypes.c_void_p(res))
@@ -597,17 +617,18 @@ def init_trade(request):
     avg_volume = trade_input_json["avg_volume"]
     avg_range = trade_input_json["avg_range"]
     # TODO: replace 30000 with market parameters
-    size = avg_volume /100
-    logging.info(f'volume size = {size}')
+    shares = avg_volume /100
+    logging.info(f'volume size = {shares}')
     volatility_size = 30000 * 5 / (3 * avg_range)
     logging.info(f'volatility_size = {volatility_size}')
-    if size > volatility_size:
-        size = volatility_size
+    if shares > volatility_size:
+        shares = volatility_size
     trading_power_size = 30000 * 100 / current_price
     logging.info(f'trading_power_size = {trading_power_size}')
-    if size > trading_power_size:
-        size = trading_power_size
-    logging.info(f'size = {size}')
+    if shares > trading_power_size:
+        shares = trading_power_size
+    shares = int(shares)
+    logging.info(f'shares = {shares}')
     portfolio = get_portfolio(mkt, stk, dt.replace('16:00:00', '15:55:00'))
     logging.info(f'portfolio = {portfolio}')
     if portfolio:
@@ -624,11 +645,12 @@ def init_trade(request):
         target = ''
         stop_loss = ''
         in_price = current_price
+        size = 0
 
     return render_template('trade.html', stk=stk, dt=dt, direction=direction,
         direction_str=direction_str, market_name=mkt, in_price=in_price,
-        current_price=current_price, size=int(size), target=target,
-        stop_loss=stop_loss
+        current_price=current_price, size=int(size), shares=shares,
+        target=target, stop_loss=stop_loss
     )
 
 def check_trade_params(request):
@@ -641,11 +663,11 @@ def check_trade_params(request):
     except:
         target = 'N/A'
     try:
-        size = int(request.form.get('size'))
+        shares = int(request.form.get('shares'))
     except:
-        size = 'N/A'
-    valid_params = (stop_loss != 'N/A' and target != 'N/A' and size != 'N/A')
-    return valid_params, stop_loss, target, size
+        shares = 'N/A'
+    valid_params = (stop_loss != 'N/A' and target != 'N/A' and shares != 'N/A')
+    return valid_params, stop_loss, target, shares
 
 def get_risk(request):
     stk = request.form['stk']
@@ -655,25 +677,22 @@ def get_risk(request):
     in_price = int(request.form.get('in_price'))
     direction_str = request.form.get('direction_str')
     direction = int(request.form.get('direction'))
-    print(f"direction = #{direction}#")
-    valid_params, stop_loss, target, size = check_trade_params(request)
-    print(f"valid_params = {valid_params}, stop_loss = {stop_loss}, target = {target}, size = {size}")
-
+    size = int(request.form.get('size', 0))
+    valid_params, stop_loss, target, shares = check_trade_params(request)
     if valid_params:
         # TODO: replace with market params
-        max_loss_size = 30000 * 2 / (abs(stop_loss - current_price))
-        if size > max_loss_size:
-            size = max_loss_size
         if direction == 0:
+            max_loss_size = 30000 * 2 / (abs(stop_loss - current_price))
+            if shares > max_loss_size:
+                shares = max_loss_size
             if target < current_price:
                 direction = -1
             else:
                 direction = 1
-    print(f"direction = #{direction}#")
     return render_template('trade.html', stk=stk, dt=dt, direction=direction,
         direction_str=direction_str, market_name=mkt, in_price=in_price,
-        current_price=current_price, size=int(size), target=target,
-        stop_loss=stop_loss
+        current_price=current_price, size=int(size), shares=shares,
+        target=target, stop_loss=stop_loss
     )
 
 def risk_mgmt(request):
@@ -700,11 +719,18 @@ def risk_mgmt(request):
         max_loss=max_loss, max_profit=max_profit,
         reward_risk_ratio=reward_risk_ratio)
 
-def exec_trade(request):
+def exec_trade(request, buy_sell):
     stk = request.form['stk']
     dt = request.form['dt']
-    market_name = request.form['market_name']
+    mkt = request.form['market_name']
+    current_price = int(request.form.get('current_price'))
+    in_price = int(request.form.get('in_price'))
+    direction_str = request.form.get('direction_str')
+    direction = int(request.form.get('direction'))
     in_price = int(request.form.get('current_price'))
+    print(f"direction_str = {direction_str}")
+    if not direction_str or direction_str == 'None':
+        return "Error: to place a trade select a direction (Long/Short)"
     valid_params, stop_loss, target, size = check_trade_params(request)
     if valid_params:
         if in_price > stop_loss and in_price < target and size > 0:
@@ -727,7 +753,7 @@ def exec_trade(request):
             sql.Identifier("trades"),
             sql.SQL("VALUES ("),
             sql.SQL(',').join([
-                sql.Literal(market_name),
+                sql.Literal(mkt),
                 sql.Literal(stk),
                 sql.Literal(dt),
                 sql.Literal(direction),
@@ -738,7 +764,7 @@ def exec_trade(request):
             ]),
             sql.SQL(") ON CONFLICT DO NOTHING")
         ])
-        log_msg = f"{market_name}, {stk}, {dt}, {action_str}, {in_price}, "\
+        log_msg = f"{mkt}, {stk}, {dt}, {action_str}, {in_price}, "\
             f"{size}, {trd_info['stop-loss']}, {trd_info['target']}"
         try:
             stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
@@ -749,6 +775,7 @@ def exec_trade(request):
             f"{'stop-loss ' if stop_loss == 'N/A' else ''}"\
             f"{'target ' if target == 'N/A' else ''}"
     return log_msg
+
 
 @app.route('/trade', methods=['POST'])
 def trade():
@@ -763,14 +790,16 @@ def trade():
         return risk_mgmt(request)
     elif requested_action == 'get_risk':
         return get_risk(request)
-    elif requested_action == 'exec_trade':
-        return exec_trade(request)
+    elif requested_action == 'buy':
+        return exec_trade(request, 'buy')
+    elif requested_action == 'sell':
+        return exec_trade(request, 'sell')
     else:
-        logging.error(f"Wrong action '{requested_action}'specified; should be "
-                       f"one of 'init_trade', 'get_risk', 'risk_mgmt', or "
-                       f"'exec_trade'")
-        return f"Wrong action '{requested_action}'specified; should be "\
-            "one of 'init_trade', 'get_risk', 'risk_mgmt', or 'exec_trade'"
+        logging.error(f"Wrong action '{requested_action}'specified; "
+                       f"should be one of: 'init_trade', 'get_risk', "
+                       "'risk_mgmt', 'buy' or 'sell'")
+        return f"Wrong action '{requested_action}'specified; should be one "\
+            "of 'init_trade', 'get_risk', 'risk_mgmt', 'buy', or 'sell'"
 
 def get_jl_html(stk, dt):
     _lib.stx_get_jl.restype = ctypes.c_void_p    
@@ -827,9 +856,8 @@ def get_jl_html(stk, dt):
 def get_sr(stk, mkt):
     # get existing support/resistance from DB
     q = sql.Composed([
-        sql.SQL("SELECT * FROM"),
-        sql.Identifier("stx_sr"),
-        sql.SQL("WHERE"),
+        sql.SQL("SELECT * FROM "), sql.Identifier("stx_sr"),
+        sql.SQL(" WHERE "),
         sql.Identifier("mkt"),
         sql.SQL("="),
         sql.Literal(mkt),
@@ -862,16 +890,11 @@ def add_sr(stk, mkt, dt1, price1, dt2, price2):
         sql.SQL("INSERT INTO"),
         sql.Identifier("stx_sr"),
         sql.SQL("VALUES ("),
-        sql.SQL(',').join(
-            [
-                sql.Literal(stk),
-                sql.Literal(mkt),
-                sql.Literal(dt1),
-                sql.Literal(price1),
-                sql.Literal(dt2),
-                sql.Literal(price2)
-            ]
-        ),
+        sql.SQL(',').join([
+            sql.Literal(stk), sql.Literal(mkt),
+            sql.Literal(dt1), sql.Literal(price1),
+            sql.Literal(dt2), sql.Literal(price2)
+        ]),
         sql.SQL(") ON CONFLICT DO NOTHING")
     ])
     try:
@@ -885,39 +908,27 @@ def delete_sr(stk, mkt, selected_srs):
     for sr in selected_srs:
         dt1, price1, dt2, price2 = sr.split('_')
         q = sql.Composed([
-            sql.SQL("DELETE FROM"),
-            sql.Identifier("stx_sr"),
-            sql.SQL("WHERE"),
-            sql.Identifier("mkt"),
-            sql.SQL("="),
-            sql.Literal(mkt),
-            sql.SQL("AND"),
-            sql.Identifier("stk"),
-            sql.SQL("="),
-            sql.Literal(stk),
-            sql.SQL("AND"),
-            sql.Identifier("dt1"),
-            sql.SQL("="),
-            sql.Literal(dt1),
-            sql.SQL("AND"),
-            sql.Identifier("px1"),
-            sql.SQL("="),
-            sql.Literal(price1),
-            sql.SQL("AND"),
-            sql.Identifier("dt2"),
-            sql.SQL("="),
-            sql.Literal(dt2),
-            sql.SQL("AND"),
-            sql.Identifier("px2"),
-            sql.SQL("="),
-            sql.Literal(price2)
+            sql.SQL("DELETE FROM "), sql.Identifier("stx_sr"),
+            sql.SQL(" WHERE "),
+            sql.Identifier("mkt"), sql.SQL("="), sql.Literal(mkt),
+            sql.SQL(" AND "),
+            sql.Identifier("stk"), sql.SQL("="), sql.Literal(stk),
+            sql.SQL(" AND "),
+            sql.Identifier("dt1"), sql.SQL("="), sql.Literal(dt1),
+            sql.SQL(" AND "),
+            sql.Identifier("px1"), sql.SQL("="), sql.Literal(price1),
+            sql.SQL(" AND "),
+            sql.Identifier("dt2"), sql.SQL("="), sql.Literal(dt2),
+            sql.SQL(" AND "),
+            sql.Identifier("px2"), sql.SQL("="), sql.Literal(price2)
         ])
         try:
             stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
         except:
-            return f'Delete SR ({dt1}, {price1}), ({dt2}, {price2}) failed:<br>'\
-                f'{tb.print_exc()}'
+            return f'Delete SR ({dt1}, {price1}), ({dt2}, {price2}) failed:'\
+                f'<br>{tb.print_exc()}'
     return get_sr_html(stk, mkt)
+
 
 @app.route('/support_resistance', methods=['GET', 'POST'])
 def support_resistance():
