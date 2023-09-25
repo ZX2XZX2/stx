@@ -667,7 +667,14 @@ def check_trade_params(request):
     except:
         shares = 0
     valid_params = (stop_loss != 0 and target != 0 and shares != 0)
-    return valid_params, stop_loss, target, shares
+    if not valid_params:
+        log_msg = f"Invalid trade inputs: "\
+            f"{'shares ' if shares == 0 else ''}"\
+            f"{'stop-loss ' if stop_loss == 0 else ''}"\
+            f"{'target ' if target == 0 else ''}"
+    else:
+        log_msg = ''
+    return log_msg, stop_loss, target, shares
 
 def get_risk(request):
     stk = request.form['stk']
@@ -678,8 +685,8 @@ def get_risk(request):
     direction_str = request.form.get('direction_str')
     direction = int(request.form.get('direction'))
     size = int(request.form.get('size', 0))
-    valid_params, stop_loss, target, shares = check_trade_params(request)
-    if valid_params:
+    invalid_log, stop_loss, target, shares = check_trade_params(request)
+    if not invalid_log:
         # TODO: replace with market params
         if direction == 0:
             max_loss_size = 30000 * 2 / (abs(stop_loss - current_price))
@@ -690,17 +697,44 @@ def get_risk(request):
             else:
                 direction = 1
         log_msg = ''
-    else:
-        log_msg = f"Invalid trade inputs: "\
-            f"{'shares ' if shares == 0 else ''}"\
-            f"{'stop-loss ' if stop_loss == 0 else ''}"\
-            f"{'target ' if target == 0 else ''}"
-
     return render_template('trade.html', stk=stk, dt=dt, direction=direction,
         direction_str=direction_str, market_name=mkt, in_price=in_price,
         current_price=current_price, size=int(size), shares=shares,
-        target=target, stop_loss=stop_loss, log_msg=log_msg
+        target=target, stop_loss=stop_loss, log_msg=invalid_log
     )
+
+def update_risk(mkt, stk, dt, direction, stop_loss, target):
+    q = sql.Composed([
+        sql.SQL("SELECT "), sql.SQL(',').join([
+            sql.Identifier('sl'), sql.Identifier('tgt')
+        ]), sql.SQL(" FROM "), sql.Identifier('stx_risk'), sql.SQL(" WHERE "),
+        sql.Identifier('stk'), sql.SQL('='), sql.Literal(stk),
+        sql.SQL(" AND "),
+        sql.Identifier('mkt'), sql.SQL('='), sql.Literal(mkt),
+        sql.SQL(" AND "),
+        sql.Identifier('direction'), sql.SQL('='), sql.Literal(direction),
+        sql.SQL(" AND "),
+        sql.Identifier('dt'), sql.SQL('<='), sql.Literal(dt),
+        sql.SQL(" ORDER BY "), sql.Identifier('dt'), sql.SQL(" DESC LIMIT 1"),
+    ])
+    res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    if len(res) == 1 and res[0][0] == stop_loss and res[0][1] == target:
+        logging.info('No risk update needed')
+        return ''
+    q = sql.Composed([
+        sql.SQL("INSERT INTO "), sql.Identifier('stx_risk'),
+        sql.SQL(" VALUES ("), sql.SQL(',').join([
+            sql.Literal(mkt), sql.Literal(stk), sql.Literal(dt),
+            sql.Literal(direction), sql.Literal(stop_loss),
+            sql.Literal(target)
+        ]), sql.SQL(")")
+    ])
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        return f'Risk mgmt failed for ({mkt}, {stk}, {dt}, {direction}):<br>'\
+            f'{tb.print_exc()}'
+    return ''
 
 def risk_mgmt(request):
     stk = request.form['stk']
@@ -740,81 +774,76 @@ def exec_trade(request, buy_sell):
     mkt = request.form['market_name']
     current_price = int(request.form.get('current_price'))
     in_price = int(request.form.get('in_price'))
-    size = request.form.get('size', 0)
-    direction = request.form.get('direction', 0)
+    size = int(request.form.get('size', 0))
     direction_str = request.form.get('direction_str', '')
-    valid_params, stop_loss, target, shares = check_trade_params(request)
-    if not valid_params:
-        log_msg = f"Invalid trade inputs: "\
-            f"{'shares ' if shares == 0 else ''}"\
-            f"{'stop-loss ' if stop_loss == 0 else ''}"\
-            f"{'target ' if target == 0 else ''}"
+    direction = 0
+    if direction_str == 'Long':
+        direction = 1
+    elif direction_str == 'Short':
+        direction = -1
+    invalid_log, stop_loss, target, shares = check_trade_params(request)
+    if invalid_log:
         return render_template(
             'trade.html', stk=stk, dt=dt, direction=direction,
             direction_str=direction_str, market_name=mkt, in_price=in_price,
             current_price=current_price, size=int(size), shares=shares,
-            target=target, stop_loss=stop_loss, log_msg=log_msg
+            target=target, stop_loss=stop_loss, log_msg=invalid_log
         )
     logging.info(f"{dt}: {' buying' if trade_direction == 1 else ' selling'}"
                  f" {shares} shares of {stk} at {current_price}")
-    print(f"trade_direction = {trade_direction}, stk = {stk} dt = {dt}, mkt = {mkt}, "
-        f"current_price = {current_price}, in_price = {in_price}, size = {size}"
-        f"direction = {direction}, direction_str = {direction_str}, "
-        f"valid_params = {valid_params}, stop_loss = {stop_loss}, target = {target}, shares = {shares}")
     # if add to an existing position, or open new position (if size == 0)
     if trade_direction == direction or size == 0:
         new_size = size + shares
-        in_price = (size * in_price + shares * current_price) / new_size
+        new_in_price = int((size * in_price + shares * current_price) / new_size)
         action = -1 * trade_direction
+        if size == 0:
+            new_direction = trade_direction
+            new_direction_str = 'Long' if new_direction == 1 else 'Short'
+        else:
+            new_direction = direction
+            new_direction_str = direction_str
     # (partially) close a position; if shares > size, this will only close
     # the existing position; need to place another trade to open position in
     # the opposite direction
     else:
         new_size = size - shares
         if new_size <= 0:
-            direction = 0
-            direction_str = ''
+            new_direction = 0
+            new_direction_str = ''
             new_size = 0
+            shares = size
+            new_in_price = current_price
+        else:
+            new_in_price = in_price
         action = trade_direction
     if new_size > 0:
         # update the risk (stop-loss and target in the overall direction)
-        pass
-
-    # if valid_params:
-    #     if in_price > stop_loss and in_price < target and size > 0:
-    #         action = -1
-    #         direction = 1
-    #         action_str = "BOT"
-    #     elif in_price < stop_loss and in_price > target and size > 0:
-    #         action = 1
-    #         direction = -1
-    #         action_str = 'SSD'
-    #     else:
-    #         action = 0 # this means the trade is invalid
-    #         direction = 0 # this means the trade is invalid
-    #         return "Invalid trade. Check the input and try again"
-    #     q = sql.Composed([
-    #         sql.SQL("INSERT INTO"),
-    #         sql.Identifier("trades"),
-    #         sql.SQL("VALUES ("),
-    #         sql.SQL(',').join([
-    #             sql.Literal(mkt),
-    #             sql.Literal(stk),
-    #             sql.Literal(dt),
-    #             sql.Literal(direction),
-    #             sql.Literal(action),
-    #             sql.Literal(in_price),
-    #             sql.Literal(size),
-    #         ]),
-    #         sql.SQL(") ON CONFLICT DO NOTHING")
-    #     ])
-    #     log_msg = f"{mkt}, {stk}, {dt}, {action_str}, {in_price}, "\
-    #         f"{size}, {trd_info['stop-loss']}, {trd_info['target']}"
-    #     try:
-    #         stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
-    #     except:
-    #         return f'Failed to trade {log_msg}:<br>{tb.print_exc()}'
-    # return log_msg
+        update_risk(mkt, stk, dt, new_direction, stop_loss, target)
+    q = sql.Composed([
+        sql.SQL("INSERT INTO "), sql.Identifier("trades"),
+        sql.SQL(" VALUES ("), sql.SQL(',').join([
+            sql.Literal(mkt), sql.Literal(stk), sql.Literal(dt),
+            sql.Literal(trade_direction), sql.Literal(action),
+            sql.Literal(current_price), sql.Literal(shares)
+        ]), sql.SQL(")")
+    ])
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        log_msg = f'Trade failed:<br>{tb.print_exc()}'
+        return render_template('trade.html', stk=stk, dt=dt, market_name=mkt,
+            direction=direction, direction_str=direction_str, size=int(size),
+            in_price=in_price, current_price=current_price, shares=shares,
+            target=target, stop_loss=stop_loss, log_msg=log_msg
+        )
+    log_msg = f"{'Bought ' if trade_direction == 1 else 'Sold ' }, {shares} "\
+        f"shares of {stk} at {current_price}"
+    return render_template('trade.html', stk=stk, dt=dt, market_name=mkt,
+        direction=new_direction, direction_str=new_direction_str,
+        size=int(new_size), in_price=new_in_price, shares=shares,
+        current_price=current_price, target=target, stop_loss=stop_loss,
+        log_msg=log_msg
+    )
 
 
 @app.route('/trade', methods=['POST'])
