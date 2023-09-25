@@ -208,7 +208,6 @@ int main() {
         "action SMALLINT NOT NULL, "                     \
         "price INTEGER NOT NULL,"                        \
         "quantity INTEGER NOT NULL,"                     \
-        "info JSONB NOT NULL DEFAULT '{}',"              \
         "PRIMARY KEY(market, stk, dt, direction, action))";
     create_table_if_missing(cnx, "trades", create_trades);
 
@@ -414,12 +413,13 @@ int main() {
      *  Store stoploss/target for a long or short stock position
      */
     char* create_stx_risk = "CREATE TABLE stx_risk( "   \
+        "mkt VARCHAR(128) NOT NULL, "                   \
         "stk VARCHAR(16) NOT NULL, "                    \
         "dt TIMESTAMP NOT NULL,"                        \
         "direction SMALLINT NOT NULL, "                 \
         "sl INTEGER NOT NULL, "                         \
         "tgt INTEGER NOT NULL, "                        \
-        "PRIMARY KEY(stk, dt, direction))";
+        "PRIMARY KEY(mkt, stk, dt, direction))";
     create_table_if_missing(cnx, "stx_risk", create_stx_risk);
 
     /**
