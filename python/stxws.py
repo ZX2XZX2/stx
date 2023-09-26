@@ -815,6 +815,8 @@ def exec_trade(request, buy_sell):
             new_in_price = current_price
         else:
             new_in_price = in_price
+            new_direction = direction
+            new_direction_str = direction_str
         action = trade_direction
     if new_size > 0:
         # update the risk (stop-loss and target in the overall direction)
