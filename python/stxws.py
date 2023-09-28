@@ -241,77 +241,75 @@ def get_portfolio(mkt_name, stx, mkt_dt):
         x.append(reward_risk_ratio)
     return pf_list
 
+def get_watchlist(mkt_name):
+    q = sql.Composed([
+        sql.SQL("SELECT "), sql.Identifier("stk"), sql.SQL(" FROM "),
+        sql.Identifier("market_watch"), sql.SQL(" WHERE "),
+        sql.Identifier("mkt"), sql.SQL("="), sql.Literal(mkt_name)
+    ])
+    res_db = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    watchlist = [x[0] for x in res_db]
+    logging.info(f"The watchlist for market {mkt_name} is {watchlist}")
+    return watchlist
+
+def get_indicators(mkt_cache, mkt_date):
+    min_activity = mkt_cache.get('min_activity', 10000)
+    up_limit = mkt_cache.get('up_limit', 2)
+    down_limit = mkt_cache.get('down_limit', 2)
+    _lib.stx_eod_analysis.restype = ctypes.c_void_p
+    ind_names = 'CS_45'
+    res = _lib.stx_eod_analysis(
+        ctypes.c_char_p(mkt_date.encode('UTF-8')),
+        ctypes.c_char_p(ind_names.encode('UTF-8')),
+        ctypes.c_int(min_activity),
+        ctypes.c_int(up_limit),
+        ctypes.c_int(down_limit),
+    )
+    res_json = json.loads(ctypes.cast(res, ctypes.c_char_p).value)
+    _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
+    _lib.stx_free_text.restype = None
+    _lib.stx_free_text(ctypes.c_void_p(res))
+    indicators = res_json.get('indicators')
+    return indicators
+
+def set_indicator_charts(indicator_charts, indicator, mkt_name, mkt_date):
+    indicator_name = indicator.get('name')
+    ind_up = indicator.get('Up')
+    ind_down = indicator.get('Down')
+    stx_up = [x['ticker'] for x in ind_up]
+    stx_down = [x['ticker'] for x in ind_down]
+    up_charts = generate_charts(mkt_name, stx_up,
+                                f'{mkt_date} 15:55:00', 120, 20,
+                                '60min')
+    down_charts = generate_charts(mkt_name, stx_down,
+                                    f'{mkt_date} 15:55:00', 120, 20,
+                                    '60min')
+    indicator_charts[indicator_name] = {
+        "up": up_charts,
+        "down": down_charts
+    }
+
 def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_dt, datetime.datetime):
         mkt_dt = mkt_dt.strftime("%Y-%m-%d %H:%M:%S")
     if isinstance(mkt_date, datetime.date):
         mkt_date = mkt_date.strftime("%Y-%m-%d")
     eod_market = mkt_dt.endswith('16:00:00')
-    portfolio = get_portfolio(mkt_name, '*',
-        mkt_dt.replace('16:00:00', '15:55:00'))
-    q = sql.Composed([
-        sql.SQL("SELECT"),
-        sql.Identifier("stk"),
-        sql.SQL("FROM"),
-        sql.Identifier("market_watch"),
-        sql.SQL("WHERE"),
-        sql.Identifier("mkt"),
-        sql.SQL("="),
-        sql.Literal(mkt_name)
-    ])
-    res_db = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
-    logging.info(f"res_db = {res_db}")
-    watchlist = [x[0] for x in res_db]
-    logging.info(f"watchlist = {watchlist}")
-
+    mktdt = mkt_dt.replace('16:00:00', '15:55:00')
+    portfolio = get_portfolio(mkt_name, '*', mktdt)
+    pf_list = [[x[0], x[3], x[7]] for x in portfolio]
+    pf_charts = generate_charts(mkt_name, pf_list, mktdt, 0, 2, '5min') \
+        if pf_list else []
+    watchlist = get_watchlist(mkt_name)
+    wl_charts = generate_charts(mkt_name, watchlist, mktdt, 120, 20, '60min')\
+        if watchlist else []
     if eod_market:
-        min_activity = mkt_cache.get('min_activity', 10000)
-        up_limit = mkt_cache.get('up_limit', 2)
-        down_limit = mkt_cache.get('down_limit', 2)
-        _lib.stx_eod_analysis.restype = ctypes.c_void_p
-        ind_names = 'CS_45'
-        res = _lib.stx_eod_analysis(
-            ctypes.c_char_p(mkt_date.encode('UTF-8')),
-            ctypes.c_char_p(ind_names.encode('UTF-8')),
-            ctypes.c_int(min_activity),
-            ctypes.c_int(up_limit),
-            ctypes.c_int(down_limit),
-        )
-        res_json = json.loads(ctypes.cast(res, ctypes.c_char_p).value)
-        _lib.stx_free_text.argtypes = (ctypes.c_void_p,)
-        _lib.stx_free_text.restype = None
-        _lib.stx_free_text(ctypes.c_void_p(res))
-        # portfolio = res_json.get('portfolio')
-        # watchlist = res_json.get('watchlist')
-        indicators = res_json.get('indicators')
-        pf_list = [[x[0], x[3], x[7]] for x in portfolio]
-        pf_charts, wl_charts, indicator_charts = [], [], {}
-        if pf_list:
-            pf_charts = generate_charts(mkt_name, pf_list,
-                                        f'{mkt_date} 15:55:00',
-                                        0, 2, '5min')
-        if watchlist:
-            wl_charts = generate_charts(mkt_name, watchlist,
-                                        f'{mkt_date} 15:55:00',
-                                        120, 20, '60min')
+        indicators = get_indicators(mkt_cache, mkt_date)
+        indicator_charts = {}
         if indicators:
             for indicator in indicators:
-                indicator_name = indicator.get('name')
-                ind_up = indicator.get('Up')
-                ind_down = indicator.get('Down')
-                stx_up = [x['ticker'] for x in ind_up]
-                stx_down = [x['ticker'] for x in ind_down]
-                up_charts = generate_charts(mkt_name, stx_up,
-                                            f'{mkt_date} 15:55:00', 120, 20,
-                                            '60min')
-                down_charts = generate_charts(mkt_name, stx_down,
-                                              f'{mkt_date} 15:55:00', 120, 20,
-                                              '60min')
-                indicator_charts[indicator_name] = {
-                    "up": up_charts,
-                    "down": down_charts
-                }
-        print(f'res = {json.dumps(res_json, indent=2)}')
+                set_indicator_charts(indicator_charts, indicator, mkt_name,
+                                     mkt_date)
         return render_template(
             'eod.html',
             market_name=mkt_name,
