@@ -202,6 +202,8 @@ def get_portfolio(mkt_name, stx, mkt_dt):
     pf_list = open_df[['stk', 'direction', 'open_shares', 'in_price',
                        'direction_x']].values.tolist()
     for x in pf_list:
+        num_shares = x[2]
+        in_price = x[3]
         # get current price and pnl
         sql_cmd = sql.Composed([
             sql.SQL("SELECT "), sql.Identifier('c'), sql.SQL(" FROM "),
@@ -211,6 +213,7 @@ def get_portfolio(mkt_name, stx, mkt_dt):
             sql.Identifier('dt'), sql.SQL("="), sql.Literal(mkt_dt)
         ])
         c_res = stxdb.db_read_cmd(sql_cmd)
+        current_price = c_res[0][0]
         # get stop-loss and target
         sql_cmd = sql.Composed([
             sql.SQL("SELECT * FROM "), sql.Identifier('stx_risk'),
@@ -225,10 +228,17 @@ def get_portfolio(mkt_name, stx, mkt_dt):
         ])
         risk_res = stxdb.db_read_cmd(sql_cmd)
         direction = x.pop()
-        x.append(c_res[0][0])
-        x.append(int(direction * x[2] * (c_res[0][0] - x[3])))
-        x.append(risk_res[0][3])
-        x.append(risk_res[0][4])
+        x.append(current_price)
+        pnl = int(direction * num_shares * (current_price - in_price))
+        x.append(pnl)
+        target = risk_res[0][5]
+        x.append(target)
+        stop_loss = risk_res[0][4]
+        x.append(stop_loss)
+        reward_risk_ratio = int(
+            100 * (target - current_price) / (current_price - stop_loss)
+        ) / 100.0
+        x.append(reward_risk_ratio)
     return pf_list
 
 def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
