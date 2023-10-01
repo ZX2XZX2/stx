@@ -119,7 +119,7 @@ def idcharts():
         else:
             if request.form['action'] == 'Next':
                 end_date, end_time = stxcal.next_intraday(end_dt)
-                end_dt = f'{end_date} {end_time}'                
+                end_dt = f'{end_date} {end_time}'
             stk_list = stks.split(' ')
             start_date = stxcal.move_busdays(end_date, -num_days + 1)
             start_dt = f'{start_date} 09:30'
@@ -297,7 +297,8 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     eod_market = mkt_dt.endswith('16:00:00')
     mktdt = mkt_dt.replace('16:00:00', '15:55:00')
     portfolio = get_portfolio(mkt_name, '*', mktdt)
-    pf_list = [[x[0], x[3], x[7]] for x in portfolio]
+    # pf_list contains stock, in_price, stop_loss and target
+    pf_list = [[x[0], x[3], x[7], x[6]] for x in portfolio]
     pf_charts = generate_charts(mkt_name, pf_list, mktdt, 0, 2, '5min') \
         if pf_list else []
     watchlist = get_watchlist(mkt_name)
@@ -1036,3 +1037,11 @@ def support_resistance():
                        "one of 'sr_init', 'sr_delete_selected', or 'sr_add'")
         return f"Wrong action '{requested_action}'specified; should be "\
             "one of 'sr_init', 'sr_delete_selected', or 'sr_add'"
+
+
+@app.route('/run_market', methods=['POST'])
+def run_market():
+    mkt_name = request.form.get('market_name')
+    mkt_dt = request.form.get('market_dt')
+    market_dt = stxcal.next_market_datetime(mkt_dt)
+    return f"Running market {mkt_name}, as of {market_dt}"
