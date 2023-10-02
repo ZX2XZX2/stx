@@ -370,7 +370,10 @@ def create_market():
 
 @app.route('/load_market', methods=('GET', 'POST'))
 def load_market():
-    mkt_name = request.form.get('market_name')
+    if request.method == 'POST':
+        mkt_name = request.form.get('market_name')
+    else:
+        mkt_name = 'market-3'
     q = sql.Composed([
         sql.SQL("SELECT * FROM"),
         sql.Identifier("market_caches"),
