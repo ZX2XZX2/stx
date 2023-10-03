@@ -1,13 +1,12 @@
 {% extends 'base.html' %}
 
 {% block content %}
-{% if eod_market is defined and eod_market is sameas true %}
-{% else %}
+{% if refresh|int != 0 %}
   <script>
     function autoRefresh() {
         window.location = window.location.href;
     }
-    setInterval('autoRefresh()', "20000");
+    setInterval('autoRefresh()', "{{ refresh }}");
   </script>
 {% endif %}
 
@@ -159,13 +158,12 @@
         </fieldset>
       {% endfor %}
     {% endfor %}
-    <form action="/run_market" method="post">
+    <form action="/market" method="post">
       <input type="hidden" name="market_name" value="{{ market_name }}">
       <input type="hidden" name="market_date" value="{{ market_date }}">
       <input type="hidden" name="market_dt" value="{{ market_dt }}">
       <button type="submit" name="action" value="StartNewTradingDay">Start New Trading Day</button>
     </form>
-  {% else %}
   {% endif %}
 
 {% endblock %}

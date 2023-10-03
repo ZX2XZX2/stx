@@ -368,22 +368,29 @@ def create_market():
     return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
 
 
-@app.route('/load_market', methods=('GET', 'POST'))
+@app.route('/market', methods=('GET', 'POST'))
 def load_market():
+    # TODO: use DB for this?
+    mkt_name = None
+    active_market_filename = os.path.join('tmp', 'active_market.txt')
     if request.method == 'POST':
         mkt_name = request.form.get('market_name')
+        with open(active_market_filename, 'w') as f:
+            f.write(mkt_name)
     else:
-        mkt_name = 'market-3'
+        with open(active_market_filename, 'r') as f:
+            mkt_name = f.read()
+    if mkt_name is None:
+        logging.error("Could not find an active market. Load a market first")
+        return "Could not find an active market. Load a market first"
     q = sql.Composed([
-        sql.SQL("SELECT * FROM"),
-        sql.Identifier("market_caches"),
-        sql.SQL("WHERE"),
-        sql.Identifier("mkt_name"),
-        sql.SQL("="),
-        sql.Literal(mkt_name)
+        sql.SQL("SELECT * FROM "), sql.Identifier("market_caches"),
+        sql.SQL(" WHERE "),
+        sql.Identifier("mkt_name"), sql.SQL("="), sql.Literal(mkt_name)
     ])
     res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
     if not res:
+        logging.error(f'Could not load market {mkt_name}, it does not exist')
         return f'Could not load market {mkt_name}, it does not exist'
     mkt_date = res[0][1]
     mkt_dt = res[0][2]
@@ -1040,11 +1047,3 @@ def support_resistance():
                        "one of 'sr_init', 'sr_delete_selected', or 'sr_add'")
         return f"Wrong action '{requested_action}'specified; should be "\
             "one of 'sr_init', 'sr_delete_selected', or 'sr_add'"
-
-
-@app.route('/run_market', methods=['POST'])
-def run_market():
-    mkt_name = request.form.get('market_name')
-    mkt_dt = request.form.get('market_dt')
-    market_dt = stxcal.next_market_datetime(mkt_dt)
-    return f"Running market {mkt_name}, as of {market_dt}"
