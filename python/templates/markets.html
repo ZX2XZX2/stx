@@ -4,7 +4,7 @@
     <br>
     <br>
     <br>
-    <form method="post" action="/load_market">
+    <form method="post" action="/market">
         <fieldset>
         <label for="market_name">Select Market</label>
         <select id="market_name" name="market_name">
@@ -13,9 +13,9 @@
             {% endfor %}
         </select>
         </fieldset>
-        <button type="submit" name="action" value="Load Market">Load Market</button>
+        <button type="submit" name="action" value="load_market">Load Market</button>
     </form>
-    <form method="post" action="/create_market">
+    <form method="post" action="/market">
         <fieldset>
         <legend> Create New Market</legend>
         <label for="mkt_name">Market Name</label>
@@ -43,7 +43,7 @@
         <input type="text" name="min_activity" placeholder="MinActivity" value="{{ min_activity }}" maxlength="6" style='max-width:80px'/>
         <br>
         </fieldset>
-        <button type="submit" name="action" value="Create Market">Create Market</button>
+        <button type="submit" name="action" value="create_market">Create Market</button>
     </form>
     <form method="post" action="/delete_market">
         <fieldset>
