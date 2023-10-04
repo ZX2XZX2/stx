@@ -304,53 +304,44 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     watchlist = get_watchlist(mkt_name)
     wl_charts = generate_charts(mkt_name, watchlist, mktdt, 120, 20, '60min')\
         if watchlist else []
+    indicator_charts = {}
     if eod_market:
         indicators = get_indicators(mkt_cache, mkt_date)
-        indicator_charts = {}
         if indicators:
             for indicator in indicators:
                 set_indicator_charts(indicator_charts, indicator, mkt_name,
                                      mkt_date)
-        return render_template(
-            'eod.html',
-            market_name=mkt_name,
-            market_date=mkt_date,
-            market_dt=mkt_dt,
-            pf_charts=pf_charts,
-            wl_charts=wl_charts,
-            watchlist=watchlist,
-            indicator_charts=indicator_charts,
-            portfolio=portfolio
-        )
-    else:
-        return f"Intraday market {mkt_name}, datetime = {mkt_dt}"
+    return render_template(
+        'eod.html',
+        market_name=mkt_name,
+        market_date=mkt_date,
+        market_dt=mkt_dt,
+        pf_charts=pf_charts,
+        wl_charts=wl_charts,
+        watchlist=watchlist,
+        indicator_charts=indicator_charts,
+        portfolio=portfolio,
+        eod_market=eod_market
+    )
 
 
-@app.route('/create_market', methods=('GET', 'POST'))
-def create_market():
+def create_market(request):
     mkt_name = request.form.get('mkt_name')
-    mkt_date  = request.form.get('dt_date')
+    mkt_date = request.form.get('dt_date')
     mkt_dt = f"{mkt_date} 16:00:00"
     mkt_realtime = "TRUE" if request.form.get('realtime') else "FALSE"  
     q = sql.Composed([
-        sql.SQL("SELECT"),
-        sql.Identifier("mkt_name"),
-        sql.SQL("FROM"),
-        sql.Identifier("market_caches"),
-        sql.SQL("WHERE"),
-        sql.Identifier("mkt_name"),
-        sql.SQL("="),
-        sql.Literal(mkt_name)
+        sql.SQL("SELECT "), sql.Identifier("mkt_name"), sql.SQL(" FROM "),
+        sql.Identifier("market_caches"), sql.SQL(" WHERE "),
+        sql.Identifier("mkt_name"), sql.SQL("="), sql.Literal(mkt_name)
     ])
     res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
     if res:
         return f'A market named {mkt_name} already exists'
     mkt_cache = {"portfolio": [], "watchlist": [], "setups": {}}
     q = sql.Composed([
-        sql.SQL("INSERT INTO"),
-        sql.Identifier("market_caches"),
-        sql.SQL("VALUES ("),
-        sql.SQL(',').join(
+        sql.SQL("INSERT INTO "), sql.Identifier("market_caches"),
+        sql.SQL(" VALUES ("), sql.SQL(',').join(
             [
                 sql.Literal(mkt_name),
                 sql.Literal(mkt_date),
@@ -368,11 +359,59 @@ def create_market():
     return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
 
 
+def load_market(request):
+    mkt_name = request.form.get('market_name')
+    active_market_filename = os.path.join(os.sep, 'tmp', 'active_market.txt')
+    with open(active_market_filename, 'w') as f:
+        f.write(mkt_name)
+    q = sql.Composed([
+        sql.SQL("SELECT * FROM "), sql.Identifier("market_caches"),
+        sql.SQL(" WHERE "),
+        sql.Identifier("mkt_name"), sql.SQL("="), sql.Literal(mkt_name)
+    ])
+    res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    if not res:
+        logging.error(f'Could not load market {mkt_name}, it does not exist')
+        return f'Could not load market {mkt_name}, it does not exist'
+    mkt_date = res[0][1]
+    mkt_dt = res[0][2]
+    mkt_cache = res[0][3]
+    mkt_realtime = res[0][4]
+    return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
+
+
 @app.route('/market', methods=('GET', 'POST'))
-def load_market():
+def market():
+    if request.method == 'POST':
+        requested_action = request.form.get('action', 'NotFound')
+        logging.info(f"The action requested is {requested_action}")
+        if requested_action == 'create_market':
+            return create_market(request)
+        elif requested_action == 'load_market':
+            return load_market(request)
+        elif requested_action == 'start_intraday':
+            mkt_name = request.form.get('market_name')
+            mkt_dt = request.form.get('market_dt')
+            mdate, mdt = stxcal.next_market_datetime(mkt_dt)
+            q = sql.Composed([
+                sql.SQL("UPDATE "), sql.Identifier('market_caches'),
+                sql.SQL(" SET "),
+                sql.Identifier('mkt_date'), sql.SQL('='), sql.Literal(mdate),
+                sql.SQL(","),
+                sql.Identifier('mkt_update_dt'),sql.SQL("="),sql.Literal(mdt),
+                sql.SQL(" WHERE "),
+                sql.Identifier('mkt_name'),sql.SQL('='),sql.Literal(mkt_name)
+            ])
+            logging.info(q.as_string(stxdb.db_get_cnx()))
+            try:
+                stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+            except:
+                return f'{mkt_name} dt update failed:<br>{tb.print_exc()}'
+        else:
+            return f'Could not find action {requested_action}'
     # TODO: use DB for this?
     mkt_name = None
-    active_market_filename = os.path.join('tmp', 'active_market.txt')
+    active_market_filename = os.path.join(os.sep, 'tmp', 'active_market.txt')
     if request.method == 'POST':
         mkt_name = request.form.get('market_name')
         with open(active_market_filename, 'w') as f:
@@ -394,6 +433,7 @@ def load_market():
         return f'Could not load market {mkt_name}, it does not exist'
     mkt_date = res[0][1]
     mkt_dt = res[0][2]
+    mkt_date, mkt_dt = stxcal.next_market_datetime(mkt_dt)
     mkt_cache = res[0][3]
     mkt_realtime = res[0][4]
     return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
@@ -403,12 +443,9 @@ def load_market():
 def delete_market():
     mkt_name = request.form.get('market_name')
     q = sql.Composed([
-        sql.SQL("DELETE FROM"),
-        sql.Identifier("market_caches"),
-        sql.SQL("WHERE"),
-        sql.Identifier("mkt_name"),
-        sql.SQL("="),
-        sql.Literal(mkt_name)
+        sql.SQL("DELETE FROM "), sql.Identifier("market_caches"),
+        sql.SQL(" WHERE "),
+        sql.Identifier("mkt_name"), sql.SQL("="), sql.Literal(mkt_name)
     ])
     try:
         stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
@@ -457,8 +494,8 @@ def generate_charts(mkt_name, stk_list, end_dt, eod_days, id_days, frequency,
     return charts
 
 
-@app.route('/market')
-def market():
+@app.route('/market_test')
+def market_test():
     exec_start_time = datetime.datetime.now()
     logging.debug(f'exec_start_time = {exec_start_time}')
     # read the market date from database
@@ -509,10 +546,8 @@ def market():
 @app.route('/markets')
 def markets():
     q = sql.Composed([
-        sql.SQL("SELECT DISTINCT "),
-        sql.Identifier("mkt_name"),
-        sql.SQL(" FROM "),
-        sql.Identifier("market_caches")
+        sql.SQL("SELECT DISTINCT "), sql.Identifier("mkt_name"),
+        sql.SQL(" FROM "), sql.Identifier("market_caches")
     ])
     cnx = stxdb.db_get_cnx()
     market_list = []
@@ -548,10 +583,8 @@ def watchlist_mgmt():
     action = request.form.get("action")
     if action == 'Add':
         q = sql.Composed([
-            sql.SQL("INSERT INTO"),
-            sql.Identifier("market_watch"),
-            sql.SQL("VALUES ("),
-            sql.SQL(',').join([
+            sql.SQL("INSERT INTO "), sql.Identifier("market_watch"),
+            sql.SQL("VALUES ("), sql.SQL(',').join([
                 sql.Literal(market_name),
                 sql.Literal(stk)
             ]),
@@ -565,16 +598,11 @@ def watchlist_mgmt():
         return f"Added {stk} to {market_name} watchlist"
     else:
         q = sql.Composed([
-            sql.SQL("DELETE FROM"),
-            sql.Identifier("market_watch"),
-            sql.SQL("WHERE"),
-            sql.Identifier("stk"),
-            sql.SQL("="),
-            sql.Literal(stk),
+            sql.SQL("DELETE FROM "), sql.Identifier("market_watch"),
+            sql.SQL(" WHERE "),
+            sql.Identifier("stk"), sql.SQL("="), sql.Literal(stk),
             sql.SQL("AND"),
-            sql.Identifier("mkt"),
-            sql.SQL("="),
-            sql.Literal(market_name)
+            sql.Identifier("mkt"), sql.SQL("="), sql.Literal(market_name)
         ])
         try:
             print(f"DELETE SQL: {q.as_string(stxdb.db_get_cnx())}")
