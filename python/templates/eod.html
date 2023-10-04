@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-{% if refresh|int != 0 %}
+{% if refresh is defined and refresh|int != 0 %}
   <script>
     function autoRefresh() {
         window.location = window.location.href;
