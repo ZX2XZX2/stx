@@ -117,8 +117,15 @@
         width: 90%;
 
       }
-
     </style>
+  {% if refresh is defined and refresh|int != 0 %}
+    <script>
+      function autoRefresh() {
+        window.location = window.location.href;
+      }
+      setInterval('autoRefresh()', "{{ refresh }}");
+    </script>
+  {% endif %}
   </head>
   <body>
     <div class="navbar">
