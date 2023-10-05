@@ -1,15 +1,6 @@
 {% extends 'base.html' %}
 
 {% block content %}
-{% if refresh is defined and refresh|int != 0 %}
-  <script>
-    function autoRefresh() {
-        window.location = window.location.href;
-    }
-    setInterval('autoRefresh()', "{{ refresh }}");
-  </script>
-{% endif %}
-
   <br>
   <br>
   <br>
