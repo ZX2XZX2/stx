@@ -311,6 +311,9 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
             for indicator in indicators:
                 set_indicator_charts(indicator_charts, indicator, mkt_name,
                                      mkt_date)
+        refresh = ''
+    else:
+        refresh = 20000
     return render_template(
         'eod.html',
         market_name=mkt_name,
@@ -321,7 +324,8 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         watchlist=watchlist,
         indicator_charts=indicator_charts,
         portfolio=portfolio,
-        eod_market=eod_market
+        eod_market=eod_market,
+        refresh=refresh
     )
 
 
