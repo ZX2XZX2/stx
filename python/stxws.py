@@ -302,8 +302,12 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     pf_charts = generate_charts(mkt_name, pf_list, mktdt, 0, 2, '5min') \
         if pf_list else []
     watchlist = get_watchlist(mkt_name)
-    wl_charts = generate_charts(mkt_name, watchlist, mktdt, 120, 20, '60min')\
-        if watchlist else []
+    id_days1 = 20
+    id_days2 = 2
+    freq1 = '60min'
+    freq2 = '5min'
+    wl_charts = generate_charts(mkt_name, watchlist, mktdt, 0, id_days1,
+                                freq1, id_days2, freq2) if watchlist else []        
     indicator_charts = {}
     if eod_market:
         indicators = get_indicators(mkt_cache, mkt_date)
@@ -313,7 +317,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                                      mkt_date)
         refresh = ''
     else:
-        refresh = 10000
+        refresh = 60000
     return render_template(
         'eod.html',
         market_name=mkt_name,
