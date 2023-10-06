@@ -313,7 +313,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                                      mkt_date)
         refresh = ''
     else:
-        refresh = 20000
+        refresh = 10000
     return render_template(
         'eod.html',
         market_name=mkt_name,
@@ -384,6 +384,49 @@ def load_market(request):
     return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
 
 
+def advance_market(mkt_name):
+    q = sql.Composed([
+        sql.SQL("SELECT * FROM "), sql.Identifier("market_caches"),
+        sql.SQL(" WHERE "),
+        sql.Identifier("mkt_name"), sql.SQL("="), sql.Literal(mkt_name)
+    ])
+    res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
+    if not res:
+        logging.error(f'Could not load market {mkt_name}, it does not exist')
+        raise Exception(f'Could not load market {mkt_name}, it does not exist')
+    mkt_dt = res[0][2]
+    mkt_cache = res[0][3]
+    mkt_realtime = res[0][4]
+    if isinstance(mkt_dt, datetime.datetime):
+        mkt_dt = mkt_dt.strftime("%Y-%m-%d %H:%M:%S")
+    intraday_market = not mkt_dt.endswith('16:00:00')
+    if intraday_market:
+        try:
+            mkt_date, mkt_dt = update_market_datetime(mkt_name, mkt_dt)
+        except:
+            raise
+    return mkt_date, mkt_dt, mkt_cache, mkt_realtime
+
+
+def update_market_datetime(mkt_name, mkt_dt):
+    mdate, mdt = stxcal.next_market_datetime(mkt_dt)
+    q = sql.Composed([
+        sql.SQL("UPDATE "), sql.Identifier('market_caches'),
+        sql.SQL(" SET "),
+        sql.Identifier('mkt_date'), sql.SQL('='), sql.Literal(mdate),
+        sql.SQL(","),
+        sql.Identifier('mkt_update_dt'),sql.SQL("="),sql.Literal(mdt),
+        sql.SQL(" WHERE "),
+        sql.Identifier('mkt_name'),sql.SQL('='),sql.Literal(mkt_name)
+    ])
+    logging.info(q.as_string(stxdb.db_get_cnx()))
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        raise
+    return mdate, mdt
+
+
 @app.route('/market', methods=('GET', 'POST'))
 def market():
     if request.method == 'POST':
@@ -396,21 +439,14 @@ def market():
         elif requested_action == 'start_intraday':
             mkt_name = request.form.get('market_name')
             mkt_dt = request.form.get('market_dt')
-            mdate, mdt = stxcal.next_market_datetime(mkt_dt)
-            q = sql.Composed([
-                sql.SQL("UPDATE "), sql.Identifier('market_caches'),
-                sql.SQL(" SET "),
-                sql.Identifier('mkt_date'), sql.SQL('='), sql.Literal(mdate),
-                sql.SQL(","),
-                sql.Identifier('mkt_update_dt'),sql.SQL("="),sql.Literal(mdt),
-                sql.SQL(" WHERE "),
-                sql.Identifier('mkt_name'),sql.SQL('='),sql.Literal(mkt_name)
-            ])
-            logging.info(q.as_string(stxdb.db_get_cnx()))
+            _, new_mkt_dt = stxcal.next_market_datetime(mkt_dt)
             try:
-                stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+                update_market_datetime(mkt_name, new_mkt_dt)
             except:
-                return f'{mkt_name} dt update failed:<br>{tb.print_exc()}'
+                logging.error(f'{mkt_name} update_market_datetime() failed:'
+                    f'<br>{tb.print_exc()}')
+                return f'{mkt_name} update_market_datetime() failed:'\
+                    f'<br>{tb.print_exc()}'
         else:
             return f'Could not find action {requested_action}'
     # TODO: use DB for this?
@@ -426,21 +462,12 @@ def market():
     if mkt_name is None:
         logging.error("Could not find an active market. Load a market first")
         return "Could not find an active market. Load a market first"
-    q = sql.Composed([
-        sql.SQL("SELECT * FROM "), sql.Identifier("market_caches"),
-        sql.SQL(" WHERE "),
-        sql.Identifier("mkt_name"), sql.SQL("="), sql.Literal(mkt_name)
-    ])
-    res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
-    if not res:
-        logging.error(f'Could not load market {mkt_name}, it does not exist')
-        return f'Could not load market {mkt_name}, it does not exist'
-    mkt_date = res[0][1]
-    mkt_dt = res[0][2]
-    mkt_date, mkt_dt = stxcal.next_market_datetime(mkt_dt)
-    mkt_cache = res[0][3]
-    mkt_realtime = res[0][4]
-    return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
+    try:
+        mkt_date, mkt_dt, mkt_cache, mkt_realtime = advance_market(mkt_name)
+        return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
+    except:
+        logging.error(f'{mkt_name} advance_market() failed: {tb.print_exc()}')
+        return f'{mkt_name} advance_market() failed: {tb.print_exc()}'
 
 
 @app.route('/delete_market', methods=('GET', 'POST'))
