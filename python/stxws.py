@@ -175,70 +175,90 @@ def analysis():
                            eod_days=eod_days, id_days=id_days, freq=freq,
                            frequencydict=frequencydict)
 
+
+def get_current_price(stk, mkt_dt):
+    sql_cmd = sql.Composed([
+        sql.SQL("SELECT "), sql.Identifier('c'), sql.SQL(" FROM "),
+        sql.Identifier('intraday'), sql.SQL(" WHERE "),
+        sql.Identifier('stk'), sql.SQL('='), sql.Literal(stk),
+        sql.SQL(" AND "),
+        sql.Identifier('dt'), sql.SQL("="), sql.Literal(mkt_dt)
+    ])
+    c_res = stxdb.db_read_cmd(sql_cmd.as_string(stxdb.db_get_cnx()))
+    current_price = c_res[0][0]
+    return current_price
+
+
+def get_stop_loss_target(stk, risk_dt, risk_date, direction):
+    sql_cmd = sql.Composed([
+        sql.SQL("SELECT * FROM "), sql.Identifier('stx_risk'),
+        sql.SQL(" WHERE "),
+        sql.Identifier('stk'), sql.SQL("="), sql.Literal(stk),
+        sql.SQL(" AND DATE("), sql.Identifier('dt'), sql.SQL(")="),
+        sql.Literal(risk_date), sql.SQL(" AND "), sql.Identifier('dt'),
+        sql.SQL("<="), sql.Literal(risk_dt), sql.SQL( "AND "),
+        sql.Identifier('direction'), sql.SQL("="), sql.Literal(direction),
+        sql.SQL(" ORDER BY "), sql.Identifier('dt'),
+        sql.SQL(" DESC LIMIT 1")
+    ])
+    risk_res = stxdb.db_read_cmd(sql_cmd.as_string(stxdb.db_get_cnx()))
+    if len(risk_res) == 0:
+        return 0, 0
+    stop_loss = risk_res[0][4]
+    target = risk_res[0][5]
+    return stop_loss, target
+
+
+def get_trades(mkt_name, dt_date, dt, stk_filter, in_out):
+    act_dir = -1 if in_out == 'in' else 1
+    sql_cmd = f"SELECT stk, direction, SUM(quantity) AS {in_out}_shares, "\
+        f"SUM(price * quantity) / SUM(quantity) AS {in_out}_price FROM trades "\
+        f"WHERE market = '{mkt_name}' AND DATE(dt) = '{dt_date}' "\
+        f"AND dt <= '{dt}' {stk_filter} AND action * direction = {act_dir} "\
+        f"GROUP BY stk, direction"
+    df = pd.read_sql(sql_cmd, stxdb.db_get_cnx())
+    return df
+
+
 def get_portfolio(mkt_name, stx, mkt_dt):
     dt_date, _ = mkt_dt.split()
     stk_filter = "" if stx == '*' else f" AND stk='{stx}' "
-    sql_cmd = f"SELECT stk, direction, SUM(quantity) AS in_shares, "\
-        f"SUM(price * quantity) / SUM(quantity) AS in_price FROM trades "\
-        f"WHERE market = '{mkt_name}' AND DATE(dt) = '{dt_date}' "\
-        f"AND dt <= '{mkt_dt}' {stk_filter} AND action * direction = -1 "\
-        f"GROUP BY stk, direction"
-    df_in = pd.read_sql(sql_cmd, stxdb.db_get_cnx())
+    # get initiation trades
+    df_in = get_trades(mkt_name, dt_date, mkt_dt, stk_filter, 'in')
     if len(df_in) == 0:
         return []
-    sql_cmd = f"SELECT stk, direction, SUM(quantity) AS out_shares, "\
-        f"SUM(price * quantity) / SUM(quantity) AS out_price FROM trades "\
-        f"WHERE market = '{mkt_name}' AND DATE(dt) = '{dt_date}' "\
-        f"AND dt <= '{mkt_dt}' {stk_filter} AND action * direction = 1 "\
-        f"GROUP BY stk, direction"
-    df_out = pd.read_sql(sql_cmd, stxdb.db_get_cnx())
+    # get closure trades
+    df_out = get_trades(mkt_name, dt_date, mkt_dt, stk_filter, 'out')
+    # get active trades (initiated trades not closed yet)
     df_pf = df_in.merge(df_out, on='stk', how='outer')
     df_pf = df_pf.fillna(0)
     df_pf['open_shares'] = df_pf['in_shares'] - df_pf['out_shares']
     df_pf['direction'] = df_pf.apply(lambda r:
         'Long' if r['direction_x'] == 1 else 'Short', axis=1)
-
     open_df = df_pf.query('open_shares>0').copy()
+    # generate portfolio list
     pf_list = open_df[['stk', 'direction', 'open_shares', 'in_price',
                        'direction_x']].values.tolist()
+    # process/enhance portfolio list
     for x in pf_list:
+        print(f"start: x = {x}")
+        stk = x[0]
         num_shares = x[2]
         in_price = x[3]
-        # get current price and pnl
-        sql_cmd = sql.Composed([
-            sql.SQL("SELECT "), sql.Identifier('c'), sql.SQL(" FROM "),
-            sql.Identifier('intraday'), sql.SQL(" WHERE "),
-            sql.Identifier('stk'), sql.SQL('='), sql.Literal(x[0]),
-            sql.SQL(" AND "),
-            sql.Identifier('dt'), sql.SQL("="), sql.Literal(mkt_dt)
-        ])
-        c_res = stxdb.db_read_cmd(sql_cmd)
-        current_price = c_res[0][0]
-        # get stop-loss and target
-        sql_cmd = sql.Composed([
-            sql.SQL("SELECT * FROM "), sql.Identifier('stx_risk'),
-            sql.SQL(" WHERE "),
-            sql.Identifier('stk'), sql.SQL("="), sql.Literal(x[0]),
-            sql.SQL(" AND DATE("), sql.Identifier('dt'), sql.SQL(")="),
-            sql.Literal(dt_date), sql.SQL(" AND "), sql.Identifier('dt'),
-            sql.SQL("<="), sql.Literal(mkt_dt), sql.SQL( "AND "),
-            sql.Identifier('direction'), sql.SQL("="), sql.Literal(x[-1]),
-            sql.SQL(" ORDER BY "), sql.Identifier('dt'),
-            sql.SQL(" DESC LIMIT 1")
-        ])
-        risk_res = stxdb.db_read_cmd(sql_cmd)
         direction = x.pop()
+        current_price = get_current_price(stk, mkt_dt)
         x.append(current_price)
         pnl = int(direction * num_shares * (current_price - in_price))
         x.append(pnl)
-        target = risk_res[0][5]
+        stop_loss, target = get_stop_loss_target(stk, mkt_dt, dt_date,
+                                                 direction)
         x.append(target)
-        stop_loss = risk_res[0][4]
         x.append(stop_loss)
         reward_risk_ratio = int(
             100 * (target - current_price) / (current_price - stop_loss)
         ) / 100.0
         x.append(reward_risk_ratio)
+        print(f"end: x = {x}")
     return pf_list
 
 def get_watchlist(mkt_name):
@@ -317,7 +337,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                                      mkt_date)
         refresh = ''
     else:
-        refresh = 60000
+        refresh = 60000000
     return render_template(
         'eod.html',
         market_name=mkt_name,
@@ -719,8 +739,8 @@ def init_trade(request):
         size = portfolio[0][2]
         in_price = portfolio[0][3]
         current_price = portfolio[0][4]
-        stop_loss = portfolio[0][6]
-        target = portfolio[0][7]
+        target = portfolio[0][6]
+        stop_loss = portfolio[0][7]
     else:
         direction = 0
         direction_str = ''
@@ -786,23 +806,19 @@ def get_risk(request):
     )
 
 def update_risk(mkt, stk, dt, direction, stop_loss, target):
-    q = sql.Composed([
-        sql.SQL("SELECT "), sql.SQL(',').join([
-            sql.Identifier('sl'), sql.Identifier('tgt')
-        ]), sql.SQL(" FROM "), sql.Identifier('stx_risk'), sql.SQL(" WHERE "),
-        sql.Identifier('stk'), sql.SQL('='), sql.Literal(stk),
-        sql.SQL(" AND "),
-        sql.Identifier('mkt'), sql.SQL('='), sql.Literal(mkt),
-        sql.SQL(" AND "),
-        sql.Identifier('direction'), sql.SQL('='), sql.Literal(direction),
-        sql.SQL(" AND "),
-        sql.Identifier('dt'), sql.SQL('<='), sql.Literal(dt),
-        sql.SQL(" ORDER BY "), sql.Identifier('dt'), sql.SQL(" DESC LIMIT 1"),
-    ])
-    res = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
-    if len(res) == 1 and res[0][0] == stop_loss and res[0][1] == target:
-        logging.info('No risk update needed')
-        return ''
+    dt_date, _ = dt.split(' ')
+    db_stop_loss, db_target = get_stop_loss_target(stk, dt, dt_date, direction)
+    direction_str = 'Long' if direction == 1 else 'Short'
+    description_str = f" for {stk} {direction_str} as of {dt}"
+    if db_stop_loss == stop_loss and db_target == target:
+        log_msg = f'No risk update needed{description_str}; ' \
+            'stop_loss and target unchanged'
+        logging.info(log_msg)
+        return log_msg
+    stop_loss_msg = f" stop-loss from {db_stop_loss} to {stop_loss}" \
+        if db_stop_loss != stop_loss else ""
+    target_msg = f" target from {db_target} to {target}" \
+        if db_target != target else ""
     q = sql.Composed([
         sql.SQL("INSERT INTO "), sql.Identifier('stx_risk'),
         sql.SQL(" VALUES ("), sql.SQL(',').join([
@@ -813,34 +829,41 @@ def update_risk(mkt, stk, dt, direction, stop_loss, target):
     ])
     try:
         stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        log_msg = f"Changed{stop_loss_msg}{target_msg}{description_str}"
+        logging.info(log_msg)
     except:
-        return f'Risk mgmt failed for ({mkt}, {stk}, {dt}, {direction}):<br>'\
-            f'{tb.print_exc()}'
-    return ''
+        log_msg = f'Change{stop_loss_msg}{target_msg} failed' \
+            f'{description_str}: {tb.print_exc()}'
+        logging.error(log_msg)
+    return log_msg
 
 def risk_mgmt(request):
     stk = request.form['stk']
     dt = request.form['dt']
-    market_name = request.form['market_name']
-    in_price = int(request.form.get('current_price'))
-    valid_params, stop_loss, target, size = check_trade_params(request)
-    if valid_params:
+    mkt = request.form['market_name']
+    current_price = int(request.form.get('current_price'))
+    in_price = int(request.form.get('in_price'))
+    size = int(request.form.get('size', 0))
+    direction_str = request.form.get('direction_str', '')
+    direction = 0
+    if direction_str == 'Long':
+        direction = 1
+    elif direction_str == 'Short':
+        direction = -1
+    invalid_log, stop_loss, target, size = check_trade_params(request)
+    if invalid_log:
+        log_msg = invalid_log
+    else:
+        log_msg = update_risk(mkt, stk, dt, direction, stop_loss, target)
         # TODO: replace with market params
         max_loss_size = 30000 * 2 / (abs(stop_loss - in_price))
         if size > max_loss_size:
             size = max_loss_size
-        max_loss = size * (abs(stop_loss - in_price))
-        max_profit = size * (abs(target - in_price))
-        reward_risk_ratio = 100 * max_profit // max_loss * 0.01
-    else:
-        max_loss = 'N/A'
-        max_profit = 'N/A'
-        reward_risk_ratio = 'N/A'
-    return render_template(
-        'trade.html', stk=stk, dt=dt, market_name=market_name,
-        current_price=in_price, stop_loss=stop_loss, target=target, size=size,
-        max_loss=max_loss, max_profit=max_profit,
-        reward_risk_ratio=reward_risk_ratio)
+    return render_template('trade.html', stk=stk, dt=dt, market_name=mkt,
+        direction=direction, direction_str=direction_str, size=int(size),
+        in_price=in_price, shares=size, current_price=current_price,
+        target=target, stop_loss=stop_loss, log_msg=log_msg
+    )
 
 def exec_trade(request, buy_sell):
     if buy_sell == 'buy':
