@@ -54,7 +54,7 @@
                 </tr>
                 <tr>
                     <td>
-                        {% if (target|int != 0 and stop_loss|int != 0 and taget != 0 and stop_loss != 0) %}
+                        {% if (target|int != 0 and stop_loss|int != 0 and target != 0 and stop_loss != 0) %}
                             <label> RRR: {{ (100 * (target - current_price) / (current_price - stop_loss)) | int / 100.0 }}</label>
                         {% else %}
                             <label> RRR: -</label>
