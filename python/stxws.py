@@ -184,6 +184,7 @@ def get_current_price(stk, mkt_dt):
         sql.SQL(" AND "),
         sql.Identifier('dt'), sql.SQL("="), sql.Literal(mkt_dt)
     ])
+    logging.info(sql_cmd.as_string(stxdb.db_get_cnx()))
     c_res = stxdb.db_read_cmd(sql_cmd.as_string(stxdb.db_get_cnx()))
     current_price = c_res[0][0]
     return current_price
@@ -337,7 +338,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                                      mkt_date)
         refresh = ''
     else:
-        refresh = 60000000
+        refresh = 60000
     return render_template(
         'eod.html',
         market_name=mkt_name,
@@ -463,9 +464,9 @@ def market():
         elif requested_action == 'start_intraday':
             mkt_name = request.form.get('market_name')
             mkt_dt = request.form.get('market_dt')
-            _, new_mkt_dt = stxcal.next_market_datetime(mkt_dt)
+            # _, new_mkt_dt = stxcal.next_market_datetime(mkt_dt)
             try:
-                update_market_datetime(mkt_name, new_mkt_dt)
+                update_market_datetime(mkt_name, mkt_dt)
             except:
                 logging.error(f'{mkt_name} update_market_datetime() failed:'
                     f'<br>{tb.print_exc()}')
