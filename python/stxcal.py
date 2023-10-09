@@ -689,14 +689,14 @@ def next_market_datetime(market_datetime):
     pd_date, pd_time = pddt_str.split(' ')
     if pddt.hour == 16 and pddt.minute == 0:
         next_date = next_busday(pd_date)
-        next_time = '09:25'
+        next_time = '09:25:00'
     else:
         npdt += np.timedelta64(5, 'm')
         pddt = pd.Timestamp(npdt)
         pddt_str = str(pddt)
         pd_date, pd_time = pddt_str.split(' ')
         next_date = pd_date
-        next_time = pd_time[:-3]
+        next_time = pd_time
     return next_date, f"{next_date} {next_time}"
 
 
