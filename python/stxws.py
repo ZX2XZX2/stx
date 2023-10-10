@@ -322,11 +322,14 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     pf_list = [[x[0], x[3], x[7], x[6]] for x in portfolio]
     pf_charts = generate_charts(mkt_name, pf_list, mktdt, 0, 2, '5min') \
         if pf_list else []
-    watchlist = get_watchlist(mkt_name)
     id_days1 = 20
     id_days2 = 2
     freq1 = '60min'
     freq2 = '5min'
+    idx_list = ['SPY']
+    idx_charts = generate_charts(mkt_name, idx_list, mktdt, 0, id_days1,
+                                 freq1, id_days2, freq2)
+    watchlist = get_watchlist(mkt_name)
     wl_charts = generate_charts(mkt_name, watchlist, mktdt, 0, id_days1,
                                 freq1, id_days2, freq2) if watchlist else []        
     indicator_charts = {}
@@ -345,6 +348,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         market_date=mkt_date,
         market_dt=mkt_dt,
         pf_charts=pf_charts,
+        idx_charts=idx_charts,
         wl_charts=wl_charts,
         watchlist=watchlist,
         indicator_charts=indicator_charts,
