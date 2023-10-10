@@ -51,6 +51,24 @@
     </fieldset>
     {% endfor %}
   {% endif %}
+  {% if idx_charts|length > 0 %}
+    <h4>Indexes</h4>
+    {% for chart in idx_charts %}
+    <fieldset>
+      <legend>{{ chart['name'] }}</legend>
+      <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+      <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
+      <br>
+      <form style="display: none" target="_blank" rel="noopener noreferrer" action="/stk_analysis" method="post">
+        <input type="hidden" name="stk" value="{{ chart['name'] }}">
+        <input type="hidden" name="stk_dt" value="{{ market_dt }}">
+        <input type="hidden" name="market_name" value="{{ market_name }}">
+        <button type="submit" id="button_analysis_{{ chart['name'] }}"> </button>
+      </form>
+      <label style="text-decoration: underline" for="button_analysis_{{ chart['name'] }}"> Analysis </label>
+    </fieldset>
+    {% endfor %}
+  {% endif %}
   {% if wl_charts|length > 0 %}
     <h4>Watchlist</h4>
     {% for chart in wl_charts %}
