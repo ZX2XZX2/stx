@@ -445,6 +445,7 @@ def update_market_datetime(mkt_name, mkt_dt):
         sql.Identifier('mkt_date'), sql.SQL('='), sql.Literal(mdate),
         sql.SQL(","),
         sql.Identifier('mkt_update_dt'),sql.SQL("="),sql.Literal(mdt),
+
         sql.SQL(" WHERE "),
         sql.Identifier('mkt_name'),sql.SQL('='),sql.Literal(mkt_name)
     ])
@@ -455,6 +456,35 @@ def update_market_datetime(mkt_name, mkt_dt):
         raise
     return mdate, mdt
 
+
+def jump_market(request):
+    mkt_name = request.form.get('market_name')
+    mkt_dt = request.form.get('market_dt')
+    mkt_date = request.form.get('market_date')
+    jump_time = request.form.get('mkt_time')
+    # validate the time we want to jump to.  It must:
+    # 1. be between (including) 09:30 and 15:55
+    # 2. be later than the current time
+    _, market_time = mkt_dt.split(' ')
+    mt_tokens = market_time.split(':')
+    market_hrs = int(mt_tokens[0])
+    market_mins = int(mt_tokens[1])
+    hrs, mins = jump_time.split(':')
+    jump_tokens = jump_time.split(':')
+    hrs = int(jump_tokens[0])
+    mins = int(jump_tokens[1])
+    if mins % 5 != 0: 
+        mins += (5 - mins % 5)
+    error_log = ""
+    if hrs < 9 or hrs > 15 or (hrs == 9 and mins < 30):
+        error_log += f"Input jump time {jump_time} not between 09:30 and 15:55 "
+        logging.error(f"Input jump time {jump_time} not between 09:30 and 15:55")
+    if market_hrs > hrs or (market_hrs == hrs and market_mins > mins):
+        error_log += f" Input jump time {jump_time} less than " \
+            f"current market time {market_time}"
+        logging.error(f" Input jump time {jump_time} less than "
+            f"current market time {market_time}")
+    return error_log
 
 @app.route('/market', methods=('GET', 'POST'))
 def market():
@@ -476,6 +506,8 @@ def market():
                     f'<br>{tb.print_exc()}')
                 return f'{mkt_name} update_market_datetime() failed:'\
                     f'<br>{tb.print_exc()}'
+        elif requested_action == 'jump_intraday':
+            return jump_market(request)
         else:
             return f'Could not find action {requested_action}'
     # TODO: use DB for this?
