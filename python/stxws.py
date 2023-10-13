@@ -477,14 +477,29 @@ def jump_market(request):
         mins += (5 - mins % 5)
     error_log = ""
     if hrs < 9 or hrs > 15 or (hrs == 9 and mins < 30):
-        error_log += f"Input jump time {jump_time} not between 09:30 and 15:55 "
-        logging.error(f"Input jump time {jump_time} not between 09:30 and 15:55")
+        error_log += f"Input jump time {jump_time} outside 09:30--15:55 "
+        logging.error(f"Input jump time {jump_time} outside 09:30--15:55")
     if market_hrs > hrs or (market_hrs == hrs and market_mins > mins):
         error_log += f" Input jump time {jump_time} less than " \
             f"current market time {market_time}"
         logging.error(f" Input jump time {jump_time} less than "
             f"current market time {market_time}")
+    if error_log == "":
+        mdt = f"{mkt_date} {hrs}:{mins}:00"
+        q = sql.Composed([
+            sql.SQL("UPDATE "), sql.Identifier('market_caches'),
+            sql.SQL(" SET "), sql.Identifier('mkt_update_dt'),
+            sql.SQL("="), sql.Literal(mdt), sql.SQL(" WHERE "),
+            sql.Identifier('mkt_name'),sql.SQL('='),sql.Literal(mkt_name)
+        ])
+        try:
+            stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        except:
+            error_log = f"Failed to update date for market {mkt_name}"
+        if error_log == "":
+            return f"Jumped {mkt_name} to {mdt}"
     return error_log
+
 
 @app.route('/market', methods=('GET', 'POST'))
 def market():
