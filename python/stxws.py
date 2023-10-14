@@ -392,8 +392,7 @@ def create_market(request):
     return get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime)
 
 
-def load_market(request):
-    mkt_name = request.form.get('market_name')
+def load_market(mkt_name):
     active_market_filename = os.path.join(os.sep, 'tmp', 'active_market.txt')
     with open(active_market_filename, 'w') as f:
         f.write(mkt_name)
@@ -497,7 +496,7 @@ def jump_market(request):
         except:
             error_log = f"Failed to update date for market {mkt_name}"
         if error_log == "":
-            return f"Jumped {mkt_name} to {mdt}"
+            return load_market(mkt_name)
     return error_log
 
 
@@ -509,7 +508,8 @@ def market():
         if requested_action == 'create_market':
             return create_market(request)
         elif requested_action == 'load_market':
-            return load_market(request)
+            mkt_name = request.form.get('market_name')
+            return load_market(mkt_name)
         elif requested_action == 'start_intraday':
             mkt_name = request.form.get('market_name')
             mkt_dt = request.form.get('market_dt')
