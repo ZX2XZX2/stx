@@ -340,8 +340,9 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                 set_indicator_charts(indicator_charts, indicator, mkt_name,
                                      mkt_date)
         refresh = ''
-    else:
-        refresh = 60000
+    else: # if before EOD, give enough time to perform indicator analysis
+        refresh = 10 * 60000 if mkt_dt.endswith('15:55:00') else 60000
+
     return render_template(
         'eod.html',
         market_name=mkt_name,
@@ -422,6 +423,7 @@ def advance_market(mkt_name):
     if not res:
         logging.error(f'Could not load market {mkt_name}, it does not exist')
         raise Exception(f'Could not load market {mkt_name}, it does not exist')
+    mkt_date = res[0][1]
     mkt_dt = res[0][2]
     mkt_cache = res[0][3]
     mkt_realtime = res[0][4]
