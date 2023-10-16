@@ -72,7 +72,15 @@ class StxPlotBin:
         self.stk = stk
         self.num_days = num_days
         self.hlines = hlines
+        if len(hlines) > 0:
+            self.hlines = dict(
+                hlines = hlines,
+                linewidths = tuple([1] * len(hlines)))
         self.alines = alines
+        if len(alines) > 0:
+            self.alines = dict(
+                alines = alines,
+                linewidths = tuple([1] * len(alines)))
         self.s = 'yahoo'
         if intraday and period > 5:
             resample_period = f'{period}T'
