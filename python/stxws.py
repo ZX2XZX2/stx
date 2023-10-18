@@ -275,10 +275,10 @@ def get_watchlist(mkt_name):
 
 def get_indicators(mkt_cache, mkt_date):
     min_activity = mkt_cache.get('min_activity', 10000)
-    up_limit = mkt_cache.get('up_limit', 2)
-    down_limit = mkt_cache.get('down_limit', 2)
+    up_limit = mkt_cache.get('up_limit', 10)
+    down_limit = mkt_cache.get('down_limit', 10)
     _lib.stx_eod_analysis.restype = ctypes.c_void_p
-    ind_names = 'CS_45'
+    ind_names = 'CS_45,RS_45,OBV_45'
     res = _lib.stx_eod_analysis(
         ctypes.c_char_p(mkt_date.encode('UTF-8')),
         ctypes.c_char_p(ind_names.encode('UTF-8')),
