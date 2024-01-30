@@ -66,16 +66,20 @@ class StxPlotBin:
             columns=['Open','High','Low','Close','Volume', 'Date'])
         idf.set_index('Date', inplace=True)
         logging.info('built data frame')
-        
+        ub = idf['High'].max()
+        lb = idf['Low'].min()
+        delta = (ub - lb) // 10
+        ub += delta
+        lb -= delta
         self.plot_df = idf
         self.intraday = intraday
         self.stk = stk
         self.num_days = num_days
-        self.hlines = hlines
-        if len(hlines) > 0:
+        self.hlines = [x for x in hlines if x <= ub and x >= lb]
+        if len(self.hlines) > 0:
             self.hlines = dict(
-                hlines = hlines,
-                linewidths = tuple([1] * len(hlines)))
+                hlines = self.hlines,
+                linewidths = tuple([1] * len(self.hlines)))
         self.alines = alines
         if len(alines) > 0:
             self.alines = dict(
