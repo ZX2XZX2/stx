@@ -278,7 +278,7 @@ def get_indicators(mkt_cache, mkt_date):
     up_limit = mkt_cache.get('up_limit', 10)
     down_limit = mkt_cache.get('down_limit', 10)
     _lib.stx_eod_analysis.restype = ctypes.c_void_p
-    ind_names = 'CS_45,RS_45,OBV_45'
+    ind_names = 'CS_45'
     res = _lib.stx_eod_analysis(
         ctypes.c_char_p(mkt_date.encode('UTF-8')),
         ctypes.c_char_p(ind_names.encode('UTF-8')),
@@ -722,6 +722,7 @@ def watchlist_mgmt():
         return f"Removed {stk} from {market_name} watchlist"
 
 def gen_analysis_page(request):
+    chart_params = {}
     stk = request.form['stk']
     dt = request.form['stk_dt'].replace("16:00:00", "15:55:00")
     market_name = request.form['market_name']
@@ -734,24 +735,51 @@ def gen_analysis_page(request):
     charts = []
     dt_date, dt_time = stxcal.current_intraday_busdatetime()
     # TODO: later replace with market configuration
-    eod_days = 120
-    id_days1 = 20
-    id_days2 = 2
-    freq1 = '60min'
-    freq2 = '5min'
+    eod_days = request.form.get("eod_days", "")
+    id_days1 = request.form.get("id_days1", "")
+    id_days2 = request.form.get("id_days2", "")
+    freq1 = request.form.get("freq1", "60min")
+    freq2 = request.form.get("freq2", "5min")
+    try:
+        eod_days = int(eod_days)
+    except:
+        eod_days = 120
+    try:
+        id_days1 = int(id_days1)
+    except:
+        id_days1 = 20
+    try:
+        id_days2 = int(id_days2)
+    except:
+        id_days2 = 2
+    chart_params["eod_days"] = eod_days
+    chart_params["id_days1"] = id_days1
+    chart_params["id_days2"] = id_days2
+    chart_params["freq1"] = freq1
+    chart_params["freq2"] = freq2
     charts = generate_charts(market_name, stk_list, dt, eod_days, id_days1,
                              freq1, id_days2, freq2)
-    return charts, dt
+    return charts, dt, chart_params
 
 
 @app.route('/stk_analysis', methods=['POST'])
 def stk_analysis():
     mkt = request.form['market_name']
-    charts, dt = gen_analysis_page(request)
+    charts, dt, chart_params = gen_analysis_page(request)
     stk = request.form['stk']
     jl_html = get_jl_html(stk, dt)
-    return render_template('stk_analysis.html', chart=charts[0], dt=dt,
-        market_name=mkt, jl_html=jl_html)
+    return render_template(
+        "stk_analysis.html",
+        chart = charts[0],
+        dt = dt,
+        market_name = mkt,
+        jl_html = jl_html,
+        eod_days = chart_params["eod_days"],
+        id_days1 = chart_params["id_days1"],
+        id_days2 = chart_params["id_days2"],
+        freq1 = chart_params["freq1"],
+        freq2 = chart_params["freq2"],
+    )
 
 def init_trade(request):
     stk = request.form['stk']
