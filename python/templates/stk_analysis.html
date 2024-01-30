@@ -1,53 +1,104 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+      * {
+          box-sizing: border-box;
+      }
 
-{% block content %}
-  <p></p>
-  <table>
-    <tr>
-      <td>
-        <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
-      </td>
-      <td>
-        {% if 'id1_png' in chart %}
-          <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
-        {% endif %}
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
-      </td>
-      <td>
-        <div style="overflow-y: scroll; height: 500px;">
-          {{ jl_html | safe }}
-        </div>
-      </td>
-    </tr>
-  </table>
-  <table>
-    <tr>
-      <td>
-        <form action="/trade" style="display: none" target="trade_iframe" method="post">
-        <input type="hidden" name="stk" value="{{ chart['name'] }}">
-        <input type="hidden" name="dt" value="{{ dt }}">
-        <input type="hidden" name="market_name" value="{{ market_name }}">
-        <button type="submit" id="button_trade" name="action" value="init_trade"> </button>
-        </form>
-        <label style="text-decoration: underline" for="button_trade"> Trade </label>
-        <br>
-        <iframe name="trade_iframe" style="border: none;"  width="90%%" src=""></iframe>
-      </td>
-      <td>
-        <form action="/support_resistance" style="display: none;" target="sr_iframe" method="post">
+      body {
+          margin: 0;
+          font-family: Arial, Helvetica, sans-serif;
+      }
+      th, td {
+        text-align: center;
+        border: 1px solid;
+        padding: 10px;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      table {
+        border-collapse: collapse;
+        width: 90%;
+
+      }
+    </style>
+  </head>
+  <body>
+    <form action="/stk_analysis" method="post">
+      <input type="hidden" name="stk" value="{{ chart['name'] }}">
+      <input type="hidden" name="stk_dt" value="{{ dt }}">
+      <input type="hidden" name="market_name" value="{{ market_name }}">
+        <fieldset>
+          <label for="eod_days">EOD Days (1-300)</label>
+          <input type="text" name="eod_days" placeholder="EOD Days" value="{{ eod_days }}" maxlength="3" style='max-width:40px'/>
+          <label for="id_days1">ID Days 1 (1-20)</label>
+          <input type="text" name="id_days1" placeholder="ID Days" value="{{ id_days1 }}" maxlength="2" style='max-width:30px'/>
+          <label for="frequency1">Frequency 1</label>
+          <select id="frequency1" name="freq1">
+            {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min', '60min': '60min'}.items() %}
+            <option value="{{ key }}" {% if (key == freq1) %} selected="selected" {% endif %}> {{ value }} </option>
+            {% endfor %}
+          </select>
+          <label for="id_days2">ID Days 2 (1-20)</label>
+          <input type="text" name="id_days2" placeholder="ID Days" value="{{ id_days2 }}" maxlength="2" style='max-width:30px'/>
+          <label for="frequency2">Frequency 2</label>
+          <select id="frequency2" name="freq2">
+            {% for key, value in {'5min': '5min', '10min': '10min', '15min': '15min', '30min': '30min', '60min': '60min'}.items() %}
+            <option value="{{ key }}" {% if (key == freq2) %} selected="selected" {% endif %}> {{ value }} </option>
+            {% endfor %}
+          </select>
+          <button type="submit" id="button_analysis_{{ chart['name'] }}">Analysis </button>
+        </fieldset>
+    </form>
+
+    <table>
+      <tr>
+        <td>
+          <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+        </td>
+        <td>
+          {% if 'id1_png' in chart %}
+            <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+        </td>
+        <td>
+          <div style="overflow-y: scroll; height: 500px;">
+            {{ jl_html | safe }}
+          </div>
+        </td>
+      </tr>
+    </table>
+    <table>
+      <tr>
+        <td>
+          <form action="/trade" style="display: none" target="trade_iframe" method="post">
           <input type="hidden" name="stk" value="{{ chart['name'] }}">
           <input type="hidden" name="dt" value="{{ dt }}">
           <input type="hidden" name="market_name" value="{{ market_name }}">
-          <button type="submit" name="action" value="sr_init" id="button_sr"> </button>
-        </form>
-        <label style="text-decoration: underline" for="button_sr"> SR </label>
-        <br>
-        <iframe name="sr_iframe" style="border: none;" width="90%" src=""></iframe>
-      </td>
-    </tr>
-  </table>
-{% endblock %}
+          <button type="submit" id="button_trade" name="action" value="init_trade"> </button>
+          </form>
+          <label style="text-decoration: underline" for="button_trade"> Trade </label>
+          <br>
+          <iframe name="trade_iframe" style="border: none;"  width="90%%" src=""></iframe>
+        </td>
+        <td>
+          <form action="/support_resistance" style="display: none;" target="sr_iframe" method="post">
+            <input type="hidden" name="stk" value="{{ chart['name'] }}">
+            <input type="hidden" name="dt" value="{{ dt }}">
+            <input type="hidden" name="market_name" value="{{ market_name }}">
+            <button type="submit" name="action" value="sr_init" id="button_sr"> </button>
+          </form>
+          <label style="text-decoration: underline" for="button_sr"> SR </label>
+          <br>
+          <iframe name="sr_iframe" style="border: none;" width="90%" src=""></iframe>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
