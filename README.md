@@ -41,4 +41,10 @@ To install:
    select date(dt), sum(action * direction * quantity * price) from trades where market = 'market' and date(dt)>='2024-04-01' group by date(dt) order by date(dt);
 
    select l.stk, l.activity, l.range, l.opt_spread, e.c, 10000 * l.range/e.c as rg_pct from leaders as l, eods as e where l.expiry = '2024-05-17' and l.activity > 1000 and l.stk=e.stk and e.dt='2024-04-19' and l.stk not in (select * from excludes) and l.stk in (select stk from ind_groups where dt = '2024-04-19' and profile like '%(AI)%') order by rg_pct desc;
+
+   # PnL per month
+   select date_trunc('month', dt) as trd_month, sum(action * direction * quantity * price) from trades where market = 'market' group by trd_month order by trd_month;
+
+   # Refined leader search
+
    ```
