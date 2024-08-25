@@ -46,5 +46,6 @@ To install:
    select date_trunc('month', dt) as trd_month, sum(action * direction * quantity * price) from trades where market = 'market' group by trd_month order by trd_month;
 
    # Refined leader search
+   select l.stk, l.activity, l.range, l.opt_spread, e.c, 10000 * l.range/e.c as rg_pct, g.industry, i.bucket_rank from leaders as l, eods as e, ind_groups as g, indicators_1 as i where l.expiry = '2024-07-19' and l.activity > 2000 and l.stk=e.stk and e.dt='2024-06-21' and l.stk not in (select * from excludes) and l.stk in (select stk from ind_groups where dt = '2024-06-21') and l.stk=g.stk and l.stk=i.ticker and i.dt='2024-06-21' and i.name='RS_252' and g.dt='2024-06-21' and e.c > 1000 and g.industry != 'N/A' and range > 100 and i.bucket_rank > 80 order by rg_pct desc limit 200;
 
    ```
