@@ -134,8 +134,8 @@ int stock_relative_strength(stx_data_ptr data, int rs_days) {
 int stock_on_balance_volume(stx_data_ptr data, int num_days) {
     int obv = 0, end = data->pos;
     int start = (end >= num_days - 1)? (end - num_days + 1): 0;
-    jl_data_ptr jld = jl_get_jl(data->stk, data->data[data->pos].date, JL_050,
-                                JLF_050);
+    jl_data_ptr jld = jl_get_jl(data->stk, data->data[data->pos].date, JL_100,
+                                JLF_100);
     jl_record_ptr jls = &(jld->recs[start]), jle = &(jld->recs[end]);
     if (jls->volume == 0)
         return 0;
