@@ -41,6 +41,10 @@ stx_data_ptr refresh_cache_data(ht_item_ptr data_ht, char *dt) {
     stx_data_ptr data = (stx_data_ptr) data_ht->val.data;
     char stk[16], data_dt[20], *data_hhmm = NULL;
     bool intraday = data->intraday;
+#ifdef LDEBUG
+    LOGDEBUG("Refresh %s cache data for %s\n",
+             data->intraday? "Intraday": "EOD", data->stk);
+#endif
     memset(data_dt, 0, 20 * sizeof(char));
     strcpy(data_dt, data->data[data->pos].date);
     memset(stk, 0, 16 * sizeof(char));
@@ -55,7 +59,13 @@ stx_data_ptr refresh_cache_data(ht_item_ptr data_ht, char *dt) {
         data = NULL;
         data = load_db_data_in_cache(stk, dt, intraday);
     } else
+#ifdef LDEBUG
+        LOGDEBUG("Calling ts_set_day for %s dt = %s\n", stk, dt);
+#endif
         ts_set_day(data, dt, 0);
+#ifdef LDEBUG
+        LOGDEBUG("After ts_set_day, active date is %s\n", data->data[data->pos].date);
+#endif
     return data;
 }
 
@@ -72,8 +82,10 @@ void stx_get_stx_data_ptrs(char *stk, char *datetime, bool intraday,
             return;
     } else {
         *id_data = refresh_cache_data(id_data_ht, datetime);
-        if (*id_data == NULL)
+        if (*id_data == NULL) {
+            LOGWARN("after refresh, id_data is NULL\n");
             return;
+        }
     }
     /** Get eod data, if needed */
     if (!intraday) {
@@ -81,12 +93,16 @@ void stx_get_stx_data_ptrs(char *stk, char *datetime, bool intraday,
         if (eod_data_ht == NULL) {
             LOGINFO("No eod data cached for %s, get from DB\n", stk);
             *eod_data = load_db_data_in_cache(stk, datetime, false);
-            if (*eod_data == NULL)
+            if (*eod_data == NULL) {
+                LOGWARN("eod_data is NULL\n");
                 return;
+            }
         } else {
             *eod_data = refresh_cache_data(eod_data_ht, datetime);
-            if (*eod_data == NULL)
+            if (*eod_data == NULL) {
+                LOGWARN("after refresh, eod_data is NULL\n");
                 return;
+            }
         }
         /** update last day with intraday data as of dt */
         ts_eod_intraday_update(*eod_data, *id_data);
@@ -174,32 +190,36 @@ jl_rec_ptr stx_jl_pivots(char *stk, char *dt, bool intraday, int *num_recs) {
     return pivot_list;
 }
 
-char* stx_get_jl(char *stk, char *dt) {
+void stx_add_jl_rec(cJSON *jl_json_recs, char *jl_date, int jl_state,
+                    int jl_price, bool jl_pivot, int jl_rg, int jl_piv_obv) {
+    cJSON *jlrj = cJSON_CreateObject();
+    cJSON_AddStringToObject(jlrj, "date", jl_date);
+    cJSON_AddNumberToObject(jlrj, "state", (double)jl_state);
+    cJSON_AddNumberToObject(jlrj, "price", (double)jl_price);
+    cJSON_AddBoolToObject(jlrj, "pivot", jl_pivot);
+    cJSON_AddNumberToObject(jlrj, "range", (double)jl_rg);
+    cJSON_AddNumberToObject(jlrj, "obv", (double)jl_piv_obv);
+    cJSON_AddItemToArray(jl_json_recs, jlrj);
+}
+
+char* stx_get_jl(char *stk, char *dt, bool print_pivots_only) {
     bool intraday = true;
     cJSON *jl_json_recs = cJSON_CreateArray();
     jl_data_ptr jld = stx_get_jl_data_ptr(stk, dt, JL_100, JLF_100, intraday);
+    int last_piv = ts_find_date_record(jld->data, jld->pivots->date, 0);
     for(int ix = 0; ix <= jld->pos; ix++) {
         jl_record_ptr jlr = &(jld->recs[ix]);
         if (jlr->state == NONE)
             continue;
-        cJSON *jlrj = cJSON_CreateObject();
-        cJSON_AddStringToObject(jlrj, "date", jld->data->data[ix].date);
-        cJSON_AddNumberToObject(jlrj, "state", (double)jlr->state);
-        cJSON_AddNumberToObject(jlrj, "price", (double)jlr->price);
-        cJSON_AddBoolToObject(jlrj, "pivot", jlr->pivot);
-        cJSON_AddNumberToObject(jlrj, "range", (double)jlr->rg);
-        cJSON_AddNumberToObject(jlrj, "obv", (double)jlr->piv_obv);
-        cJSON_AddItemToArray(jl_json_recs, jlrj);
-        if(jlr->state2 != NONE) {
-            cJSON *jlrj2 = cJSON_CreateObject();
-            cJSON_AddStringToObject(jlrj2, "date", jld->data->data[ix].date);
-            cJSON_AddNumberToObject(jlrj2, "state", (double)jlr->state2);
-            cJSON_AddNumberToObject(jlrj2, "price", (double)jlr->price2);
-            cJSON_AddBoolToObject(jlrj2, "pivot", jlr->pivot2);
-            cJSON_AddNumberToObject(jlrj2, "range", (double)jlr->rg);
-            cJSON_AddNumberToObject(jlrj2, "obv", (double)jlr->piv_obv2);
-            cJSON_AddItemToArray(jl_json_recs, jlrj2);
-        }
+        if (ix < last_piv && !jlr->pivot && !jlr->pivot2 && print_pivots_only)
+            continue;
+        if (!print_pivots_only || jlr->pivot || (ix > last_piv))
+            stx_add_jl_rec(jl_json_recs, jld->data->data[ix].date, jlr->state,
+                           jlr->price, jlr->pivot, jlr->rg, jlr->piv_obv);
+        if (jlr->state2 != NONE && (!print_pivots_only || jlr->pivot2 || 
+                                    (ix > last_piv)))
+            stx_add_jl_rec(jl_json_recs, jld->data->data[ix].date, jlr->state2,
+                           jlr->price2, jlr->pivot2, jlr->rg, jlr->piv_obv2);
     }
     char *res = cJSON_Print(jl_json_recs);
     cJSON_Delete(jl_json_recs);
@@ -286,6 +306,9 @@ char* stx_eod_analysis(char *dt, char *ind_names, int min_activity,
     char *expiry = NULL, *ind_name = NULL;
     cJSON *mkt = cJSON_CreateObject();
     cJSON *ind_list = cJSON_AddArrayToObject(mkt, "indicators");
+    LOGINFO("stx_eod_analysis: dt = %s, ind_names = %s, min_activity = %d"
+            "up_limit = %d, down_limit = %d\n", dt, ind_names, min_activity,
+            up_limit, down_limit);
     cal_expiry(cal_ix(dt), &expiry);
     ind_name = strtok(ind_names, ",");
     while (ind_name) {
@@ -309,28 +332,54 @@ void stx_free_text(char *text) {
 }
 
 char* stx_get_trade_input(char *stk, char *dt) {
+    LOGINFO("Entered stx_get_trade_input()\n");
     cJSON *trade_input = cJSON_CreateObject();
+    LOGINFO("Created trade_input cJSON object\n");
     stx_data_ptr id_data = NULL, eod_data = NULL;
-    bool intraday = true, jl_intraday = false;
+    bool intraday = false, jl_intraday = false;
+    LOGINFO("Before stx_get_stx_data_ptrs()\n");
     stx_get_stx_data_ptrs(stk, dt, intraday, &eod_data, &id_data);
-    jl_data_ptr jl_recs = stx_get_jl_data_ptr(stk, dt, JL_100, JLF_100,
-        jl_intraday);
+    LOGINFO("After stx_get_stx_data_ptrs()\n");
+    LOGINFO("After stx_get_stx_data_ptrs() %d EOD and %d ID records\n", eod_data->num_recs, id_data->num_recs);
+    // jl_data_ptr jl_recs = stx_get_jl_data_ptr(stk, dt, JL_100, JLF_100,
+    //     jl_intraday);
+    // LOGINFO("After stx_get_jl_data_ptr()\n");
+    // LOGINFO("After stx_get_jl_data_ptr() %d JL records\n", jl_recs->size);
+    LOGINFO("Before ts_find_date_record() dt = %s\n", dt);
     int ix = ts_find_date_record(id_data, dt, 0);
+    LOGINFO("After ts_find_date_record() ix = %d\n", ix);
     cJSON_AddNumberToObject(trade_input, "current_price",
         (double)id_data->data[ix].close);
-    int avg_vol = jl_get_avg_volume(jl_recs);
-    int avg_rg = jl_get_avg_range(jl_recs);
+    LOGINFO("current_price = %d\n", id_data->data[ix].close);
+    int avg_vol = 1, avg_rg = 1;
+    // int avg_vol = jl_get_avg_volume(jl_recs);
+    // LOGINFO("avg_vol = %d\n", avg_vol);
+    // int avg_rg = jl_get_avg_range(jl_recs);
+    // LOGINFO("avg_rg = %d\n", avg_rg);
     cJSON_AddNumberToObject(trade_input, "avg_volume", (double)avg_vol);
     cJSON_AddNumberToObject(trade_input, "avg_range", (double)avg_rg);
     char *res = cJSON_Print(trade_input);
+    LOGINFO("res = %s\n", res);
     cJSON_Delete(trade_input);
+    LOGINFO("After deleting trade_input, res = %s\n", res);
     return res;
 }
 
 int main(int argc, char** argv) {
-    char stk[16], ed[20];
+    char stk[16], ed[20], dt[20], indicator_names[20];
     strcpy(stk, "TSLA");
     strcpy(ed, cal_current_trading_datetime());
+    strcpy(dt, "2024-07-03");
+    strcpy(indicator_names, "CS_45,RS_45,RS_252");
+    int min_activity = 1000, up_limit = 10, down_limit = 0;
+
+    char *eod_json = stx_eod_analysis(dt, indicator_names, min_activity,
+                                      up_limit, down_limit);
+    if (eod_json != NULL)
+        LOGINFO("res_json = \n%s\n", eod_json);
+    stx_free_text(eod_json);
+    return 0;
+
     int num_days = 200;
     bool intraday = false, realtime = false;
 
@@ -373,7 +422,7 @@ int main(int argc, char** argv) {
     if (res_json != NULL)
         LOGINFO("res_json = \n%s\n", res_json);
     stx_free_text(res_json);
-    res_json = stx_get_jl("AMD", "2023-06-06 14:00:00");
+    res_json = stx_get_jl("AMD", "2023-06-06 14:00:00", true);
     if (res_json != NULL)
         LOGINFO("res_json = \n%s\n", res_json);
     stx_free_text(res_json);
