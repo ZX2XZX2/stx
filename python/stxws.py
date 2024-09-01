@@ -255,9 +255,12 @@ def get_portfolio(mkt_name, stx, mkt_dt):
                                                  direction)
         x.append(target)
         x.append(stop_loss)
-        reward_risk_ratio = int(
-            100 * (target - current_price) / (current_price - stop_loss)
-        ) / 100.0
+        if current_price != stop_loss:
+            reward_risk_ratio = int(
+                100 * (target - current_price) / (current_price - stop_loss)
+            ) / 100.0
+        else:
+            reward_risk_ratio = -1
         x.append(reward_risk_ratio)
         print(f"end: x = {x}")
     return pf_list
@@ -300,11 +303,11 @@ def set_indicator_charts(indicator_charts, indicator, mkt_name, mkt_date):
     stx_up = [x['ticker'] for x in ind_up]
     stx_down = [x['ticker'] for x in ind_down]
     up_charts = generate_charts(mkt_name, stx_up,
-                                f'{mkt_date} 15:55:00', 120, 20,
-                                '60min')
+                                f'{mkt_date} 15:55:00', 45, 10,
+                                '30min')
     down_charts = generate_charts(mkt_name, stx_down,
-                                    f'{mkt_date} 15:55:00', 120, 20,
-                                    '60min')
+                                    f'{mkt_date} 15:55:00', 45, 10,
+                                    '30min')
     indicator_charts[indicator_name] = {
         "up": up_charts,
         "down": down_charts
@@ -322,15 +325,15 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     pf_list = [[x[0], x[3], x[7], x[6]] for x in portfolio]
     pf_charts = generate_charts(mkt_name, pf_list, mktdt, 0, 2, '5min') \
         if pf_list else []
-    id_days1 = 20
+    id_days1 = 10
     id_days2 = 2
-    freq1 = '60min'
+    freq1 = '30min'
     freq2 = '5min'
     idx_list = ['SPY']
-    idx_charts = generate_charts(mkt_name, idx_list, mktdt, 0, id_days1,
+    idx_charts = generate_charts(mkt_name, idx_list, mktdt, 90, id_days1,
                                  freq1, id_days2, freq2)
     watchlist = get_watchlist(mkt_name)
-    wl_charts = generate_charts(mkt_name, watchlist, mktdt, 0, id_days1,
+    wl_charts = generate_charts(mkt_name, watchlist, mktdt, 90, id_days1,
                                 freq1, id_days2, freq2) if watchlist else []        
     indicator_charts = {}
     if eod_market:
@@ -738,7 +741,7 @@ def gen_analysis_page(request):
     eod_days = request.form.get("eod_days", "")
     id_days1 = request.form.get("id_days1", "")
     id_days2 = request.form.get("id_days2", "")
-    freq1 = request.form.get("freq1", "60min")
+    freq1 = request.form.get("freq1", "30min")
     freq2 = request.form.get("freq2", "5min")
     try:
         eod_days = int(eod_days)
@@ -747,7 +750,7 @@ def gen_analysis_page(request):
     try:
         id_days1 = int(id_days1)
     except:
-        id_days1 = 20
+        id_days1 = 10
     try:
         id_days2 = int(id_days2)
     except:
@@ -1063,7 +1066,8 @@ def get_jl_html(stk, dt):
     _lib.stx_get_jl.restype = ctypes.c_void_p    
     res = _lib.stx_get_jl(
         ctypes.c_char_p(stk.encode('UTF-8')),
-        ctypes.c_char_p(dt.encode('UTF-8'))
+        ctypes.c_char_p(dt.encode('UTF-8')),
+        ctypes.c_bool(True),
     )
     jl_str = ctypes.cast(res, ctypes.c_char_p).value
     jl_json = json.loads(jl_str)
