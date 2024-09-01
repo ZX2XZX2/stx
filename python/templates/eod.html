@@ -56,9 +56,12 @@
     {% for chart in idx_charts %}
     <fieldset>
       <legend>{{ chart['name'] }}</legend>
-      <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
       <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
-      <br>
+      <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+      {% if eod_market is defined and eod_market is sameas true %}
+        <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+      {% endif %}
+        <br>
       <form style="display: none" target="_blank" rel="noopener noreferrer" action="/stk_analysis" method="post">
         <input type="hidden" name="stk" value="{{ chart['name'] }}">
         <input type="hidden" name="stk_dt" value="{{ market_dt }}">
@@ -74,8 +77,11 @@
     {% for chart in wl_charts %}
     <fieldset>
       <legend>{{ chart['name'] }}</legend>
-      <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
       <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
+      <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+      {% if eod_market is defined and eod_market is sameas true %}
+        <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
+      {% endif %}
       <br>
       <form style="display: none" target="_blank" rel="noopener noreferrer" action="/stk_analysis" method="post">
         <input type="hidden" name="stk" value="{{ chart['name'] }}">
