@@ -58,14 +58,14 @@
           <img src="data:image/png;base64,{{ chart['eod_png'] }}" width="900">
         </td>
         <td>
-          {% if 'id1_png' in chart %}
-            <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
-          {% endif %}
+          <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
         </td>
       </tr>
       <tr>
         <td>
-          <img src="data:image/png;base64,{{ chart['id_png'] }}" width="900">
+          {% if 'id1_png' in chart %}
+            <img src="data:image/png;base64,{{ chart['id1_png'] }}" width="900">
+          {% endif %}
         </td>
         <td>
           <div style="overflow-y: scroll; height: 500px;">
