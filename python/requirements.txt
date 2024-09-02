@@ -12,3 +12,4 @@ recordclass
 requests
 scipy
 WeasyPrint
+polars
