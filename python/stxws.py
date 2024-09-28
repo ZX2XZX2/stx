@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import pandas as pd
+import polars as pl
 from psycopg2 import sql
 import stxcal
 import stxdb
@@ -296,22 +297,84 @@ def get_indicators(mkt_cache, mkt_date):
     indicators = res_json.get('indicators')
     return indicators
 
-def set_indicator_charts(indicator_charts, indicator, mkt_name, mkt_date):
-    indicator_name = indicator.get('name')
-    ind_up = indicator.get('Up')
-    ind_down = indicator.get('Down')
-    stx_up = [x['ticker'] for x in ind_up]
-    stx_down = [x['ticker'] for x in ind_down]
+def set_indicator_charts(indicator_charts, indicator_list, mkt_name, mkt_date):
+    dt = mkt_date
+    ldr_dt = stxcal.next_expiry(dt)
+    ig_dt = stxcal.prev_expiry(dt)
+    min_activity = 500
+    min_close = 1000
+    min_range = 30
+    min_bucket_range = [90, 90, 50]
+    q = sql.Composed([
+        sql.SQL(
+            "SELECT l.stk, l.activity, l.range, e.c, g.industry, "
+            f"10000 * l.range/e.c AS rg_pct, i.bucket_rank AS {indicator_list[0]}"
+            " FROM leaders AS l, eods AS e, ind_groups AS g, indicators_1 AS i "
+            "WHERE l.expiry="),
+        sql.Literal(ldr_dt),
+        sql.SQL(' AND l.activity>'),
+        sql.Literal(min_activity),
+        sql.SQL(" AND l.stk=e.stk AND e.dt="),
+        sql.Literal(dt),
+        sql.SQL(
+            " AND l.stk NOT IN (SELECT * FROM excludes)"
+            " AND l.stk IN (SELECT stk FROM ind_groups WHERE dt="
+        ),
+        sql.Literal(ig_dt),
+        sql.SQL(")"),
+        sql.SQL(" AND l.stk=g.stk AND l.stk=i.ticker AND i.dt=e.dt AND i.name="),
+        sql.Literal(indicator_list[0]),
+        sql.SQL(" AND g.dt="),
+        sql.Literal(ig_dt),
+        sql.SQL(" AND e.c > "),
+        sql.Literal(min_close),
+        sql.SQL(" AND g.industry != 'N/A' AND range >"),
+        sql.Literal(min_range),
+        sql.SQL(" AND i.bucket_rank>"),
+        sql.Literal(min_bucket_range[0]),
+        sql.SQL(" ORDER BY rg_pct DESC"),
+    ])
+    logging.info(f"leader SQL = {q.as_string(stxdb.db_get_cnx())}")
+    df = pl.read_database(q, stxdb.db_get_cnx())
+    # with pl.Config(tbl_rows= -1, fmt_str_lengths=10000):
+    #     print(df)
+    stk_list = df["stk"].unique().to_list()
+    for indicator in indicator_list[1:]:
+        q = sql.Composed([
+            sql.SQL(
+                f"SELECT ticker AS stk, bucket_rank AS {indicator} FROM indicators_1 "
+                "WHERE dt="
+            ),
+            sql.Literal(dt),
+            sql.SQL(" AND ticker IN ("),
+            sql.SQL(', ').join([sql.Literal(stk) for stk in stk_list]),
+            sql.SQL(") AND name="),
+            sql.Literal(indicator),
+        ])
+        dfi = pl.read_database(q, stxdb.db_get_cnx())
+        df = df.join(dfi, on="stk")
+    dff = df.filter(
+        (pl.col("rg_pct") > 400) &
+        (pl.col("rs_252") > 90) &
+        (pl.col("rs_45") > 80) &
+        (pl.col("cs_45") > 50)
+    )
+
+    stx_up = dff["stk"].unique().to_list()
+    stx_down = dff["stk"].unique().to_list()
+
     up_charts = generate_charts(mkt_name, stx_up,
                                 f'{mkt_date} 15:55:00', 45, 10,
                                 '30min')
     down_charts = generate_charts(mkt_name, stx_down,
-                                    f'{mkt_date} 15:55:00', 45, 10,
-                                    '30min')
-    indicator_charts[indicator_name] = {
+                                    f'{mkt_date} 15:55:00', 180, 2,
+                                    '5min')
+    indicator_charts["RCS"] = {
         "up": up_charts,
         "down": down_charts
     }
+    with pl.Config(tbl_rows= -1, tbl_cols=-1, fmt_str_lengths=10000):
+        print(dff)
 
 def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     if isinstance(mkt_dt, datetime.datetime):
@@ -337,11 +400,9 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
                                 freq1, id_days2, freq2) if watchlist else []        
     indicator_charts = {}
     if eod_market:
-        indicators = get_indicators(mkt_cache, mkt_date)
-        if indicators:
-            for indicator in indicators:
-                set_indicator_charts(indicator_charts, indicator, mkt_name,
-                                     mkt_date)
+        _ = get_indicators(mkt_cache, mkt_date)
+        i_list = ["RS_252", "RS_45", "CS_45"]
+        set_indicator_charts(indicator_charts, i_list, mkt_name, mkt_date)
         refresh = ''
     else: # if before EOD, give enough time to perform indicator analysis
         refresh = 10 * 60000 if mkt_dt.endswith('15:55:00') else 60000
