@@ -367,10 +367,14 @@ char* stx_get_trade_input(char *stk, char *dt) {
 
 int main(int argc, char** argv) {
     char stk[16], ed[20], dt[20], indicator_names[20];
+    memset(indicator_names, 0, 20);
     strcpy(stk, "TSLA");
     strcpy(ed, cal_current_trading_datetime());
-    strcpy(dt, "2024-07-03");
-    strcpy(indicator_names, "CS_45,RS_45,RS_252");
+    strcpy(dt, argv[1]);
+    // stx_data_ptr data = ts_get_ts("ASTS", dt, 0);
+    // int cs_45 = stock_candle_strength(data, 45);
+    // return cs_45;
+    strcpy(indicator_names, "CS_45");
     int min_activity = 1000, up_limit = 10, down_limit = 0;
 
     char *eod_json = stx_eod_analysis(dt, indicator_names, min_activity,
