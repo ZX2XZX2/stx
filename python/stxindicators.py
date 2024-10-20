@@ -70,6 +70,16 @@ def indicator_filter(
     df = df.filter(pl.col("rg_pct") >= min_pct_rg)
     return df
 
+def generate_market(mkt_date: str, df: pl.DataFrame):
+    stxdb.db_write_cmd(
+        f"UPDATE market_caches SET "
+        f"mkt_update_dt = '{mkt_date} 16:00:00', mkt_date = '{mkt_date}'"
+        f" WHERE mkt_name='ind'"
+    )
+    stx = df["stk"].unique().to_list()
+    for stk in stx:
+        stxdb.db_write_cmd(f"INSERT INTO market_watch VALUES ('ind', '{stk}')")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -95,6 +105,9 @@ if __name__ == "__main__":
                         help="Minimum close (in cents) for leaders")
     parser.add_argument("-r", "--min_range", type=int, default=30,
                         help="Minimum daily range (in cents) for leaders")
+    parser.add_argument('-m', '--gen_market', action='store_true',
+                        help="Generate mkt view asof mkt date w/ filtered stx")
+
     args = parser.parse_args()
     logging.basicConfig(
         format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
@@ -113,8 +126,5 @@ if __name__ == "__main__":
     )
     with pl.Config(tbl_rows= -1, tbl_cols=-1, fmt_str_lengths=10000):
         print(df)
-    stxdb.db_write_cmd(f"UPDATE market_caches SET mkt_update_dt = '{args.date} 16:00:00' WHERE mkt_name='ind'")
-    stxdb.db_write_cmd(f"UPDATE market_caches SET mkt_date = '{args.date}' WHERE mkt_name='ind'")
-    stx = df["stk"].unique().to_list()
-    for stk in stx:
-        stxdb.db_write_cmd(f"INSERT INTO market_watch VALUES ('ind', '{stk}')")
+    if args.gen_market:
+        generate_market(args.date, df)
