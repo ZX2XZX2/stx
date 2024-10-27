@@ -184,7 +184,7 @@
       <input type="hidden" name="market_name" value="{{ market_name }}">
       <input type="hidden" name="market_date" value="{{ market_date }}">
       <input type="hidden" name="market_dt" value="{{ market_dt }}">
-      <label for="mkt_time">Jump to New Intraday Time</label>
+      <label for="mkt_time">{{ market_dt }} - Jump to New Intraday Time</label>
       <input type="time" name="mkt_time" step="300" min="09:30" max="16:00" placeholder="Time" value="{{ mkt_time }}"/>
       <button type="submit" name="action" value="jump_intraday">Jump</button>
     </form>
