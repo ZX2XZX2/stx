@@ -6,6 +6,16 @@ from psycopg2 import sql
 import stxcal
 import stxdb
 
+def generate_market(mkt_date: str, df: pl.DataFrame):
+    stxdb.db_write_cmd(
+        f"UPDATE market_caches SET "
+        f"mkt_update_dt = '{mkt_date} 16:00:00', mkt_date = '{mkt_date}'"
+        f" WHERE mkt_name='ind'"
+    )
+    stx = df["stk"].unique().to_list()
+    for stk in stx:
+        stxdb.db_write_cmd(f"INSERT INTO market_watch VALUES ('ind', '{stk}')")
+
 def indicator_filter(
     dt: str,
     filter_criteria: list,
@@ -13,6 +23,7 @@ def indicator_filter(
     min_close: int,
     min_range: int,
     min_pct_rg: int,
+    gen_market: bool,
 ) -> pl.DataFrame:
     ldr_dt = stxcal.next_expiry(dt)
     ig_dt = stxcal.prev_expiry(dt)
@@ -68,63 +79,133 @@ def indicator_filter(
         dfi = pl.read_database(q, stxdb.db_get_cnx())
         df = df.join(dfi, on="stk", how="inner")
     df = df.filter(pl.col("rg_pct") >= min_pct_rg)
+
+    if gen_market:
+        stxdb.db_write_cmd("DELETE FROM market_watch WHERE mkt='ind'")
+    with pl.Config(tbl_rows= -1, tbl_cols=-1, fmt_str_lengths=10000):
+        print(df)
+    if gen_market:
+        generate_market(dt, df)
     return df
 
-def generate_market(mkt_date: str, df: pl.DataFrame):
-    stxdb.db_write_cmd(
-        f"UPDATE market_caches SET "
-        f"mkt_update_dt = '{mkt_date} 16:00:00', mkt_date = '{mkt_date}'"
-        f" WHERE mkt_name='ind'"
-    )
-    stx = df["stk"].unique().to_list()
-    for stk in stx:
-        stxdb.db_write_cmd(f"INSERT INTO market_watch VALUES ('ind', '{stk}')")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-d", "--date",
-        type=str,
-        default=stxcal.current_busdate(hr=9),
-        help='Date to retrieve indicator leaders'
-    )
-    parser.add_argument(
-        "-f", "--filter",
-        type=ast.literal_eval,
-        default=ast.literal_eval(
-            "[('RS_252', 90), ('RS_45', 80), ('CS_45', 50)]"
-        ),
-        help="Indicator filtering criteria (positive: >=, negative: <=)",
-    ),
-    parser.add_argument("-p", "--min_pct_rg", type=int, default=200,
-                        help="Minimum percentage range")
-    parser.add_argument("-a", "--min_activity", type=int, default=1000,
-                        help="Minimum activity for leaders")
-    parser.add_argument("-c", "--min_close", type=int, default=1000,
-                        help="Minimum close (in cents) for leaders")
-    parser.add_argument("-r", "--min_range", type=int, default=30,
-                        help="Minimum daily range (in cents) for leaders")
-    parser.add_argument('-m', '--gen_market', action='store_true',
-                        help="Generate mkt view asof mkt date w/ filtered stx")
-
-    args = parser.parse_args()
+def main():
     logging.basicConfig(
         format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
         '%(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
         level=logging.INFO
     )
-    stxdb.db_write_cmd("DELETE FROM market_watch WHERE mkt='ind'")
-    df = indicator_filter(
-        args.date,
-        args.filter,
-        args.min_activity,
-        args.min_close,
-        args.min_range,
-        args.min_pct_rg,
+    parser = argparse.ArgumentParser(description="Filter, watchlist or intraday analysis.")
+    # Define a subparser for each choice
+    subparsers = parser.add_subparsers(
+        dest="choice",
+        required=True,
+        help="Choose (filter, watchlist, or intraday) analysis",
     )
-    with pl.Config(tbl_rows= -1, tbl_cols=-1, fmt_str_lengths=10000):
-        print(df)
-    if args.gen_market:
-        generate_market(args.date, df)
+    # Parser for filter
+    parser_filter = subparsers.add_parser("filter", help="Filter analysis")
+    parser_filter.add_argument(
+        "-d", "--date",
+        type=str,
+        default=stxcal.current_busdate(hr=9),
+        help="Date for the filter analysis"
+    )
+    parser_filter.add_argument(
+        "-f", "--filter_criteria",
+        type=ast.literal_eval,
+        default=ast.literal_eval(
+            "[('RS_252', 90), ('RS_45', 80), ('CS_45', 50)]"
+        ),
+        help="Indicator filtering criteria (positive: >=, negative: <=)",
+    ),
+    parser_filter.add_argument("-p", "--min_pct_rg", type=int, default=200,
+                        help="Minimum percentage range")
+    parser_filter.add_argument("-a", "--min_activity", type=int, default=1000,
+                        help="Minimum activity for leaders")
+    parser_filter.add_argument("-c", "--min_close", type=int, default=1000,
+                        help="Minimum close (in cents) for leaders")
+    parser_filter.add_argument("-r", "--min_range", type=int, default=30,
+                        help="Minimum daily range (in cents) for leaders")
+    parser_filter.add_argument('-m', '--gen_market', action='store_true',
+                        help="Generate mkt view asof mkt date w/ filtered stx")
+
+    # Parser for watchlist
+    parser_watchlist = subparsers.add_parser("watchlist", help="Parser for watchlist")
+    parser_watchlist.add_argument(
+        "-m", "--market",
+        type=str,
+        default="market",
+        help="Market for which we analyze watchlist",
+    )
+    parser_watchlist.add_argument(
+        "-d", "--date",
+        type=str,
+        default=stxcal.current_busdate(hr=9),
+        help='Date of the watchlist analysis'
+    )
+    parser_watchlist.add_argument(
+        "-i", "--indicators",
+        type=ast.literal_eval,
+        default=ast.literal_eval("['RS_252', 'RS_45', 'RS_10', 'RS_4' 'CS_10', 'CS_20', 'CS_45']"),
+        help="Indicators to show for each stock in the watchlist",
+    )
+    parser_watchlist.add_argument(
+        "-s", "--stats",
+        type=ast.literal_eval,
+        default=ast.literal_eval("['activity', 'range', 'pct_range']"),
+        help="Other stats (activity,range,volume,pct_range) for each stock in the watchlist",
+    )
+
+    # Parser for intraday
+    parser_intraday = subparsers.add_parser("intraday", help="Parser for intraday")
+    parser_intraday.add_argument(
+        "-d", "--date",
+        type=str,
+        default=stxcal.current_busdate(hr=9),
+        help="Date for the intraday analysis"
+    )
+    parser_intraday.add_argument(
+        "-f", "--filter_criteria",
+        type=ast.literal_eval,
+        default=ast.literal_eval(
+            "[('RS_252', 90), ('RS_45', 80), ('CS_45', 50)]"
+        ),
+        help="Indicator filtering criteria (positive: >=, negative: <=)",
+    ),
+    parser_intraday.add_argument("-p", "--min_pct_rg", type=int, default=200,
+                        help="Minimum percentage range")
+    parser_intraday.add_argument("-a", "--min_activity", type=int, default=1000,
+                        help="Minimum activity for leaders")
+    parser_intraday.add_argument("-c", "--min_close", type=int, default=1000,
+                        help="Minimum close (in cents) for leaders")
+    parser_intraday.add_argument("-r", "--min_range", type=int, default=30,
+                        help="Minimum daily range (in cents) for leaders")
+    parser_intraday.add_argument('-m', '--gen_market', action='store_true',
+                        help="Generate mkt view asof mkt date w/ filtered stx")
+    parser_intraday.add_argument("-N", "--num_minutes", type=int, default=30,
+                        help="Calculate intraday leaders every N minutes")
+    parser_intraday.add_argument("-n", "--num_stocks", type=int, default=30,
+                        help="Return n intraday leaders every N minutes")
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Handle choices
+    if args.choice == "filter":
+        _ = indicator_filter(
+            args.date,
+            args.filter_criteria,
+            args.min_activity,
+            args.min_close,
+            args.min_range,
+            args.min_pct_rg,
+            args.gen_market,
+        )
+    elif args.choice == "watchlist":
+        logging.info("Watchlist not implemented yet")
+    elif args.choice == "intraday":
+        logging.info("Intraday not implemented yet")
+
+
+if __name__ == "__main__":
+    main()
