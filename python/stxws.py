@@ -272,7 +272,8 @@ def get_watchlist(mkt_name):
     q = sql.Composed([
         sql.SQL("SELECT "), sql.Identifier("stk"), sql.SQL(" FROM "),
         sql.Identifier("market_watch"), sql.SQL(" WHERE "),
-        sql.Identifier("mkt"), sql.SQL("="), sql.Literal(mkt_name)
+        sql.Identifier("mkt"), sql.SQL("="), sql.Literal(mkt_name),
+        sql.SQL(" ORDER BY "), sql.Identifier("stk")
     ])
     res_db = stxdb.db_read_cmd(q.as_string(stxdb.db_get_cnx()))
     watchlist = [x[0] for x in res_db]
