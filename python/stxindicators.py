@@ -88,6 +88,36 @@ def indicator_filter(
         generate_market(dt, df)
     return df
 
+def watchlist_analysis(
+    market: str,
+    dt: str,
+    indicators: list,
+    stats: list,
+) -> pl.DataFrame:
+    q = sql.Composed([
+        sql.SQL(f"SELECT stk FROM market_watch WHERE mkt="),
+        sql.Literal(market),
+    ])
+    df = pl.read_database(q, stxdb.db_get_cnx())
+    stk_list = df["stk"].unique().to_list()
+    for i_name in indicators:
+        q = sql.Composed([
+            sql.SQL(
+                f"SELECT ticker AS stk, bucket_rank AS {i_name} FROM indicators_1 "
+                "WHERE dt="
+            ),
+            sql.Literal(dt),
+            sql.SQL(" AND ticker IN ("),
+            sql.SQL(', ').join([sql.Literal(stk) for stk in stk_list]),
+            sql.SQL(") AND name="),
+            sql.Literal(i_name),
+        ])
+        dfi = pl.read_database(q, stxdb.db_get_cnx())
+        df = df.join(dfi, on="stk", how="inner")
+    with pl.Config(tbl_rows= -1, tbl_cols=-1, fmt_str_lengths=10000):
+        print(df)
+    return df
+
 def main():
     logging.basicConfig(
         format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] - '
@@ -146,7 +176,7 @@ def main():
     parser_watchlist.add_argument(
         "-i", "--indicators",
         type=ast.literal_eval,
-        default=ast.literal_eval("['RS_252', 'RS_45', 'RS_10', 'RS_4' 'CS_10', 'CS_20', 'CS_45']"),
+        default=ast.literal_eval("['RS_252', 'RS_45', 'RS_10', 'RS_4', 'CS_10', 'CS_20', 'CS_45']"),
         help="Indicators to show for each stock in the watchlist",
     )
     parser_watchlist.add_argument(
@@ -202,7 +232,12 @@ def main():
             args.gen_market,
         )
     elif args.choice == "watchlist":
-        logging.info("Watchlist not implemented yet")
+        _ = watchlist_analysis(
+            args.market,
+            args.date,
+            args.indicators,
+            args.stats,
+        )
     elif args.choice == "intraday":
         logging.info("Intraday not implemented yet")
 

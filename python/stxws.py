@@ -310,6 +310,7 @@ def set_indicator_charts(indicator_charts, indicator_list, mkt_name, mkt_date):
         min_close=1000,
         min_range=30,
         min_pct_rg=200,
+        gen_market=False,
     )
     stx_up = df1["stk"].unique().to_list()
     stx_down = df1["stk"].unique().to_list()
