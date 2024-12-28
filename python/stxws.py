@@ -9,7 +9,7 @@ import polars as pl
 from psycopg2 import sql
 import stxcal
 import stxdb
-from stxindicators import indicator_filter
+from stxindicators import indicator_filter, watchlist_analysis
 import traceback as tb
 
 logging.basicConfig(
@@ -43,6 +43,8 @@ frequencydict = {
 
 _lib_name = os.path.join(os.sep, 'usr', 'local', 'bin', 'stx_lib.so')
 _lib = ctypes.CDLL(_lib_name)
+
+watchlist = None
 
 
 @app.route('/')
@@ -280,6 +282,15 @@ def get_watchlist(mkt_name):
     logging.info(f"The watchlist for market {mkt_name} is {watchlist}")
     return watchlist
 
+def get_watchlist_sorted(mkt_name, dt, eod_market):
+    indicators = ["RS_252", "RS_45", "RS_10", "RS_4", "CS_10", "CS_20", "CS_45"]
+    if eod_market:
+        mkt_date = dt
+    else:
+        mkt_date = stxcal.prev_busday(dt)
+    wl_df = watchlist_analysis(mkt_name, mkt_date, indicators, [])
+    return wl_df.select(pl.col("stk")).to_series().to_list()
+
 def get_indicators(mkt_cache, mkt_date):
     min_activity = mkt_cache.get('min_activity', 10000)
     up_limit = mkt_cache.get('up_limit', 10)
@@ -347,7 +358,8 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
     idx_list = ['SPY']
     idx_charts = generate_charts(mkt_name, idx_list, mktdt, 90, id_days1,
                                  freq1, id_days2, freq2)
-    watchlist = get_watchlist(mkt_name)
+    # watchlist = get_watchlist(mkt_name)
+    watchlist = get_watchlist_sorted(mkt_name, mkt_date, eod_market)
     wl_charts = generate_charts(mkt_name, watchlist, mktdt, 90, id_days1,
                                 freq1, id_days2, freq2) if watchlist else []        
     indicator_charts = {}
@@ -355,9 +367,13 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
         _ = get_indicators(mkt_cache, mkt_date)
         i_list = ["RS_252", "RS_45", "CS_45"]
         set_indicator_charts(indicator_charts, i_list, mkt_name, mkt_date)
+        # watchlists = get_watchlist_sorted(None, mkt_date, eod_market)
+        # wls_charts = generate_charts(mkt_name, watchlists, mktdt, 90, id_days1,
+        #                             freq1, id_days2, freq2) if watchlists else []
+
         refresh = ''
     else: # if before EOD, give enough time to perform indicator analysis
-        refresh = 10 * 60000 if mkt_dt.endswith('15:55:00') else 60000
+        refresh = 10 * 60000 if mkt_dt.endswith('15:55:00') else 30000
 
     return render_template(
         'eod.html',
