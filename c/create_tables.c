@@ -438,6 +438,17 @@ int main() {
         "PRIMARY KEY(stk, mkt, dt1, px1, dt2, px2))";
     create_table_if_missing(cnx, "stx_sr", create_stx_sr);
 
+    /**
+     *  Store watchlist history (additions and removals)
+     */
+    char* create_stx_wl_history = "CREATE TABLE stx_wl_hist( "   \
+        "mkt VARCHAR(128) NOT NULL, "                   \
+        "stk VARCHAR(16) NOT NULL, "                    \
+        "dt TIMESTAMP NOT NULL,"                        \
+        "operation SMALLINT NOT NULL, "                 \
+        "PRIMARY KEY(mkt, stk, dt, operation))";
+    create_table_if_missing(cnx, "stx_wl_hist", create_stx_wl_history);
+
     PQfinish(cnx);
     return 0;
 }
