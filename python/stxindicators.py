@@ -78,7 +78,7 @@ def indicator_filter(
         ])
         dfi = pl.read_database(q, stxdb.db_get_cnx())
         df = df.join(dfi, on="stk", how="inner")
-    df = df.filter(pl.col("rg_pct") >= min_pct_rg)
+    # df = df.filter(pl.col("rg_pct") >= min_pct_rg)
 
     if gen_market:
         stxdb.db_write_cmd("DELETE FROM market_watch WHERE mkt='ind'")
@@ -94,13 +94,22 @@ def watchlist_analysis(
     indicators: list,
     stats: list,
 ) -> pl.DataFrame:
-    q = sql.Composed([
-        sql.SQL(f"SELECT stk FROM market_watch WHERE mkt="),
-        sql.Literal(market),
-    ])
+    if not market:
+        exp_date = stxcal.next_expiry(dt=dt)
+        q = sql.Composed([
+            sql.SQL(f"SELECT stk FROM leaders WHERE expiry ="),
+            sql.Literal(exp_date),
+        ])
+    else:
+        q = sql.Composed([
+            sql.SQL(f"SELECT stk FROM market_watch WHERE mkt="),
+            sql.Literal(market),
+        ])
+    logging.info(f"watchlist_analysis: market = {market}, dt = {dt}")
     df = pl.read_database(q, stxdb.db_get_cnx())
     stk_list = df["stk"].unique().to_list()
     for i_name in indicators:
+        logging.debug(f"i_name = {i_name}")
         q = sql.Composed([
             sql.SQL(
                 f"SELECT ticker AS stk, bucket_rank AS {i_name} FROM indicators_1 "
@@ -112,8 +121,16 @@ def watchlist_analysis(
             sql.SQL(") AND name="),
             sql.Literal(i_name),
         ])
+        logging.debug(f"SQL = {q.as_string(stxdb.db_get_cnx())}")
         dfi = pl.read_database(q, stxdb.db_get_cnx())
         df = df.join(dfi, on="stk", how="inner")
+    df = df.with_columns((
+        2 * pl.col("rs_252") + 1.5 * pl.col("rs_45") + pl.col("rs_10") +
+        pl.col("rs_4") + 0.5 * pl.col("cs_45")
+    ).alias("S"))
+    df = df.sort(by=pl.col("S"), descending=True)
+    if not market:
+        df = df.slice(0, 12)
     with pl.Config(tbl_rows= -1, tbl_cols=-1, fmt_str_lengths=10000):
         print(df)
     return df
