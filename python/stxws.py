@@ -195,10 +195,11 @@ def get_current_price(stk, mkt_dt):
     return current_price
 
 
-def get_stop_loss_target(stk, risk_dt, risk_date, direction):
+def get_stop_loss_target(mkt, stk, risk_dt, risk_date, direction):
     sql_cmd = sql.Composed([
         sql.SQL("SELECT * FROM "), sql.Identifier('stx_risk'),
         sql.SQL(" WHERE "),
+        sql.Identifier('mkt'), sql.SQL("="), sql.Literal(mkt), sql.SQL(" AND "),
         sql.Identifier('stk'), sql.SQL("="), sql.Literal(stk),
         sql.SQL(" AND DATE("), sql.Identifier('dt'), sql.SQL(")="),
         sql.Literal(risk_date), sql.SQL(" AND "), sql.Identifier('dt'),
@@ -256,7 +257,7 @@ def get_portfolio(mkt_name, stx, mkt_dt):
         x.append(current_price)
         pnl = int(direction * num_shares * (current_price - in_price))
         x.append(pnl)
-        stop_loss, target = get_stop_loss_target(stk, mkt_dt, dt_date,
+        stop_loss, target = get_stop_loss_target(mkt_name, stk, mkt_dt, dt_date,
                                                  direction)
         x.append(target)
         x.append(stop_loss)
@@ -315,13 +316,15 @@ def set_indicator_charts(indicator_charts, indicator_list, mkt_name, mkt_date):
     df1 = indicator_filter(
         mkt_date,
         filter_criteria=ast.literal_eval(
-            "[('RS_252', 90), ('RS_45', 90), ('CS_45', 70)]"
+            "[('RS_252', 97), ('RS_4', 0), ('RS_45', 97)]"
         ),
         min_activity=1000,
         min_close=1000,
         min_range=30,
         min_pct_rg=200,
+        mkt_name="",
         gen_market=False,
+        add_to_market=False,
     )
     stx_up = df1["stk"].unique().to_list()
     stx_down = df1["stk"].unique().to_list()
@@ -921,7 +924,7 @@ def get_risk(request):
 
 def update_risk(mkt, stk, dt, direction, stop_loss, target):
     dt_date, _ = dt.split(' ')
-    db_stop_loss, db_target = get_stop_loss_target(stk, dt, dt_date, direction)
+    db_stop_loss, db_target = get_stop_loss_target(mkt, stk, dt, dt_date, direction)
     direction_str = 'Long' if direction == 1 else 'Short'
     description_str = f" for {stk} {direction_str} as of {dt}"
     if db_stop_loss == stop_loss and db_target == target:
