@@ -681,6 +681,10 @@ def next_intraday(dt):
     return next_date, next_time
 
 
+def next_intraday_dt(dt: str) -> str:
+    dt_date, dt_time = next_intraday(dt)
+    return f"{dt_date} {dt_time}"
+
 def next_market_datetime(market_datetime):
     next_date, next_time = None, None
     npdt = np.datetime64(market_datetime)

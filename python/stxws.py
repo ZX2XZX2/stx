@@ -1,4 +1,5 @@
 import ast
+from collections import defaultdict
 import ctypes
 import datetime
 import json
@@ -11,6 +12,7 @@ import stxcal
 import stxdb
 from stxindicators import indicator_filter, watchlist_analysis
 import traceback as tb
+from typing import Any
 
 logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s '
@@ -48,10 +50,11 @@ watchlist = None
 
 
 @app.route('/')
+@app.route('/indexes')
 def index():
     charts = []
     date_dict = {}
-    end_date, end_time = stxcal.current_intraday_busdatetime()
+    end_date, _ = stxcal.current_intraday_busdatetime()
     start_date = stxcal.move_busdays(end_date, -90)
     for stxindex in ['^GSPC', '^IXIC', '^DJI']:
         sp = StxPlot(None, stxindex, start_date, end_date, stk=stxindex)
@@ -59,48 +62,6 @@ def index():
         chartdict = { 'figdata_png': sp.b64_png() }
         charts.append(chartdict)
     return render_template('indexes.html', charts=charts, date_dict=date_dict)
-
-
-@app.route('/indexes')
-def show_indexes():
-    charts = []
-    date_dict = {}
-    end_date, end_time = stxcal.current_intraday_busdatetime()
-    start_date = stxcal.move_busdays(end_date, -90)
-    for stxindex in ['^GSPC', '^IXIC', '^DJI']:
-        sp = StxPlot(None, stxindex, start_date, end_date, stk=stxindex)
-        date_dict[stxindex] = str(sp.ts.df.index[sp.ts.l - 1].date())
-        chartdict = { 'figdata_png': sp.b64_png() }
-        charts.append(chartdict)
-    return render_template('indexes.html', charts=charts, date_dict=date_dict)
-
-
-@app.route('/charts', methods=('GET', 'POST'))
-def charts():
-    charts = []
-    stks = ''
-    dt, end_time = stxcal.current_intraday_busdatetime()
-    num_days = 90
-    if request.method == 'POST':
-        stks = request.form['stocks']
-        dt = request.form['datetime']
-        num_days = int(request.form['num_days'])
-        if not stks:
-            flash('Stocks are required!')
-        elif not dt:
-            flash('Date is required!')
-        else:
-            stk_list = stks.split(' ')
-            if request.form['action'] == 'Next':
-                dt = stxcal.next_busday(dt)
-            end_date = dt
-            start_date = stxcal.move_busdays(end_date, -num_days)
-            for stk in stk_list:
-                sp = StxPlot(None, stk, start_date, end_date, stk=stk)
-                chartdict = { 'figdata_png': sp.b64_png() }
-                charts.append(chartdict)
-    return render_template('charts.html', charts=charts, stx=stks, dt=dt,
-                           num_days=num_days)
 
 
 @app.route('/idcharts', methods=('GET', 'POST'))
@@ -155,11 +116,11 @@ def analysis():
         try:
             eod_days = int(request.form['eod_days'])
         except:
-            logging.warn(f'No EOD days input, using default value {eod_days}')
+            logging.warning(f'No EOD days input, using default value {eod_days}')
         try:
             id_days = int(request.form['id_days'])
         except:
-            logging.warn(f'No ID days input, using default value {id_days}')
+            logging.warning(f'No ID days input, using default value {id_days}')
 
         end_dt = f'{dt_date} {dt_time}:00'
         end_date = dt_date
@@ -173,9 +134,9 @@ def analysis():
                 end_dt = f'{end_date} {end_time}'
                 dt_date = end_date
                 dt_time = end_time
-            charts = generate_charts(None, stk_list, end_dt, eod_days, id_days,
+            charts = generate_charts("", stk_list, end_dt, eod_days, id_days,
                                      freq)
-    return render_template('analysis.html', charts=charts, stx=stks,
+    return render_template("analysis.html", charts=charts, stx=stks,
                            dt_date=dt_date, dt_time=dt_time,
                            eod_days=eod_days, id_days=id_days, freq=freq,
                            frequencydict=frequencydict)
@@ -189,13 +150,13 @@ def get_current_price(stk, mkt_dt):
         sql.SQL(" AND "),
         sql.Identifier('dt'), sql.SQL("="), sql.Literal(mkt_dt)
     ])
-    logging.info(sql_cmd.as_string(stxdb.db_get_cnx()))
+    logging.debug(sql_cmd.as_string(stxdb.db_get_cnx()))
     c_res = stxdb.db_read_cmd(sql_cmd.as_string(stxdb.db_get_cnx()))
     current_price = c_res[0][0]
     return current_price
 
 
-def get_stop_loss_target(mkt, stk, risk_dt, risk_date, direction):
+def get_stop_loss_target(mkt: str, stk: str, risk_dt: str, risk_date: str, direction: int) -> tuple:
     sql_cmd = sql.Composed([
         sql.SQL("SELECT * FROM "), sql.Identifier('stx_risk'),
         sql.SQL(" WHERE "),
@@ -216,60 +177,149 @@ def get_stop_loss_target(mkt, stk, risk_dt, risk_date, direction):
     return stop_loss, target
 
 
-def get_trades(mkt_name, dt_date, dt, stk_filter, in_out):
-    act_dir = -1 if in_out == 'in' else 1
-    sql_cmd = f"SELECT stk, direction, SUM(quantity) AS {in_out}_shares, "\
-        f"SUM(price * quantity) / SUM(quantity) AS {in_out}_price FROM trades "\
-        f"WHERE market = '{mkt_name}' AND DATE(dt) = '{dt_date}' "\
-        f"AND dt <= '{dt}' {stk_filter} AND action * direction = {act_dir} "\
-        f"GROUP BY stk, direction"
-    df = pd.read_sql(sql_cmd, stxdb.db_get_cnx())
-    return df
+def get_trades(mkt_name: str, dt: str, stk_filter: str) -> pl.DataFrame:
+    dt_date, _ = dt.split()
+    sql_list = [
+        sql.SQL("SELECT * FROM trades"),
+        sql.SQL(" WHERE market="), sql.Literal(mkt_name),
+        sql.SQL(" AND DATE(dt)="), sql.Literal(dt_date),
+        sql.SQL(" AND dt<="), sql.Literal(dt),
+    ]
+    if stk_filter != "*":
+        sql_list.append(sql.SQL(" AND stk="))
+        sql_list.append(sql.Literal(stk_filter))
+    sql_list.append(sql.SQL(" ORDER BY dt"))
+    q_trades = sql.Composed(sql_list)
+    df_trades = pl.read_database(q_trades, stxdb.db_get_cnx())
+    return df_trades
 
 
-def get_portfolio(mkt_name, stx, mkt_dt):
+def add_buy_trade_to_portfolio(t: dict, pf: defaultdict):
+    if pf[t["stk"]]["shares"] >= 0:
+        # Increase long position (if currently long)
+        total_spent = pf[t["stk"]]["avg_price"] * pf[t["stk"]]["shares"]
+        new_total_spent = total_spent + t["price"] * t["quantity"]
+        new_total_shares = pf[t["stk"]]["shares"] + t["quantity"]
+        pf[t["stk"]]["avg_price"] = new_total_spent / new_total_shares
+        pf[t["stk"]]["shares"] = new_total_shares
+    else:
+        # Cover short position (if currently short)
+        total_earned = abs(pf[t["stk"]]["avg_price"]) * abs(pf[t["stk"]]["shares"])
+        new_total_earned = total_earned + t["price"] * t["quantity"]
+        new_total_shares = pf[t["stk"]]["shares"] + t["quantity"]
+        pf[t["stk"]]["avg_price"] = new_total_earned / abs(new_total_shares)
+        pf[t["stk"]]["shares"] = new_total_shares
+
+
+def add_sell_trade_to_portfolio(t: dict, pf: defaultdict):
+    if pf[t["stk"]]["shares"] > 0:
+        # Sell part of long position
+        total_spent = pf[t["stk"]]["avg_price"] * pf[t["stk"]]["shares"]
+        new_total_spent = total_spent - t["price"] * t["quantity"]
+        new_total_shares = pf[t["stk"]]["shares"] - t["quantity"]
+        if new_total_shares == 0:
+            pf[t["stk"]]["avg_price"] = 0
+        else:
+            pf[t["stk"]]["avg_price"] = new_total_spent / new_total_shares
+        pf[t["stk"]]["shares"] = new_total_shares
+    else:
+        # Increase short position (if currently short)
+        total_earned = abs(pf[t["stk"]]["avg_price"]) * abs(pf[t["stk"]]["shares"])
+        new_total_earned = total_earned - t["price"] * t["quantity"]
+        new_total_shares = pf[t["stk"]]["shares"] - t["quantity"]
+        if new_total_shares == 0:
+            pf[t["stk"]]["avg_price"] = 0
+        else:
+            pf[t["stk"]]["avg_price"] = new_total_earned / abs(new_total_shares)
+        pf[t["stk"]]["shares"] = new_total_shares
+
+
+def trade_stop_loss(mkt: str, stk: str, dt: str, direction: int, price: int, shares: int):
+    action = 1 if direction == 1 else -1
+    q = sql.Composed([
+        sql.SQL("INSERT INTO "), sql.Identifier("trades"),
+        sql.SQL(" VALUES ("), sql.SQL(',').join([
+            sql.Literal(mkt), sql.Literal(stk), sql.Literal(dt),
+            sql.Literal(direction), sql.Literal(action),
+            sql.Literal(price), sql.Literal(shares)
+        ]), sql.SQL(")")
+    ])
+    stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    logging.info(f"{'Sold ' if direction == 1 else 'Bought ' }, {shares} "\
+        f"shares of {stk} at {price}")
+
+
+def portfolio_risk_management(portfolio: defaultdict, mkt_name: str, mkt_dt: str) -> list:
+    # turn portfolio dictionary into a list and add stop loss info
     dt_date, _ = mkt_dt.split()
-    stk_filter = "" if stx == '*' else f" AND stk='{stx}' "
-    # get initiation trades
-    df_in = get_trades(mkt_name, dt_date, mkt_dt, stk_filter, 'in')
-    if len(df_in) == 0:
-        return []
-    # get closure trades
-    df_out = get_trades(mkt_name, dt_date, mkt_dt, stk_filter, 'out')
-    # get active trades (initiated trades not closed yet)
-    df_pf = df_in.merge(df_out, on='stk', how='outer')
-    df_pf = df_pf.fillna(0)
-    df_pf['open_shares'] = df_pf['in_shares'] - df_pf['out_shares']
-    df_pf['direction'] = df_pf.apply(lambda r:
-        'Long' if r['direction_x'] == 1 else 'Short', axis=1)
-    open_df = df_pf.query('open_shares>0').copy()
-    # generate portfolio list
-    pf_list = open_df[['stk', 'direction', 'open_shares', 'in_price',
-                       'direction_x']].values.tolist()
-    # process/enhance portfolio list
-    for x in pf_list:
-        print(f"start: x = {x}")
-        stk = x[0]
-        num_shares = x[2]
-        in_price = x[3]
-        direction = x.pop()
-        current_price = get_current_price(stk, mkt_dt)
-        x.append(current_price)
-        pnl = int(direction * num_shares * (current_price - in_price))
-        x.append(pnl)
-        stop_loss, target = get_stop_loss_target(mkt_name, stk, mkt_dt, dt_date,
-                                                 direction)
-        x.append(target)
-        x.append(stop_loss)
-        if current_price != stop_loss:
+    result = []
+    for symbol, details in portfolio.items():
+        if details["shares"] > 0:
+            direction = 1
+        elif details["shares"] < 0:
+            direction = -1
+            details["shares"] *= -1
+        else:
+            continue
+        line = [symbol, "Long" if direction == 1 else "Short", details["shares"], int(details["avg_price"])]
+        stop_loss, target = get_stop_loss_target(mkt_name, symbol, mkt_dt,
+                                                 dt_date, direction)
+        q = sql.Composed([
+            sql.SQL("SELECT dt, hi, lo, c FROM intraday WHERE stk="),
+            sql.Literal(symbol),
+            sql.SQL(" AND dt BETWEEN "), sql.Literal(stxcal.next_intraday_dt(details["dt"])),
+            sql.SQL(" AND "), sql.Literal(mkt_dt),
+            sql.SQL(" ORDER BY dt"),
+        ])
+        idd_data = pl.read_database(q, stxdb.db_get_cnx())
+        for d in idd_data.iter_rows(named=True):
+            if direction == 1 and stop_loss >= d["lo"]:
+                crt_price = int((d["lo"] + stop_loss) / 2)
+                trade_stop_loss(mkt_name, symbol, d["dt"], direction, crt_price,
+                                details["shares"])
+                break
+            elif direction == -1 and stop_loss <= d["hi"]:
+                crt_price = int((d["hi"] + stop_loss) / 2)
+                trade_stop_loss(mkt_name, symbol, d["dt"], direction, crt_price,
+                                details["shares"])
+                break
+            else:
+                crt_price = d["c"]
+        line.append(crt_price)
+        pnl = int(direction * details["shares"] * (crt_price - details["avg_price"]))
+        line.append(pnl)
+        line.append(target)
+        line.append(stop_loss)
+        if crt_price != stop_loss:
             reward_risk_ratio = int(
-                100 * (target - current_price) / (current_price - stop_loss)
+                100 * (target - crt_price) / (crt_price - stop_loss)
             ) / 100.0
         else:
             reward_risk_ratio = -1
-        x.append(reward_risk_ratio)
-        print(f"end: x = {x}")
-    return pf_list
+        line.append(reward_risk_ratio)
+        result.append(line)
+    return result
+
+
+def get_portfolio(mkt_name: str, stx: str, mkt_dt: str) -> list:
+    # get all trades for a given date, up to a certain time
+    trade_df = get_trades(mkt_name=mkt_name, dt=mkt_dt, stk_filter=stx)
+    # portfolio will hold information about each stock symbol
+    portfolio = defaultdict(
+        lambda: {"shares": 0, "avg_price": 0, "position": "", "dt": ""}
+    )
+    # adjust portfolio for each trade
+    for trade in trade_df.iter_rows(named=True):
+        portfolio[trade["stk"]]["dt"] = trade["dt"]  # store the trade datetime
+        # Determine the current position and how to adjust the portfolio
+        if trade["action"] == -1:  # -1 = buy
+            add_buy_trade_to_portfolio(t=trade, pf=portfolio)
+        elif trade["action"] == 1:  # 1 = sell
+            add_sell_trade_to_portfolio(t=trade, pf=portfolio)
+    # risk management for open positions in the portfolio
+    result = portfolio_risk_management(portfolio=portfolio, mkt_name=mkt_name, mkt_dt=mkt_dt)
+    return result
+
 
 def get_watchlist(mkt_name):
     q = sql.Composed([
@@ -492,7 +542,6 @@ def update_market_datetime(mkt_name, mkt_dt):
         raise
     return mdate, mdt
 
-
 def jump_market(request):
     mkt_name = request.form.get('market_name')
     mkt_dt = request.form.get('market_dt')
@@ -512,7 +561,7 @@ def jump_market(request):
     if mins % 5 != 0: 
         mins += (5 - mins % 5)
     error_log = ""
-    if hrs < 9 or hrs > 15 or (hrs == 9 and mins < 30):
+    if hrs < 9 or (hrs == 9 and mins < 30) or (hrs == 16 and mins > 0) or hrs > 16:
         error_log += f"Input jump time {jump_time} outside 09:30--15:55 "
         logging.error(f"Input jump time {jump_time} outside 09:30--15:55")
     if market_hrs > hrs or (market_hrs == hrs and market_mins > mins):
@@ -520,20 +569,21 @@ def jump_market(request):
             f"current market time {market_time}"
         logging.error(f" Input jump time {jump_time} less than "
             f"current market time {market_time}")
+    if error_log != "":
+        return error_log
+    mdt = f"{mkt_date} {hrs}:{mins}:00"
+    q = sql.Composed([
+        sql.SQL("UPDATE "), sql.Identifier('market_caches'),
+        sql.SQL(" SET "), sql.Identifier('mkt_update_dt'),
+        sql.SQL("="), sql.Literal(mdt), sql.SQL(" WHERE "),
+        sql.Identifier('mkt_name'),sql.SQL('='),sql.Literal(mkt_name)
+    ])
+    try:
+        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    except:
+        error_log = f"Failed to update date for market {mkt_name}"
     if error_log == "":
-        mdt = f"{mkt_date} {hrs}:{mins}:00"
-        q = sql.Composed([
-            sql.SQL("UPDATE "), sql.Identifier('market_caches'),
-            sql.SQL(" SET "), sql.Identifier('mkt_update_dt'),
-            sql.SQL("="), sql.Literal(mdt), sql.SQL(" WHERE "),
-            sql.Identifier('mkt_name'),sql.SQL('='),sql.Literal(mkt_name)
-        ])
-        try:
-            stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
-        except:
-            error_log = f"Failed to update date for market {mkt_name}"
-        if error_log == "":
-            return load_market(mkt_name)
+        return load_market(mkt_name)
     return error_log
 
 
@@ -982,37 +1032,22 @@ def risk_mgmt(request):
         target=target, stop_loss=stop_loss, log_msg=log_msg
     )
 
-def exec_trade(request, buy_sell):
-    if buy_sell == 'buy':
-        trade_direction = 1
-    elif buy_sell == 'sell':
-        trade_direction = -1
-    else:
-        trade_direction = 0
-    if trade_direction == 0:
-        return "Error: to place a trade select a direction (Long/Short)"
-    stk = request.form['stk']
-    dt = request.form['dt']
-    mkt = request.form['market_name']
-    current_price = int(request.form.get('current_price'))
-    in_price = int(request.form.get('in_price'))
-    size = int(request.form.get('size', 0))
-    direction_str = request.form.get('direction_str', '')
-    direction = 0
-    if direction_str == 'Long':
-        direction = 1
-    elif direction_str == 'Short':
-        direction = -1
-    invalid_log, stop_loss, target, shares = check_trade_params(request)
-    if invalid_log:
-        return render_template(
-            'trade.html', stk=stk, dt=dt, direction=direction,
-            direction_str=direction_str, market_name=mkt, in_price=in_price,
-            current_price=current_price, size=int(size), shares=shares,
-            target=target, stop_loss=stop_loss, log_msg=invalid_log
-        )
+def process_trade(
+    mkt: str,
+    stk: str,
+    dt: str,
+    trade_direction: int,
+    direction: int,
+    direction_str: str,
+    current_price: int,
+    in_price: int,
+    shares: int,
+    size: int,
+    target: int,
+    stop_loss: int,
+) -> tuple:
     logging.info(f"{dt}: {' buying' if trade_direction == 1 else ' selling'}"
-                 f" {shares} shares of {stk} at {current_price}")
+                f" {shares} shares of {stk} at {current_price}")
     # if add to an existing position, or open new position (if size == 0)
     if trade_direction == direction or size == 0:
         new_size = size + shares
@@ -1051,8 +1086,49 @@ def exec_trade(request, buy_sell):
             sql.Literal(current_price), sql.Literal(shares)
         ]), sql.SQL(")")
     ])
+    stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+    log_msg = f"{'Bought ' if trade_direction == 1 else 'Sold ' }, {shares} "\
+        f"shares of {stk} at {current_price}"
+    return (
+        new_direction, new_direction_str, new_in_price, new_size, log_msg
+    )
+
+def exec_trade(request, buy_sell):
+    if buy_sell == 'buy':
+        trade_direction = 1
+    elif buy_sell == 'sell':
+        trade_direction = -1
+    else:
+        trade_direction = 0
+    if trade_direction == 0:
+        return "Error: to place a trade select a direction (Long/Short)"
+    stk = request.form['stk']
+    dt = request.form['dt']
+    mkt = request.form['market_name']
+    current_price = int(request.form.get('current_price'))
+    in_price = int(request.form.get('in_price'))
+    size = int(request.form.get('size', 0))
+    direction_str = request.form.get('direction_str', '')
+    invalid_log, stop_loss, target, shares = check_trade_params(request)
+    direction = 0
+    if direction_str == 'Long':
+        direction = 1
+    elif direction_str == 'Short':
+        direction = -1
+    if invalid_log:
+        return render_template(
+            'trade.html', stk=stk, dt=dt, direction=direction,
+            direction_str=direction_str, market_name=mkt, in_price=in_price,
+            current_price=current_price, size=int(size), shares=shares,
+            target=target, stop_loss=stop_loss, log_msg=invalid_log
+        )
     try:
-        stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
+        new_dir, new_dir_str, new_in_price, new_size, log_msg = process_trade(
+            mkt=mkt, stk=stk, dt=dt, trade_direction=trade_direction,
+            direction=direction, direction_str=direction_str,
+            current_price=current_price, in_price=in_price, shares=shares,
+            size=size, target=target, stop_loss=stop_loss
+        )
     except:
         log_msg = f'Trade failed:<br>{tb.print_exc()}'
         return render_template('trade.html', stk=stk, dt=dt, market_name=mkt,
@@ -1060,10 +1136,9 @@ def exec_trade(request, buy_sell):
             in_price=in_price, current_price=current_price, shares=shares,
             target=target, stop_loss=stop_loss, log_msg=log_msg
         )
-    log_msg = f"{'Bought ' if trade_direction == 1 else 'Sold ' }, {shares} "\
-        f"shares of {stk} at {current_price}"
+
     return render_template('trade.html', stk=stk, dt=dt, market_name=mkt,
-        direction=new_direction, direction_str=new_direction_str,
+        direction=new_dir, direction_str=new_dir_str,
         size=int(new_size), in_price=new_in_price, shares=shares,
         current_price=current_price, target=target, stop_loss=stop_loss,
         log_msg=log_msg
