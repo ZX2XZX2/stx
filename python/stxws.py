@@ -164,17 +164,18 @@ def get_stop_loss_target(mkt: str, stk: str, risk_dt: str, risk_date: str, direc
         sql.Identifier('stk'), sql.SQL("="), sql.Literal(stk),
         sql.SQL(" AND DATE("), sql.Identifier('dt'), sql.SQL(")="),
         sql.Literal(risk_date), sql.SQL(" AND "), sql.Identifier('dt'),
-        sql.SQL("<="), sql.Literal(risk_dt), sql.SQL( "AND "),
+        sql.SQL("<"), sql.Literal(risk_dt), sql.SQL( "AND "),
         sql.Identifier('direction'), sql.SQL("="), sql.Literal(direction),
         sql.SQL(" ORDER BY "), sql.Identifier('dt'),
         sql.SQL(" DESC LIMIT 1")
     ])
     risk_res = stxdb.db_read_cmd(sql_cmd.as_string(stxdb.db_get_cnx()))
     if len(risk_res) == 0:
-        return 0, 0
+        return 0, 0, risk_dt
+    sl_datetime = risk_res[0][2]
     stop_loss = risk_res[0][4]
     target = risk_res[0][5]
-    return stop_loss, target
+    return stop_loss, target, sl_datetime
 
 
 def get_trades(mkt_name: str, dt: str, stk_filter: str) -> pl.DataFrame:
@@ -262,12 +263,13 @@ def portfolio_risk_management(portfolio: defaultdict, mkt_name: str, mkt_dt: str
         else:
             continue
         line = [symbol, "Long" if direction == 1 else "Short", details["shares"], int(details["avg_price"])]
-        stop_loss, target = get_stop_loss_target(mkt_name, symbol, mkt_dt,
-                                                 dt_date, direction)
+        stop_loss, target, sl_dt = get_stop_loss_target(
+            mkt_name, symbol, mkt_dt, dt_date, direction
+        )
         q = sql.Composed([
             sql.SQL("SELECT dt, hi, lo, c FROM intraday WHERE stk="),
             sql.Literal(symbol),
-            sql.SQL(" AND dt BETWEEN "), sql.Literal(stxcal.next_intraday_dt(details["dt"])),
+            sql.SQL(" AND dt BETWEEN "), sql.Literal(stxcal.next_intraday_dt(sl_dt)),
             sql.SQL(" AND "), sql.Literal(mkt_dt),
             sql.SQL(" ORDER BY dt"),
         ])
@@ -426,7 +428,7 @@ def get_market(mkt_name, mkt_date, mkt_dt, mkt_cache, mkt_realtime):
 
         refresh = ''
     else: # if before EOD, give enough time to perform indicator analysis
-        refresh = 10 * 60000 if mkt_dt.endswith('15:55:00') else 30000
+        refresh = 10 * 60000 if mkt_dt.endswith('15:55:00') else 20000
 
     return render_template(
         'eod.html',
@@ -974,7 +976,7 @@ def get_risk(request):
 
 def update_risk(mkt, stk, dt, direction, stop_loss, target):
     dt_date, _ = dt.split(' ')
-    db_stop_loss, db_target = get_stop_loss_target(mkt, stk, dt, dt_date, direction)
+    db_stop_loss, db_target, _ = get_stop_loss_target(mkt, stk, dt, dt_date, direction)
     direction_str = 'Long' if direction == 1 else 'Short'
     description_str = f" for {stk} {direction_str} as of {dt}"
     if db_stop_loss == stop_loss and db_target == target:
@@ -1046,15 +1048,17 @@ def process_trade(
     target: int,
     stop_loss: int,
 ) -> tuple:
-    logging.info(f"{dt}: {' buying' if trade_direction == 1 else ' selling'}"
+    logging.info(f"{dt}: {' buying' if trade_direction == -1 else ' selling'}"
                 f" {shares} shares of {stk} at {current_price}")
+    print(f"trade_direction = {trade_direction} direction_str = {direction_str} direction = {direction}")
     # if add to an existing position, or open new position (if size == 0)
-    if trade_direction == direction or size == 0:
+    if trade_direction == -1 * direction or size == 0:
         new_size = size + shares
         new_in_price = int((size * in_price + shares * current_price) / new_size)
-        action = -1 * trade_direction
+        action = trade_direction
         if size == 0:
-            new_direction = trade_direction
+            direction = -1 * trade_direction
+            new_direction = -1 * trade_direction
             new_direction_str = 'Long' if new_direction == 1 else 'Short'
         else:
             new_direction = direction
@@ -1082,12 +1086,12 @@ def process_trade(
         sql.SQL("INSERT INTO "), sql.Identifier("trades"),
         sql.SQL(" VALUES ("), sql.SQL(',').join([
             sql.Literal(mkt), sql.Literal(stk), sql.Literal(dt),
-            sql.Literal(trade_direction), sql.Literal(action),
+            sql.Literal(direction), sql.Literal(action),
             sql.Literal(current_price), sql.Literal(shares)
         ]), sql.SQL(")")
     ])
     stxdb.db_write_cmd(q.as_string(stxdb.db_get_cnx()))
-    log_msg = f"{'Bought ' if trade_direction == 1 else 'Sold ' }, {shares} "\
+    log_msg = f"{'Bought ' if trade_direction == -1 else 'Sold ' }, {shares} "\
         f"shares of {stk} at {current_price}"
     return (
         new_direction, new_direction_str, new_in_price, new_size, log_msg
@@ -1095,9 +1099,9 @@ def process_trade(
 
 def exec_trade(request, buy_sell):
     if buy_sell == 'buy':
-        trade_direction = 1
-    elif buy_sell == 'sell':
         trade_direction = -1
+    elif buy_sell == 'sell':
+        trade_direction = 1
     else:
         trade_direction = 0
     if trade_direction == 0:
