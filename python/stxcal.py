@@ -507,6 +507,7 @@ def get_cal(start=None, end=None):
         hols.append('2012-10-29')  # Frankenstorm
         hols.append('2012-10-30')  # Frankenstorm
         hols.append('2018-12-05')  # George H.W. Bush funeral
+        hols.append('2025-01-09')  # Carter's funeral
         hols.sort()
         this.cal = np.busdaycalendar(holidays=hols)
     return this.cal
@@ -644,7 +645,7 @@ def current_date_and_time():
     return datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
 
 
-def gen_cal(start_date='1984-12-31', end_date='2025-12-31'):
+def gen_cal(start_date='1984-12-31', end_date='2026-12-31'):
     busday_cal = get_cal(start_date, end_date)
     s_date = np.datetime64(start_date)
     e_date = np.datetime64(end_date)
@@ -657,8 +658,7 @@ def gen_cal(start_date='1984-12-31', end_date='2025-12-31'):
             busday_num += 1
             ibd = 1
         res = ibd * ((busday_num << 16) | day_num)
-        sql_cmd = "INSERT INTO calendar VALUES ('{0:s}', {1:d})".format(
-            str(s_date), res)
+        sql_cmd = f"INSERT INTO calendar VALUES ('{str(s_date)}', {res}) ON CONFLICT DO NOTHING"
         stxdb.db_write_cmd(sql_cmd)
         if day_num % 1000 == 0:
             print('Inserted {0:s}'.format(str(s_date)))

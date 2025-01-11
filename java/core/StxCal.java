@@ -253,6 +253,7 @@ public class StxCal {
             addHol( y, "-10-30", "Frankenstorm 2");
         }
         if( y== 2018) addHol( y, "-12-05", "George H.W. Bush funeral");
+        if( y== 2025) addHol( y, "-01-09", "Carter's funeral");
 
     }
     public void printHolidays() {
