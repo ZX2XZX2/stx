@@ -147,7 +147,7 @@ class StxDatafeed:
         split_files = [x for x in os.listdir(self.in_dir)
                        if x.startswith('splits_')]
         split_files.sort()
-        valid_prefixes = ['NYSE', 'NASDAQ', 'AMEX']
+        valid_prefixes = ['US', 'NYSE', 'NASDAQ', 'AMEX']
         split_dct = {}
         for split_file in split_files:
             with open(os.path.join(self.in_dir, split_file), 'r') as f:
