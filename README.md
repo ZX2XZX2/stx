@@ -5,7 +5,7 @@ To install:
 2. Copy public and private `id_ed25519` keys in home directory  
 3. Run installation script:
    ```
-   ./linux_install.sh --env-vars-file ${HOME}/.env_vars --postgres-version 13
+   ./linux_install.sh --env-vars-file ${HOME}/.env_vars --postgres-version 18
    ```
 4. Run second installation script:
   ```
