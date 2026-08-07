@@ -1,17 +1,17 @@
 #!/bin/bash
 
-echo -e "This script assumes that linux_setup.sh has already run"
+echo -e "This script assumes that linux_install.sh (or linux_setup.sh) has already run"
 
 echo -e "\n\n1. Remember current directory to return after script execution"
 CRT_DIR=$(dirname $0)
 cd "${CRT_DIR}" && CRT_DIR=$PWD
 
 # Print script usage
-USAGE="\nUsage: $0 [--usb-drive /path/to/usb_drive] [--jdk-file /path/to/jdk-file] [--db-bkp-file /path/to/db-bkp-file]\n"
+USAGE="\nUsage: $0 [--usb-drive /path/to/usb_drive] [--db-bkp-file /path/to/db-bkp-file]\n"
 
 echo -e "\n\n2. Parse the input arguments"
-ops='usb-drive:,jdk-file:,db-bkp-file:'
-declare {USB_DRIVE,JDK_FILE,DB_BKP_FILE}=''
+ops='usb-drive:,db-bkp-file:'
+declare {USB_DRIVE,DB_BKP_FILE}=''
 OPTIONS=$(getopt --options '' --longoptions ${ops} --name "$0" -- "$@")
 [[ $? != 0 ]] && exit 3
 
@@ -22,10 +22,6 @@ do
     case "${1}" in
 	--usb-drive)
 	    USB_DRIVE="$2"
-	    shift 2
-	    ;;
-	--jdk-file)
-	    JDK_FILE="$2"
 	    shift 2
 	    ;;
 	--db-bkp-file)
@@ -45,14 +41,11 @@ do
     esac
 done
 
-echo -e "\n\n3. Check that USB drive location, the JDK file and the DB backup location were specified"
-[[ "${USB_DRIVE}" == '' ]] && (echo -e "\nError: no USB drive location specified! Check script usage.\n${USAGE}" && exit 1)
-[[ "${JDK_FILE}" == '' ]] && (echo -e "\nError: no JDK file location specified! Check script usage.\n${USAGE}" && exit 1)
+echo -e "\n\n3. Check that the DB backup location was specified"
 [[ "${DB_BKP_FILE}" == '' ]] && (echo -e "\nError: no DB backup file specified! Check script usage.\n${USAGE}" && exit 1)
 
 echo -e "Running script with the following parameters:"
-echo -e "  USB Drive: ${USB_DRIVE}"
-echo -e "  JDK File: ${JDK_FILE}"
+[[ "${USB_DRIVE}" != '' ]] && echo -e "  USB Drive: ${USB_DRIVE}"
 echo -e "  DB backup files: ${DB_BKP_FILE}"
 
 echo -e "\n\n4. Initialize environment variables and directories"
@@ -69,13 +62,10 @@ cd ${PYTHON_DIR}
 source $HOME/.envs/stx/bin/activate
 pip3 install -r requirements.txt
 
-echo -e "\n\n6. Install/configure Java stuff"
-JDK_INSTALL_DIR=/usr/lib/jvm
-sudo mkdir -p ${JDK_INSTALL_DIR}
-sudo cp ${USB_DRIVE}/${JDK_FILE} ${JDK_INSTALL_DIR}
-sudo cd ${JDK_INSTALL_DIR}
-sudo tar zxf ${JDK_FILE}
-echo "export PATH=${JDK_INSTALL_DIR}/jdk1.8.0_291/bin:"'${PATH}' >> ${HOME}/.bashrc
+echo -e "\n\n6. Install/configure Java (OpenJDK 21 LTS)"
+sudo apt install -y openjdk-21-jdk
+grep -q 'JAVA_HOME' ${HOME}/.bashrc || \
+    echo 'export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))' >> ${HOME}/.bashrc
 mkdir -p ${JAVA_DIR}/output
 cd ${JAVA_DIR}/output
 curl -O https://jdbc.postgresql.org/download/postgresql-${POSTGRES_JDBC_VERSION}.jar

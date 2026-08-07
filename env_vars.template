@@ -13,4 +13,4 @@ export DB_URL=${POSTGRES_CNX}
 export USB_1=
 export USB_2=
 export USB_3=
-export LD_LIBRAEY_PATH=/usr/local/lib
+export LD_LIBRARY_PATH=/usr/local/lib
